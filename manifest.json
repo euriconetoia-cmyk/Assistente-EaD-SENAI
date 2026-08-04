@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Assistente EaD SENAI V3.0.0 - Integração Contextual",
-  "version": "3.0.0",
+  "name": "Assistente EaD SENAI V3.0.1 - Integração Contextual",
+  "version": "3.0.1",
   "description": "Central da tutoria Moodle SENAI/FIEG com painel lateral, notificações de pendências diretamente nas UCs e atividades, importação contextual de notas e download seletivo de envios pendentes.",
   "minimum_chrome_version": "102",
   "permissions": [
