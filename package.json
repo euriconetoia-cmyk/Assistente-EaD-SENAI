@@ -1,6 +1,6 @@
 {
   "name": "assistente-ead-senai",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "private": true,
   "description": "Extensão Manifest V3 para acompanhamento da tutoria nos ambientes Moodle SENAI/FIEG, com importador contextual e notificações de pendências.",
   "scripts": {
