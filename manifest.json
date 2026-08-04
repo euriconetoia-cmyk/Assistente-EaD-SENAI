@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "Assistente EaD SENAI V3.0.0 - Integração Contextual",
+  "version": "3.0.0",
+  "description": "Central da tutoria Moodle SENAI/FIEG com painel lateral, notificações de pendências diretamente nas UCs e atividades, importação contextual de notas e download seletivo de envios pendentes.",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://ead.senai.br/*",
+    "https://ead.fieg.com.br/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Abrir Assistente EaD SENAI"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://ead.senai.br/*",
+        "https://ead.fieg.com.br/*"
+      ],
+      "css": [
+        "content/styles.css"
+      ],
+      "js": [
+        "content/namespace.js",
+        "content/utils.js",
+        "content/language.js",
+        "content/storage.js",
+        "content/adapters.js",
+        "content/collectors.js",
+        "content/rules.js",
+        "content/exporters.js",
+        "content/assisted-grading.js",
+        "content/communications.js",
+        "content/ui.js",
+        "content/main.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://ead.fieg.com.br/mod/assign/view.php*",
+        "https://ead.fieg.com.br/course/view.php*",
+        "https://ead.fieg.com.br/course/index.php*",
+        "https://ead.senai.br/mod/assign/view.php*",
+        "https://ead.senai.br/course/view.php*",
+        "https://ead.senai.br/course/index.php*"
+      ],
+      "css": [
+        "content/importer/contextual-importer.css"
+      ],
+      "js": [
+        "content/importer/contextual-importer.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}
