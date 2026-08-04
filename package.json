@@ -1,0 +1,16 @@
+{
+  "name": "assistente-ead-senai",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Extensão Manifest V3 para acompanhamento da tutoria nos ambientes Moodle SENAI/FIEG, com importador contextual e notificações de pendências.",
+  "scripts": {
+    "test": "npm run test:syntax && npm run test:unit && npm run validate:manifest",
+    "test:syntax": "node scripts/check-syntax.mjs",
+    "test:unit": "node tests/utils.test.js && node tests/language.test.js && node tests/rules.test.js && node tests/storage.test.js && node tests/assisted_grading.test.js && node tests/communications.test.js && node tests/main.test.js && node tests/contextual_importer_structure.test.js",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "test:browser": "node scripts/run-browser-tests.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
