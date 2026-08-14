@@ -3,9 +3,11 @@
 const DASHBOARD_URL = chrome.runtime.getURL("dashboard/index.html");
 
 async function openDashboard() {
-  const existing = await chrome.tabs.query({ url: DASHBOARD_URL });
-  if (existing.length) {
-    await chrome.tabs.update(existing[0].id, { active: true });
+  const tabs = await chrome.tabs.query({});
+  const existing = tabs.find((tab) => tab.url === DASHBOARD_URL);
+
+  if (existing?.id) {
+    await chrome.tabs.update(existing.id, { active: true });
     return;
   }
 
