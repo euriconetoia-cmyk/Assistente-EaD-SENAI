@@ -42,13 +42,34 @@
     return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
   }
 
+  function getClassStudentIds(item) {
+    return Array.isArray(item.studentIds)
+      ? unique(item.studentIds.map((value) => String(value)))
+      : [];
+  }
+
+  function getClassEnrollmentCount(item) {
+    if (Number.isFinite(Number(item.enrollments))) return Number(item.enrollments);
+    return Array.isArray(item.studentIds) ? item.studentIds.length : 0;
+  }
+
+  function getClassUniqueStudentCount(item) {
+    const ids = getClassStudentIds(item);
+    if (ids.length) return ids.length;
+    if (Number.isFinite(Number(item.uniqueStudents))) return Number(item.uniqueStudents);
+    return getClassEnrollmentCount(item);
+  }
+
   function getTutorStats(tutor) {
     const classes = tutor.classes || [];
-    const enrollments = classes.reduce((sum, item) => sum + Number(item.enrollments || 0), 0);
-    const fallbackUniqueStudents = classes.reduce((sum, item) => sum + Number(item.uniqueStudents || 0), 0);
-    const uniqueStudents = Number.isFinite(Number(tutor.uniqueStudents))
-      ? Number(tutor.uniqueStudents)
-      : fallbackUniqueStudents;
+    const enrollments = classes.reduce((sum, item) => sum + getClassEnrollmentCount(item), 0);
+    const studentIds = unique(classes.flatMap(getClassStudentIds));
+    const fallbackUniqueStudents = classes.reduce((sum, item) => sum + getClassUniqueStudentCount(item), 0);
+    const uniqueStudents = studentIds.length
+      ? studentIds.length
+      : Number.isFinite(Number(tutor.uniqueStudents))
+        ? Number(tutor.uniqueStudents)
+        : fallbackUniqueStudents;
     const courses = unique(classes.map((item) => item.course));
     const modalities = unique(classes.map((item) => item.modality));
     const averagePerClass = classes.length ? enrollments / classes.length : 0;
@@ -58,6 +79,7 @@
       courseCount: courses.length,
       enrollments,
       uniqueStudents,
+      studentIds,
       modalities,
       averagePerClass
     };
@@ -103,8 +125,10 @@
     const tutorStats = tutors.map((tutor) => ({ tutor, stats: getTutorStats(tutor) }));
     const allClasses = tutors.flatMap((tutor) => tutor.classes || []);
     const totalEnrollments = tutorStats.reduce((sum, item) => sum + item.stats.enrollments, 0);
-    const totalUniqueStudents = tutorStats.reduce((sum, item) => sum + item.stats.uniqueStudents, 0);
-    const avgStudentsPerTutor = tutors.length ? totalUniqueStudents / tutors.length : 0;
+    const globalStudentIds = unique(allClasses.flatMap(getClassStudentIds));
+    const summedTutorUniqueStudents = tutorStats.reduce((sum, item) => sum + item.stats.uniqueStudents, 0);
+    const totalUniqueStudents = globalStudentIds.length || summedTutorUniqueStudents;
+    const avgStudentsPerTutor = tutors.length ? summedTutorUniqueStudents / tutors.length : 0;
     const avgClassesPerTutor = tutors.length ? allClasses.length / tutors.length : 0;
     const modalities = unique(allClasses.map((item) => item.modality));
 
@@ -272,7 +296,7 @@
                 <td><strong>${item.className}</strong></td>
                 <td>${item.course}</td>
                 <td>${item.modality || "Não identificada"}</td>
-                <td>${formatNumber(item.uniqueStudents)}</td>
+                <td>${formatNumber(getClassUniqueStudentCount(item))}</td>
                 <td>${item.status}</td>
                 <td>${item.url && item.url !== "#" ? `<a class="link-button" href="${item.url}" target="_blank" rel="noopener">Abrir Moodle</a>` : '<span class="muted">Mock</span>'}</td>
               </tr>
@@ -302,8 +326,8 @@
           item.course,
           item.className,
           item.modality || "Não identificada",
-          item.enrollments,
-          item.uniqueStudents,
+          getClassEnrollmentCount(item),
+          getClassUniqueStudentCount(item),
           item.status,
           item.url === "#" ? "" : item.url
         ]);
