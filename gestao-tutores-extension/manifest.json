@@ -19,6 +19,7 @@
   "action": {
     "default_title": "Abrir Gestão de Tutores"
   },
+  "options_page": "options/index.html",
   "content_scripts": [
     {
       "matches": [
