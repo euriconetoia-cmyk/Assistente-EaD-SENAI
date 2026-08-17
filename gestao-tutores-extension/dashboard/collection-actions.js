@@ -30,8 +30,7 @@
 
   function setQuickBusy(busy) {
     quickButton.disabled = busy;
-    if (busy) fullButton.disabled = true;
-    else if (!document.querySelector("#collection-progress:not(.hidden)")) fullButton.disabled = false;
+    fullButton.disabled = busy;
   }
 
   async function quickUpdate() {
