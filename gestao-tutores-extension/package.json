@@ -1,0 +1,13 @@
+{
+  "name": "gestao-tutores-moodle-senai",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Módulo independente de gestão gerencial de tutoria para Moodle SENAI/FIEG.",
+  "scripts": {
+    "test": "node tests/core.test.js",
+    "check:syntax": "node --check shared/core.js && node --check shared/defaults.js && node --check content/collector.js && node --check content/launcher.js && node --check background/service-worker.js && node --check dashboard/app.js && node --check options/options.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
