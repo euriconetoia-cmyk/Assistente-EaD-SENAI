@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 global.GestaoTutoresCore = require("../shared/core.js");
+global.GestaoTutoresWorkload = require("../metrics/workload.js");
 const History = require("../storage/history.js");
 
 const snapshot = {
@@ -44,6 +45,8 @@ const snapshot = {
   assert.equal(entry.tutors[0].uniqueStudents, 3);
   assert.equal(entry.tutors[0].curriculumUnits, 2);
   assert.equal(entry.tutors.some((tutor) => tutor.id === "t2"), false, "curso excluído não deve entrar no histórico de carga");
+  assert.equal(typeof entry.tutors[0].ict, "number");
+  assert.equal(typeof entry.tutors[0].quantitativeScore, "number");
 }
 
 {
