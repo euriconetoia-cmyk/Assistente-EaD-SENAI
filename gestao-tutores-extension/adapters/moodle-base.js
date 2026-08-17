@@ -190,7 +190,8 @@
     }
 
     function extractParticipants(doc, context) {
-      const { courseId, origin } = context;
+      const { courseId, origin, host } = context;
+      const technicalHost = host || parseUrl(origin, origin)?.host || "moodle";
       const table = chooseParticipantsTable(doc);
       if (!table) {
         return {
@@ -222,7 +223,7 @@
           : row.querySelector('a[href^="mailto:"]')?.textContent.trim() || "";
         rows.push({
           moodleUserId,
-          id: `${location.host}:${moodleUserId}`,
+          id: `${technicalHost}:${moodleUserId}`,
           name: profileLink.textContent.trim() || `Participante ${index + 1}`,
           email,
           roleText
