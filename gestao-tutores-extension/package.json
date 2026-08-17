@@ -5,9 +5,9 @@
   "description": "Módulo gerencial de tutoria para Moodle SENAI/FIEG com adaptadores independentes e controle de completude.",
   "scripts": {
     "test": "npm run test:unit && npm run test:adapters",
-    "test:unit": "node tests/core.test.js && node tests/roles.test.js && node tests/institutional-map.test.js",
+    "test:unit": "node tests/core.test.js && node tests/roles.test.js && node tests/institutional-map.test.js && node tests/workload.test.js",
     "test:adapters": "node tests/adapters.test.js",
-    "check:syntax": "node --check shared/core.js && node --check shared/defaults.js && node --check adapters/registry.js && node --check adapters/moodle-base.js && node --check adapters/moodle-goias.js && node --check adapters/moodle-ctm.js && node --check domain/roles.js && node --check domain/institutional-map.js && node --check content/collector.js && node --check content/launcher.js && node --check background/service-worker.js && node --check dashboard/app.js && node --check options/options.js"
+    "check:syntax": "node --check shared/core.js && node --check shared/defaults.js && node --check adapters/registry.js && node --check adapters/moodle-base.js && node --check adapters/moodle-goias.js && node --check adapters/moodle-ctm.js && node --check domain/roles.js && node --check domain/institutional-map.js && node --check metrics/workload.js && node --check content/collector.js && node --check content/launcher.js && node --check background/service-worker.js && node --check dashboard/app.js && node --check options/options.js"
   },
   "devDependencies": {
     "jsdom": "^26.1.0"
