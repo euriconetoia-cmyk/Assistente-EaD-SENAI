@@ -12,8 +12,10 @@
       id: config.id,
       environmentName: config.environmentName,
       sourcePaths: config.sourcePaths || ["/my/", "/course/index.php"],
+      includeCurrentDocumentInDiscovery: config.includeCurrentDocumentInDiscovery !== false,
+      scope: config.scope || null,
       courseLinkSelector: config.courseLinkSelector || 'a[href*="/course/view.php"]',
-      categoryLinkSelector: config.categoryLinkSelector || 'a[href*="/course/index.php"]',
+      categoryLinkSelector: config.categoryLinkSelector || 'a[href*="/course/index.php"][href*="categoryid="]',
       breadcrumbSelector: config.breadcrumbSelector || 'nav[aria-label*="breadcrumb" i] a, .breadcrumb a',
       participantTableSelectors: config.participantTableSelectors || ["table"],
       profileLinkSelectors: config.profileLinkSelectors || ['a[href*="/user/view.php"]', 'a[href*="/user/profile.php"]'],
@@ -94,14 +96,16 @@
         });
       }
 
-      absorb(currentDocument, currentUrl);
-      const currentCourseId = getCourseId(currentUrl, origin);
-      if (currentCourseId && !courseMap.has(currentCourseId)) {
-        courseMap.set(currentCourseId, {
-          id: currentCourseId,
-          url: `${origin}/course/view.php?id=${encodeURIComponent(currentCourseId)}`,
-          discoveredName: currentDocument.querySelector("h1")?.textContent.trim() || `Curso ${currentCourseId}`
-        });
+      if (cfg.includeCurrentDocumentInDiscovery) {
+        absorb(currentDocument, currentUrl);
+        const currentCourseId = getCourseId(currentUrl, origin);
+        if (currentCourseId && !courseMap.has(currentCourseId)) {
+          courseMap.set(currentCourseId, {
+            id: currentCourseId,
+            url: `${origin}/course/view.php?id=${encodeURIComponent(currentCourseId)}`,
+            discoveredName: currentDocument.querySelector("h1")?.textContent.trim() || `Curso ${currentCourseId}`
+          });
+        }
       }
 
       for (const path of cfg.sourcePaths) {
@@ -132,7 +136,8 @@
         categoryPagesRead,
         categoryTraversalTruncated: categoryQueue.length > 0,
         warnings: Core.unique(warnings),
-        adapterId: cfg.id
+        adapterId: cfg.id,
+        scope: cfg.scope
       };
     }
 
@@ -253,6 +258,7 @@
     return {
       id: cfg.id,
       environmentName: cfg.environmentName,
+      scope: cfg.scope,
       discoverCourses,
       extractCourseMetadata,
       extractParticipants,
