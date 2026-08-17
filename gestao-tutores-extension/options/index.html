@@ -24,9 +24,10 @@
           <label class="field"><span>Cursos processados simultaneamente</span><input id="concurrency" type="number" min="1" max="8"></label>
           <label class="field"><span>Timeout por requisição, em segundos</span><input id="request-timeout" type="number" min="3" max="120"></label>
           <label class="field"><span>Tentativas adicionais por requisição</span><input id="request-retries" type="number" min="0" max="3"></label>
+          <label class="field"><span>Validade do cache da atualização rápida, em minutos</span><input id="incremental-freshness" type="number" min="1" max="240"></label>
           <label class="field"><span>Retenção do histórico local, em dias</span><input id="history-retention" type="number" min="1" max="365"></label>
         </div>
-        <p class="help">Concorrência maior pode reduzir o tempo total, mas também aumenta a pressão sobre o Moodle. O padrão permanece conservador até benchmark no ambiente institucional.</p>
+        <p class="help">A atualização rápida só reutiliza cursos completos, recentes e produzidos com o mesmo adaptador e a mesma revisão de regras. Concorrência maior pode reduzir o tempo total, mas também aumenta a pressão sobre o Moodle.</p>
 
         <h2 class="subheading">Papéis</h2>
         <label class="field"><span>Papéis considerados como tutor</span><textarea id="tutor-patterns"></textarea></label>
