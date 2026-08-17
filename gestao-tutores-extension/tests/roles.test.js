@@ -17,8 +17,30 @@ const settings = Defaults.SETTINGS;
 {
   const result = Roles.classifyParticipant({ roleText: "Professor Presencial" }, true, settings);
   assert.equal(result.isTutor, false);
+  assert.equal(result.isMonitor, false);
   assert.equal(result.isStudent, false);
   assert.equal(result.isStaff, true);
+}
+
+{
+  const result = Roles.classifyParticipant({ roleText: "Professor - GO" }, true, settings);
+  assert.equal(result.isTutor, true, "Professor - GO deve ser reconhecido como Tutor");
+  assert.equal(result.isMonitor, false);
+  assert.equal(result.isStudent, false);
+}
+
+{
+  const result = Roles.classifyParticipant({ roleText: "Moderador - GO, Monitor - GO, Monitor Edição - CTM-GO" }, true, settings);
+  assert.equal(result.isTutor, false);
+  assert.equal(result.isMonitor, true, "Papéis de monitoria GO/CTM devem ser reconhecidos como Monitor");
+  assert.equal(result.isStudent, false);
+}
+
+{
+  const result = Roles.classifyParticipant({ roleText: "Professor - GO, Moderador - GO, Monitor Edição - CTM-GO" }, true, settings);
+  assert.equal(result.isTutor, true, "Professor - GO deve manter vínculo de Tutor");
+  assert.equal(result.isMonitor, true, "Papéis de monitoria devem coexistir com o vínculo de Tutor");
+  assert.equal(result.isStudent, false);
 }
 
 {
@@ -38,16 +60,21 @@ const settings = Defaults.SETTINGS;
     confidence: "alta",
     warnings: [],
     rows: [
-      { id: "h:1", moodleUserId: "1", name: "Tutor", email: "", roleText: "Tutor Online" },
-      { id: "h:2", moodleUserId: "2", name: "Aluno", email: "", roleText: "Estudante" },
-      { id: "h:3", moodleUserId: "3", name: "Outro", email: "", roleText: "Papel Desconhecido" }
+      { id: "h:1", moodleUserId: "1", name: "Tutor", email: "", roleText: "Professor - GO" },
+      { id: "h:2", moodleUserId: "2", name: "Monitor", email: "", roleText: "Moderador - GO, Monitor - GO" },
+      { id: "h:3", moodleUserId: "3", name: "Tutor e Monitor", email: "", roleText: "Professor - GO, Monitor Edição - CTM-GO" },
+      { id: "h:4", moodleUserId: "4", name: "Aluno", email: "", roleText: "Estudante" },
+      { id: "h:5", moodleUserId: "5", name: "Outro", email: "", roleText: "Papel Desconhecido" }
     ]
   };
   const classified = Roles.classifyRows(extracted, settings);
-  assert.equal(classified.tutors.length, 1);
-  assert.deepEqual(classified.studentIds, ["h:2"]);
+  assert.equal(classified.tutors.length, 2);
+  assert.equal(classified.monitors.length, 2);
+  assert.deepEqual(classified.studentIds, ["h:4"]);
   assert.equal(classified.unclassifiedCount, 1);
   assert.equal(classified.confidence, "média");
+  assert.equal(classified.tutors.find((item) => item.id === "h:3").mixedTutorMonitor, true);
+  assert.equal(classified.monitors.find((item) => item.id === "h:3").mixedTutorMonitor, true);
 }
 
 console.log("roles.test.js: OK");
