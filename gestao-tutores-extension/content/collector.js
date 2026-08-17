@@ -212,6 +212,7 @@
     const tutors = [];
     const studentIds = [];
     let participantCount = 0;
+    let unclassifiedCount = 0;
 
     rows.forEach((row, index) => {
       const cells = [...row.querySelectorAll("td")];
@@ -234,7 +235,7 @@
       const isManagement = Core.roleMatches(roleLabels, settings.managementRolePatterns);
       const isStudentExplicit = Core.roleMatches(roleLabels, settings.studentRolePatterns);
       const isStaff = Core.roleMatches(roleLabels, settings.staffRolePatterns);
-      const isStudent = isStudentExplicit || (!isTutor && !isStaff && Boolean(roleText));
+      const isStudent = isStudentExplicit || (!hasExplicitRoles && !isTutor && !isStaff && Boolean(roleText));
 
       if (isTutor) {
         tutors.push({
@@ -247,18 +248,21 @@
         });
       } else if (isStudent) {
         studentIds.push(id);
+      } else if (hasExplicitRoles && !isStaff && roleText) {
+        unclassifiedCount += 1;
       }
     });
 
     const warnings = [];
     if (!hasExplicitRoles) warnings.push("Coluna de papéis não identificada. A classificação de estudantes foi aproximada.");
+    if (unclassifiedCount) warnings.push(`${unclassifiedCount} participante(s) possuem papel não reconhecido e não foram presumidos como estudantes.`);
     if (!tutors.length) warnings.push("Nenhum tutor foi identificado pelos padrões configurados.");
 
     return {
       tutors: Core.uniqueBy(tutors, (item) => item.id),
       studentIds: Core.unique(studentIds),
       participantCount,
-      confidence: hasExplicitRoles ? "alta" : "média",
+      confidence: hasExplicitRoles && !unclassifiedCount ? "alta" : "média",
       hasExplicitRoles,
       warnings
     };
