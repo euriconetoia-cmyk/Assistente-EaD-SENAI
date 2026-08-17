@@ -4,6 +4,7 @@
   const Core = globalThis.GestaoTutoresCore;
   const Defaults = globalThis.GestaoTutoresDefaults;
   const Adapters = globalThis.GestaoTutoresAdapters;
+  const Roles = globalThis.GestaoTutoresRoles;
   const SUPPORTED_HOSTS = new Set(Defaults.SUPPORTED_HOSTS);
 
   async function getSettings() {
@@ -45,54 +46,6 @@
     throw lastError || new Error(`Falha ao acessar ${url}`);
   }
 
-  function classifyParticipantRows(extracted, settings) {
-    const tutors = [];
-    const studentIds = [];
-    const participantIds = [];
-    let unclassifiedCount = 0;
-
-    (extracted.rows || []).forEach((participant) => {
-      participantIds.push(participant.id);
-      const roleLabels = Core.splitRoleLabels(participant.roleText);
-      const isTutor = Core.roleMatches(roleLabels, settings.tutorRolePatterns);
-      const isManagement = Core.roleMatches(roleLabels, settings.managementRolePatterns);
-      const isStudentExplicit = Core.roleMatches(roleLabels, settings.studentRolePatterns);
-      const isStaff = Core.roleMatches(roleLabels, settings.staffRolePatterns);
-      const isStudent = isStudentExplicit || (!extracted.hasExplicitRoles && !isTutor && !isStaff && Boolean(participant.roleText));
-
-      if (isTutor) {
-        tutors.push({
-          id: participant.id,
-          moodleUserId: participant.moodleUserId,
-          name: participant.name,
-          email: participant.email,
-          roles: roleLabels,
-          mixedManagement: isManagement
-        });
-      } else if (isStudent) {
-        studentIds.push(participant.id);
-      } else if (extracted.hasExplicitRoles && !isStaff && participant.roleText) {
-        unclassifiedCount += 1;
-      }
-    });
-
-    const warnings = [...(extracted.warnings || [])];
-    if (unclassifiedCount) {
-      warnings.push(`${unclassifiedCount} participante(s) possuem papel não reconhecido e não foram presumidos como estudantes.`);
-    }
-    if (!tutors.length) warnings.push("Nenhum tutor foi identificado pelos padrões configurados.");
-
-    return {
-      tutors: Core.uniqueBy(tutors, (item) => item.id),
-      studentIds: Core.unique(studentIds),
-      participantIds: Core.unique(participantIds),
-      confidence: extracted.hasExplicitRoles && !unclassifiedCount && extracted.confidence === "alta" ? "alta" : extracted.confidence === "baixa" ? "baixa" : "média",
-      hasExplicitRoles: extracted.hasExplicitRoles,
-      unclassifiedCount,
-      warnings: Core.unique(warnings)
-    };
-  }
-
   function mergeTutors(targetMap, tutors) {
     tutors.forEach((tutor) => {
       if (!targetMap.has(tutor.id)) {
@@ -130,7 +83,7 @@
         host: location.host,
         pageNumber
       });
-      const parsed = classifyParticipantRows(extracted, settings);
+      const parsed = Roles.classifyRows(extracted, settings);
       mergeTutors(tutorMap, parsed.tutors);
       parsed.studentIds.forEach((id) => studentSet.add(id));
       parsed.participantIds.forEach((id) => participantSet.add(id));
