@@ -47,8 +47,10 @@ test("classifica outlier extremo como carga crítica", () => {
   assert.equal(Core.classifyLoad(1896, stats), "Crítica");
 });
 
-test("protege CSV contra fórmulas", () => {
-  assert.equal(Core.csvEscape("=HIPERLINK(\"x\")"), "'=HIPERLINK(\"x\")");
+test("protege CSV contra fórmulas e preserva sintaxe CSV", () => {
+  assert.equal(Core.csvEscape("=HIPERLINK(\"x\")"), '"\'=HIPERLINK(""x"")"');
+  assert.equal(Core.csvEscape("+1+1"), "'+1+1");
+  assert.equal(Core.csvEscape("@SUM(A1:A2)"), "'@SUM(A1:A2)");
   assert.equal(Core.csvEscape("texto;com;ponto"), '"texto;com;ponto"');
 });
 
