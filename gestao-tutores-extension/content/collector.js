@@ -65,22 +65,24 @@
     throw lastError || new Error(`Falha ao acessar ${url}`);
   }
 
-  function mergeTutors(targetMap, tutors) {
-    tutors.forEach((tutor) => {
-      if (!targetMap.has(tutor.id)) {
-        targetMap.set(tutor.id, { ...tutor, roles: [...(tutor.roles || [])] });
+  function mergePeople(targetMap, people) {
+    (people || []).forEach((person) => {
+      if (!targetMap.has(person.id)) {
+        targetMap.set(person.id, { ...person, roles: [...(person.roles || [])] });
         return;
       }
-      const current = targetMap.get(tutor.id);
-      current.roles = Core.unique([...(current.roles || []), ...(tutor.roles || [])]);
-      current.mixedManagement = Boolean(current.mixedManagement || tutor.mixedManagement);
-      if (!current.email && tutor.email) current.email = tutor.email;
+      const current = targetMap.get(person.id);
+      current.roles = Core.unique([...(current.roles || []), ...(person.roles || [])]);
+      current.mixedManagement = Boolean(current.mixedManagement || person.mixedManagement);
+      current.mixedTutorMonitor = Boolean(current.mixedTutorMonitor || person.mixedTutorMonitor);
+      if (!current.email && person.email) current.email = person.email;
     });
   }
 
   async function collectParticipants(courseId, settings, adapter, run) {
     const baseUrl = `${location.origin}/user/index.php?id=${encodeURIComponent(courseId)}&perpage=5000`;
     const tutorMap = new Map();
+    const monitorMap = new Map();
     const studentSet = new Set();
     const participantSet = new Set();
     const warnings = [];
@@ -104,7 +106,8 @@
         pageNumber
       });
       const parsed = Roles.classifyRows(extracted, settings);
-      mergeTutors(tutorMap, parsed.tutors);
+      mergePeople(tutorMap, parsed.tutors);
+      mergePeople(monitorMap, parsed.monitors);
       parsed.studentIds.forEach((id) => studentSet.add(id));
       parsed.participantIds.forEach((id) => participantSet.add(id));
       warnings.push(...parsed.warnings);
@@ -138,6 +141,7 @@
     return {
       url: baseUrl,
       tutors: [...tutorMap.values()],
+      monitors: [...monitorMap.values()],
       studentIds: [...studentSet],
       participantCount: participantSet.size,
       pagesRead,
@@ -202,6 +206,7 @@
         url: courseUrl,
         participantsUrl: participants.url,
         tutors: participants.tutors,
+        monitors: participants.monitors,
         studentIds: participants.studentIds,
         enrollmentCount: participants.studentIds.length,
         participantCount: participants.participantCount,
@@ -239,6 +244,7 @@
         url: courseUrl,
         participantsUrl: "",
         tutors: [],
+        monitors: [],
         studentIds: [],
         enrollmentCount: 0,
         participantCount: 0,
@@ -276,6 +282,7 @@
             dataSource: "moodle",
             name: items[index]?.discoveredName || `Curso ${index + 1}`,
             tutors: [],
+            monitors: [],
             studentIds: [],
             enrollmentCount: 0,
             confidence: "baixa",
@@ -334,6 +341,11 @@
     Runtime.assertActive(run);
 
     const discovered = discovery.courses;
+    if (!discovered.length) {
+      const detail = (discovery.warnings || []).join(" | ") || "Nenhum link de curso foi encontrado nas fontes consultadas.";
+      throw new Error(`O coletor está ativo, mas nenhum curso Moodle foi descoberto. ${detail}`);
+    }
+
     const coursesToProcess = discovered.slice(0, Number(settings.maxCourses || Defaults.SETTINGS.maxCourses));
     const reuseContext = {
       mode,
@@ -362,7 +374,7 @@
     const reusedCourses = results.filter((course) => course?.dataSource === "cache").length;
     const refreshedCourses = results.length - reusedCourses;
     const snapshot = {
-      schemaVersion: 5,
+      schemaVersion: 6,
       rulesetVersion: Defaults.RULESET_VERSION,
       rulesRevision,
       extensionVersion: chrome.runtime.getManifest().version,
@@ -383,6 +395,8 @@
       discoveryWarnings: discovery.warnings || [],
       quality,
       rules: {
+        tutorRoleCount: (settings.tutorRolePatterns || []).length,
+        monitorRoleCount: (settings.monitorRolePatterns || []).length,
         modalityRuleCount: (settings.modalityRules || []).length,
         institutionalRuleCount: (settings.institutionalRules || []).length,
         exclusionPatternCount: (settings.exclusionPatterns || []).length
@@ -406,6 +420,19 @@
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type === "GESTAO_TUTORES_PING") {
+      const adapterRegistered = Boolean(Adapters?.has?.(location.host));
+      sendResponse({
+        ok: Boolean(SUPPORTED_HOSTS.has(location.host) && adapterRegistered),
+        host: location.host,
+        supported: SUPPORTED_HOSTS.has(location.host),
+        adapterRegistered,
+        adapterId: adapterRegistered ? Adapters.forHost(location.host).id : null,
+        version: chrome.runtime.getManifest().version
+      });
+      return false;
+    }
+
     if (message?.type === "GESTAO_TUTORES_CANCEL") {
       if (activeRun) Runtime.cancelRun(activeRun);
       sendResponse({ ok: true, cancelled: Boolean(activeRun) });
