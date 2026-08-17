@@ -5,9 +5,28 @@
   const Base = globalThis.GestaoTutoresMoodleBase;
 
   const adapter = Base.createAdapter({
-    id: "moodle-ctm-go-v1",
+    id: "moodle-ctm-go-v2",
     environmentName: "Moodle CTM GO",
-    sourcePaths: ["/my/", "/course/index.php"],
+    includeCurrentDocumentInDiscovery: false,
+    sourcePaths: ["/course/management.php?categoryid=11"],
+    scope: {
+      type: "category-tree",
+      categoryId: "11",
+      label: "CTM/DR-GO",
+      url: "/course/management.php?categoryid=11"
+    },
+    courseLinkSelector: [
+      '#course-category-listings a[href*="/course/view.php"]',
+      '[data-region="course-listing"] a[href*="/course/view.php"]',
+      '.course-listing a[href*="/course/view.php"]',
+      'a[href*="/course/view.php"]'
+    ].join(","),
+    categoryLinkSelector: [
+      '#course-category-listings a[href*="categoryid="]',
+      '[data-region="category-listing"] a[href*="categoryid="]',
+      '.category-listing a[href*="categoryid="]',
+      '.course_category_tree a[href*="categoryid="]'
+    ].join(","),
     participantTableSelectors: [
       "table#participants",
       "[data-region='participants'] table",
