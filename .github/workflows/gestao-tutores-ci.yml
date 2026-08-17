@@ -1,0 +1,66 @@
+name: Gestao Tutores CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'gestao-tutores-extension/**'
+      - '.github/workflows/gestao-tutores-ci.yml'
+  push:
+    branches:
+      - 'agent/gestao-tutores-v3'
+    paths:
+      - 'gestao-tutores-extension/**'
+      - '.github/workflows/gestao-tutores-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gestao-tutores-extension
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Syntax
+        run: npm run check:syntax
+      - name: Tests
+        run: npm test
+      - name: Package integrity
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+          const refs = [
+            manifest.background?.service_worker,
+            manifest.options_page,
+            ...(manifest.content_scripts || []).flatMap((item) => item.js || [])
+          ].filter(Boolean);
+          const extraDashboardFiles = ['dashboard/app.js', 'dashboard/collection-actions.js', 'dashboard/collector-client.js', 'dashboard/monitor-view.js'];
+          const missing = [...refs, ...extraDashboardFiles].filter((file) => !fs.existsSync(file));
+          if (missing.length) {
+            console.error('Arquivos necessários ausentes:', missing);
+            process.exit(1);
+          }
+          console.log(`Pacote validado: ${refs.length + extraDashboardFiles.length} arquivo(s) obrigatório(s).`);
+          NODE
+      - name: Build beta artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gestao-tutores-moodle-senai-v0.4.3-beta
+          path: |
+            gestao-tutores-extension/**
+            !gestao-tutores-extension/node_modules/**
+            !gestao-tutores-extension/tests/**
+            !gestao-tutores-extension/docs/**
+            !gestao-tutores-extension/package.json
+            !gestao-tutores-extension/package-lock.json
+          if-no-files-found: error
+          retention-days: 7

@@ -1,37 +1,35 @@
 {
   "manifest_version": 3,
   "name": "Gestão de Tutores Moodle SENAI",
-  "version": "0.1.0",
-  "description": "Dashboard de carga de tutores com coleta local de cursos, participantes, modalidades e métricas nos Moodles SENAI/FIEG.",
+  "version": "0.4.3",
+  "description": "Dashboard gerencial de tutoria e monitoria com adaptadores por Moodle, controle de completude, qualidade de dados e métricas rastreáveis.",
   "minimum_chrome_version": "102",
-  "permissions": [
-    "storage",
-    "downloads",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://ead.senai.br/*",
-    "https://ead.fieg.com.br/*"
-  ],
-  "background": {
-    "service_worker": "background/service-worker.js"
-  },
-  "action": {
-    "default_title": "Abrir Gestão de Tutores"
-  },
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["https://ead.senai.br/*", "https://ead.fieg.com.br/*"],
+  "background": {"service_worker": "background/service-worker.js"},
+  "action": {"default_title": "Abrir Gestão de Tutores"},
   "options_page": "options/index.html",
-  "content_scripts": [
-    {
-      "matches": [
-        "https://ead.senai.br/*",
-        "https://ead.fieg.com.br/*"
-      ],
-      "js": [
-        "content/collector.js",
-        "content/launcher.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": false
-    }
-  ]
+  "content_scripts": [{
+    "matches": ["https://ead.senai.br/*", "https://ead.fieg.com.br/*"],
+    "js": [
+      "shared/core.js",
+      "shared/defaults.js",
+      "shared/quality.js",
+      "metrics/workload.js",
+      "storage/history.js",
+      "collectors/runtime.js",
+      "adapters/registry.js",
+      "adapters/moodle-base.js",
+      "adapters/moodle-goias.js",
+      "adapters/moodle-ctm.js",
+      "domain/roles.js",
+      "domain/institutional-map.js",
+      "content/collector.js",
+      "content/collector-health.js",
+      "content/history-watcher.js",
+      "content/launcher.js"
+    ],
+    "run_at": "document_idle",
+    "all_frames": false
+  }]
 }

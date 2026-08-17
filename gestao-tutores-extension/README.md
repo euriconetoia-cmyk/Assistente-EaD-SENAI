@@ -1,110 +1,186 @@
-# Gestão de Tutores Moodle SENAI
+# Gestão de Tutores Moodle SENAI v0.3
 
-Versão independente de validação do módulo de Gestão de Tutores do Assistente EaD SENAI.
+Módulo independente de validação gerencial para consolidar cursos Moodle, tutores, papéis, estudantes e indicadores de carga nos ambientes SENAI/FIEG.
 
 ## Objetivo
 
-Coletar, usando somente a sessão Moodle já autenticada, informações disponíveis sobre cursos, participantes e papéis para montar uma visão consolidada por tutor.
+A versão 0.3 prioriza confiabilidade dos dados antes de ampliar funcionalidades. O módulo não assume que cada curso Moodle corresponde automaticamente a uma turma institucional ou a uma UC. Por isso, a interface utiliza o termo `Curso Moodle` até que exista uma regra institucional confiável de mapeamento.
 
-A versão de validação foi mantida em uma pasta independente para não alterar a extensão principal.
+Também diferencia:
+
+- `Alunos únicos`: pessoas deduplicadas por ID Moodle.
+- `Vínculos aluno x curso`: soma dos estudantes encontrados em cada curso Moodle. Esse número não deve ser interpretado como quantidade de pessoas.
 
 ## Ambientes suportados
 
-- https://ead.fieg.com.br
-- https://ead.senai.br
+- `https://ead.fieg.com.br`, identificado como Moodle Goiás.
+- `https://ead.senai.br`, identificado como Moodle CTM GO.
 
-## O que já funciona
+## Principais melhorias da v0.3
 
-- Descoberta de cursos a partir da página atual, Meus cursos e índice de cursos.
-- Leitura da página de participantes de cada curso.
-- Identificação de tutores por padrões de papel configuráveis.
-- Identificação de estudantes.
-- Deduplicação de alunos por ID Moodle.
-- Inferência conservadora de modalidade.
-- Cache local do último snapshot.
-- Dashboard geral.
-- Lista por tutor.
-- Detalhamento das turmas de cada tutor.
-- Matrículas e alunos únicos.
-- Quantidade de turmas e cursos por tutor.
-- Média de alunos por turma.
-- Carga relativa baixa, média ou alta em comparação com a média do recorte.
-- Distribuição por modalidade.
-- Diagnósticos de qualidade da coleta.
-- Exportação CSV.
-- Configuração do limite de cursos e dos nomes dos papéis.
+### Coleta
+
+- Limite padrão aumentado de 80 para 500 cursos.
+- Descoberta pela página atual, Meus cursos, índice de cursos e navegação por categorias.
+- Processamento concorrente configurável, com padrão de quatro cursos simultâneos.
+- Paginação real da página de participantes.
+- Reconhecimento ampliado de cabeçalhos como Papel, Papéis, Role, Roles, Função e Funções.
+- Identificação separada de papéis de tutor, estudante, equipe e gestão.
+- Registro de tutor com papel misto de gestão para validação gerencial.
+- Estudantes armazenados somente por ID técnico no snapshot.
+- Snapshots separados por host Moodle.
+- Regras de modalidade configuráveis.
+
+### Dashboard
+
+A interface foi separada em quatro visões.
+
+#### Visão Executiva
+
+Apresenta KPIs da base completa:
+
+- Tutores identificados.
+- Cursos processados sobre cursos descobertos.
+- Alunos únicos.
+- Vínculos aluno x curso.
+- Cobertura da coleta.
+- Percentual de cursos com tutor.
+- Percentual de cursos com modalidade identificada.
+- Percentual de cursos com leitura de alta confiança.
+
+Também mostra situação da base, ações prioritárias, mediana de carga, média, maior e menor carga e quantidade de outliers críticos.
+
+#### Tutores
+
+Apresenta lista por tutor com:
+
+- Papéis encontrados.
+- Cursos Moodle vinculados.
+- Vínculos aluno x curso.
+- Alunos únicos.
+- Modalidades.
+- Média por curso.
+- Classificação comparativa de carga.
+- Indicação de papel misto de gestão.
+
+#### Cursos Moodle
+
+Apresenta todos os cursos processados, inclusive aqueles sem tutor, com:
+
+- Nome e shortname quando disponível.
+- Tutor ou tutores.
+- Vínculos de estudantes.
+- Modalidade.
+- Categoria.
+- Confiança da leitura.
+- Páginas de participantes lidas.
+- Quantidade de alertas.
+- Link direto ao Moodle.
+
+#### Qualidade dos Dados
+
+Agrupa os problemas em indicadores e tabela de auditoria:
+
+- Cursos sem tutor.
+- Cursos com múltiplos tutores.
+- Modalidade não identificada.
+- Confiança abaixo de alta.
+- Paginação incompleta.
+- Cursos sem estudantes identificados.
+- Erros de leitura.
+
+## Classificação de carga
+
+A classificação não é norma institucional. Ela é um indicador analítico interno.
+
+A v0.3 deixa de depender apenas da média e passa a utilizar quartis, mediana e intervalo interquartil quando existem dados suficientes.
+
+As classificações são:
+
+- Baixa.
+- Regular.
+- Alta.
+- Crítica.
+
+Carga crítica indica um valor acima do limite superior da distribuição, funcionando como sinal de concentração que precisa ser analisado. Não significa automaticamente sobrecarga institucional.
+
+## Segurança e privacidade
+
+- Não captura senha ou token.
+- Usa somente a sessão Moodle já autenticada.
+- Não altera cursos, participantes, notas ou configurações.
+- Não envia dados para serviços externos.
+- Limita acesso aos dois hosts Moodle configurados.
+- Armazena estudantes somente por identificador técnico para deduplicação.
+- Mantém nome, e-mail e papéis somente dos tutores reconhecidos.
+- Protege exportações CSV contra conteúdo iniciado como fórmula de planilha.
+
+## Configuração
+
+Em `Opções da extensão` é possível ajustar:
+
+- Máximo de cursos por coleta.
+- Máximo de categorias percorridas.
+- Máximo de páginas de participantes por curso.
+- Quantidade de cursos processados simultaneamente.
+- Papéis de tutor.
+- Papéis de estudante.
+- Papéis de gestão.
+- Papéis de equipe.
+- Regras de modalidade.
+
+Formato das regras de modalidade:
+
+```text
+Técnico=curso técnico|técnico em|tec.
+Qualificação=qualificação profissional|qualificação|qua.
+Pós-graduação=mba|pós-graduação|especialização
+```
 
 ## Instalação para validação
 
-1. Baixe ou clone a branch `agent/gestao-tutores-mvp`.
-2. Localize a pasta `gestao-tutores-extension`.
-3. Abra `chrome://extensions` ou `edge://extensions`.
-4. Ative o modo do desenvolvedor.
-5. Clique em `Carregar sem compactação`.
-6. Selecione somente a pasta `gestao-tutores-extension`.
-7. Mantenha o Moodle aberto e autenticado.
-8. Atualize a página do Moodle após instalar a extensão.
+1. Baixe ou clone a branch de desenvolvimento.
+2. Abra `chrome://extensions` ou `edge://extensions`.
+3. Ative o Modo do desenvolvedor.
+4. Clique em `Carregar sem compactação`.
+5. Selecione somente a pasta `gestao-tutores-extension`.
+6. Mantenha o Moodle autenticado aberto.
+7. Atualize a página do Moodle.
+8. Abra a Gestão de Tutores e execute `Atualizar todos os cursos`.
 
-## Configuração recomendada antes da primeira coleta
+## Critérios para confiar na análise
 
-1. Abra os detalhes da extensão no navegador.
-2. Acesse `Opções da extensão`.
-3. Confira quais termos identificam o papel de tutor no seu Moodle.
-4. Por padrão são aceitos termos como `tutor`, `tutor ead`, `professor tutor` e `docente tutor`.
-5. Ajuste o limite de cursos se necessário.
+Antes de usar os dados para redistribuição de carga, verifique pelo menos:
 
-A configuração é importante porque os nomes dos papéis podem variar entre ambientes e não devem ser presumidos como regra institucional.
+- Cobertura da coleta em 100 por cento.
+- Ausência de paginação incompleta.
+- Papéis de tutor validados.
+- Percentual aceitável de cursos com modalidade identificada.
+- Cursos com papel misto de gestão revisados.
+- Cursos com múltiplos tutores conferidos.
 
-## Como validar
+A dashboard apresenta uma Situação da Base justamente para impedir que uma coleta parcial seja interpretada como relatório definitivo.
 
-1. Abra uma página do Moodle em que seu usuário tenha acesso às turmas.
-2. Clique no botão flutuante `Gestão de Tutores` ou no ícone da extensão.
-3. Na dashboard, clique em `Atualizar do Moodle`.
-4. Aguarde o processamento dos cursos encontrados.
-5. Confira os cards gerais.
-6. Compare pelo menos três tutores com o Moodle.
-7. Abra `Detalhes` de cada tutor e confira as turmas.
-8. Verifique a diferença entre matrículas e alunos únicos.
-9. Confira os diagnósticos apresentados.
-10. Exporte o CSV e compare a amostra com os dados do Moodle.
+## Testes
 
-## O que precisa ser conferido no primeiro teste real
+Dentro da pasta do módulo:
 
-### Descoberta de cursos
+```bash
+npm run check:syntax
+npm test
+```
 
-A extensão deve encontrar as turmas que o usuário realmente consegue visualizar. Se o Moodle privilegiado não apresentar todos os cursos em `/my/` ou `/course/index.php`, a estratégia de descoberta precisará ser adaptada para a categoria ou relatório administrativo utilizado no ambiente.
-
-### Papel de tutor
-
-A página de participantes precisa expor o papel do usuário de alguma forma. Se o papel aparecer com outro nome, ajuste nas opções da extensão.
-
-### Alunos
-
-Quando a coluna de papéis é identificada, a confiança da leitura é maior. Quando ela não é encontrada, a extensão usa uma classificação conservadora e registra diagnóstico para conferência.
-
-### Paginação
-
-A coleta solicita até 5000 participantes por página. Se o Moodle ainda apresentar paginação, a dashboard registra um aviso e os números devem ser considerados parciais até implementarmos a paginação específica daquele ambiente.
-
-### Modalidade
-
-A modalidade é inferida pelo nome e caminho de categoria do curso. Quando não houver evidência suficiente, aparece `Não identificada`.
-
-## Segurança
-
-- Não captura senha.
-- Não lê credenciais.
-- Não envia dados para serviços externos.
-- Usa somente páginas que o usuário autenticado já consegue acessar.
-- Armazena o snapshot localmente no navegador.
-- Não altera notas, cursos, participantes ou configurações do Moodle.
-- Não envia mensagens.
+Os testes atuais cobrem normalização, papéis, modalidade, mediana, classificação de outlier e segurança de CSV.
 
 ## Estrutura
 
 ```text
 gestao-tutores-extension/
   manifest.json
+  package.json
+  shared/
+    core.js
+    defaults.js
   background/
     service-worker.js
   content/
@@ -117,8 +193,15 @@ gestao-tutores-extension/
   options/
     index.html
     options.js
+  tests/
+    core.test.js
 ```
 
-## Próxima evolução após a validação
+## Limites ainda conhecidos
 
-Depois do primeiro teste real, os seletores e regras de descoberta deverão ser adaptados ao HTML efetivamente retornado pelos Moodles. Somente depois dessa validação o módulo deverá ser integrado ao Assistente EaD SENAI principal.
+- O mapeamento entre Curso Moodle, turma institucional e UC ainda precisa de regra institucional baseada no ambiente real.
+- A descoberta completa depende das páginas e categorias que o perfil autenticado consegue visualizar.
+- A modalidade continua sendo uma inferência configurável quando o Moodle não fornece campo explícito.
+- Papéis personalizados de cada ambiente precisam ser conferidos nas opções.
+
+Esses limites são exibidos como qualidade dos dados em vez de serem ocultados por aproximações silenciosas.

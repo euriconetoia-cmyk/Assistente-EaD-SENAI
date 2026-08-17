@@ -1,326 +1,466 @@
 (() => {
   "use strict";
 
-  const SUPPORTED_HOSTS = new Set(["ead.senai.br", "ead.fieg.com.br"]);
-  const DEFAULT_SETTINGS = {
-    maxCourses: 80,
-    tutorRolePatterns: ["tutor", "professor tutor", "docente tutor", "tutor ead", "instrutor"],
-    studentRolePatterns: ["estudante", "aluno", "student", "aprendiz"],
-    staffRolePatterns: ["administrador", "manager", "coordenador", "coordenação", "professor", "teacher", "docente", "instrutor", "monitor", "tutor"]
-  };
-
-  function normalizeText(value) {
-    return String(value || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function uniqueBy(items, keyFn) {
-    const map = new Map();
-    items.forEach((item) => {
-      const key = keyFn(item);
-      if (key && !map.has(key)) map.set(key, item);
-    });
-    return [...map.values()];
-  }
-
-  function textMatchesAny(text, patterns) {
-    const normalized = normalizeText(text);
-    return patterns.some((pattern) => normalized.includes(normalizeText(pattern)));
-  }
-
-  function getCourseId(url) {
-    try {
-      return new URL(url, location.origin).searchParams.get("id");
-    } catch {
-      return null;
-    }
-  }
-
-  function getUserId(url) {
-    try {
-      const parsed = new URL(url, location.origin);
-      if (!parsed.pathname.includes("/user/")) return null;
-      return parsed.searchParams.get("id");
-    } catch {
-      return null;
-    }
-  }
+  const Core = globalThis.GestaoTutoresCore;
+  const Defaults = globalThis.GestaoTutoresDefaults;
+  const Quality = globalThis.GestaoTutoresQuality;
+  const Runtime = globalThis.GestaoTutoresRuntime;
+  const Adapters = globalThis.GestaoTutoresAdapters;
+  const Roles = globalThis.GestaoTutoresRoles;
+  const Institutional = globalThis.GestaoTutoresInstitutionalMap;
+  const SUPPORTED_HOSTS = new Set(Defaults.SUPPORTED_HOSTS);
+  let activeRun = null;
 
   async function getSettings() {
     const stored = await chrome.storage.local.get("gestaoTutoresSettings");
-    return { ...DEFAULT_SETTINGS, ...(stored.gestaoTutoresSettings || {}) };
+    return { ...Defaults.SETTINGS, ...(stored.gestaoTutoresSettings || {}) };
   }
 
-  async function fetchDocument(url) {
-    const response = await fetch(url, {
-      credentials: "include",
-      cache: "no-store",
-      headers: { "X-Requested-With": "GestaoTutoresExtension" }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ao acessar ${url}`);
-    }
-
-    const html = await response.text();
-    return new DOMParser().parseFromString(html, "text/html");
+  async function getPreviousSnapshot() {
+    const key = `gestaoTutoresSnapshot:${location.host}`;
+    const stored = await chrome.storage.local.get(key);
+    return stored[key] || null;
   }
 
-  function collectCourseLinksFromDocument(doc, baseUrl) {
-    const links = [...doc.querySelectorAll('a[href*="/course/view.php"]')]
-      .map((anchor) => {
-        const href = new URL(anchor.getAttribute("href"), baseUrl).href;
-        const id = getCourseId(href);
-        const name = anchor.textContent.trim();
-        return id ? { id, url: href, name } : null;
-      })
-      .filter(Boolean);
-
-    return uniqueBy(links, (item) => item.id);
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function discoverCourses() {
-    const currentLinks = collectCourseLinksFromDocument(document, location.href);
-    const sources = [...currentLinks];
+  async function fetchDocument(url, settings, run) {
+    const timeoutMs = Math.max(3000, Number(settings.requestTimeoutMs || Defaults.SETTINGS.requestTimeoutMs));
+    const retries = Math.max(0, Number(settings.requestRetries ?? Defaults.SETTINGS.requestRetries));
+    let lastError;
 
-    const currentCourseId = getCourseId(location.href);
-    if (currentCourseId) {
-      sources.push({
-        id: currentCourseId,
-        url: `${location.origin}/course/view.php?id=${currentCourseId}`,
-        name: document.querySelector("h1")?.textContent.trim() || `Curso ${currentCourseId}`
-      });
-    }
-
-    for (const path of ["/my/", "/course/index.php"]) {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      Runtime.assertActive(run);
+      const controller = new AbortController();
+      Runtime.registerController(run, controller);
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const doc = await fetchDocument(`${location.origin}${path}`);
-        sources.push(...collectCourseLinksFromDocument(doc, `${location.origin}${path}`));
+        const response = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+          signal: controller.signal
+        });
+        Runtime.assertActive(run);
+        if (!response.ok) throw new Error(`HTTP ${response.status} ao acessar ${url}`);
+        const html = await response.text();
+        Runtime.assertActive(run);
+        return new DOMParser().parseFromString(html, "text/html");
       } catch (error) {
-        console.warn(`Não foi possível ler ${path}`, error);
+        Runtime.assertActive(run);
+        lastError = error?.name === "AbortError"
+          ? new Error(`Tempo limite excedido ao acessar ${url}`)
+          : error;
+        if (attempt < retries) {
+          await delay(250 * (attempt + 1));
+          Runtime.assertActive(run);
+        }
+      } finally {
+        clearTimeout(timer);
+        Runtime.unregisterController(run, controller);
       }
     }
 
-    return uniqueBy(sources, (item) => item.id);
+    throw lastError || new Error(`Falha ao acessar ${url}`);
   }
 
-  function extractCourseName(doc, fallback) {
-    const candidates = [
-      doc.querySelector("h1")?.textContent,
-      doc.querySelector(".page-header-headings h1")?.textContent,
-      doc.querySelector('meta[property="og:title"]')?.content,
-      fallback
-    ];
-    return candidates.find((item) => String(item || "").trim())?.trim() || "Curso sem nome";
-  }
-
-  function extractBreadcrumb(doc) {
-    return [...doc.querySelectorAll('nav[aria-label*="breadcrumb" i] a, .breadcrumb a')]
-      .map((anchor) => anchor.textContent.trim())
-      .filter(Boolean);
-  }
-
-  function inferModality(courseName, breadcrumb) {
-    const source = normalizeText(`${breadcrumb.join(" ")} ${courseName}`);
-    const rules = [
-      ["Aprendizagem", ["aprendizagem", "aprendiz industrial"]],
-      ["Técnico", ["tecnico", "técnico"]],
-      ["Qualificação", ["qualificacao", "qualificação", "qualificacao profissional"]],
-      ["Aperfeiçoamento", ["aperfeicoamento", "aperfeiçoamento"]],
-      ["Pós-graduação", ["pos-graduacao", "pós-graduação", "pos graduacao", "mba", "especializacao", "especialização"]],
-      ["EJA", ["eja", "educacao de jovens e adultos", "educação de jovens e adultos"]]
-    ];
-
-    for (const [label, terms] of rules) {
-      if (terms.some((term) => source.includes(normalizeText(term)))) return label;
-    }
-    return "Não identificada";
-  }
-
-  function findHeaderIndex(headers, patterns) {
-    return headers.findIndex((header) => patterns.some((pattern) => header.includes(pattern)));
-  }
-
-  function parseParticipants(doc, settings, courseId) {
-    const table = doc.querySelector("table");
-    if (!table) {
-      return {
-        tutors: [],
-        students: [],
-        participantCount: 0,
-        confidence: "baixa",
-        warnings: ["Tabela de participantes não identificada."]
-      };
-    }
-
-    const headers = [...table.querySelectorAll("thead th")].map((th) => normalizeText(th.textContent));
-    const roleIndex = findHeaderIndex(headers, ["papel", "role", "função", "funcao"]);
-    const emailIndex = findHeaderIndex(headers, ["email", "e-mail"]);
-    const rows = [...table.querySelectorAll("tbody tr")];
-    const users = [];
-    let hasExplicitRoles = roleIndex >= 0;
-
-    rows.forEach((row, index) => {
-      const cells = [...row.querySelectorAll("td")];
-      const profileLink = row.querySelector('a[href*="/user/view.php"], a[href*="/user/profile.php"]');
-      if (!profileLink) return;
-
-      const userId = getUserId(profileLink.href) || `${courseId}-row-${index}`;
-      const name = profileLink.textContent.trim() || row.querySelector("[data-userid]")?.textContent.trim() || `Participante ${index + 1}`;
-      const roleText = roleIndex >= 0 && cells[roleIndex] ? cells[roleIndex].textContent.trim() : row.textContent.trim();
-      const email = emailIndex >= 0 && cells[emailIndex]
-        ? cells[emailIndex].textContent.trim()
-        : row.querySelector('a[href^="mailto:"]')?.textContent.trim() || "";
-
-      const isTutor = textMatchesAny(roleText, settings.tutorRolePatterns);
-      const isStudentExplicit = textMatchesAny(roleText, settings.studentRolePatterns);
-      const isStaff = textMatchesAny(roleText, settings.staffRolePatterns);
-      const isStudent = isStudentExplicit || (!hasExplicitRoles && !isStaff);
-
-      users.push({
-        id: `${location.host}:${userId}`,
-        moodleUserId: userId,
-        name,
-        email,
-        roleText,
-        isTutor,
-        isStudent
-      });
+  function mergePeople(targetMap, people) {
+    (people || []).forEach((person) => {
+      if (!targetMap.has(person.id)) {
+        targetMap.set(person.id, { ...person, roles: [...(person.roles || [])] });
+        return;
+      }
+      const current = targetMap.get(person.id);
+      current.roles = Core.unique([...(current.roles || []), ...(person.roles || [])]);
+      current.mixedManagement = Boolean(current.mixedManagement || person.mixedManagement);
+      current.mixedTutorMonitor = Boolean(current.mixedTutorMonitor || person.mixedTutorMonitor);
+      if (!current.email && person.email) current.email = person.email;
     });
+  }
 
-    const tutors = uniqueBy(users.filter((user) => user.isTutor), (user) => user.id);
-    const students = uniqueBy(users.filter((user) => user.isStudent && !user.isTutor), (user) => user.id);
+  async function collectParticipants(courseId, settings, adapter, run) {
+    const baseUrl = `${location.origin}/user/index.php?id=${encodeURIComponent(courseId)}&perpage=5000`;
+    const tutorMap = new Map();
+    const monitorMap = new Map();
+    const studentSet = new Set();
+    const participantSet = new Set();
     const warnings = [];
+    let pagesRead = 0;
+    let failedPages = 0;
+    let confidence = "alta";
+    let unclassifiedCount = 0;
 
-    if (!hasExplicitRoles) {
-      warnings.push("Coluna de papéis não identificada. A classificação de estudantes foi aproximada.");
+    const firstDoc = await fetchDocument(baseUrl, settings, run);
+    const maxPageIndex = adapter.getMaxParticipantPageIndex(firstDoc, baseUrl);
+    const totalPagesDetected = maxPageIndex + 1;
+    const pageLimit = Math.max(1, Number(settings.maxPagesPerCourse || 1));
+    const lastPageToRead = Math.min(maxPageIndex, pageLimit - 1);
+
+    function absorb(doc, pageNumber) {
+      Runtime.assertActive(run);
+      const extracted = adapter.extractParticipants(doc, {
+        courseId,
+        origin: location.origin,
+        host: location.host,
+        pageNumber
+      });
+      const parsed = Roles.classifyRows(extracted, settings);
+      mergePeople(tutorMap, parsed.tutors);
+      mergePeople(monitorMap, parsed.monitors);
+      parsed.studentIds.forEach((id) => studentSet.add(id));
+      parsed.participantIds.forEach((id) => participantSet.add(id));
+      warnings.push(...parsed.warnings);
+      unclassifiedCount += parsed.unclassifiedCount;
+      pagesRead += 1;
+      if (parsed.confidence === "baixa") confidence = "baixa";
+      else if (parsed.confidence === "média" && confidence === "alta") confidence = "média";
     }
-    if (doc.querySelector('a[href*="page="]')) {
-      warnings.push("A página de participantes possui paginação. Confira se todos os registros foram carregados.");
+
+    absorb(firstDoc, 1);
+    for (let page = 1; page <= lastPageToRead; page += 1) {
+      Runtime.assertActive(run);
+      try {
+        const pageUrl = `${baseUrl}&page=${page}`;
+        absorb(await fetchDocument(pageUrl, settings, run), page + 1);
+      } catch (error) {
+        Runtime.assertActive(run);
+        failedPages += 1;
+        confidence = "baixa";
+        warnings.push(`Falha ao ler a página ${page + 1} de participantes: ${error.message}`);
+      }
     }
-    if (!tutors.length) {
-      warnings.push("Nenhum tutor foi identificado pelos padrões configurados.");
+
+    const paginationComplete = maxPageIndex <= lastPageToRead && failedPages === 0;
+    if (!paginationComplete) {
+      warnings.push(`Paginação incompleta: ${pagesRead} de ${totalPagesDetected} página(s) foram lidas com sucesso.`);
     }
+
+    const collectionState = paginationComplete && confidence === "alta" ? "completo" : "parcial";
 
     return {
-      tutors,
-      students,
-      participantCount: users.length,
-      confidence: hasExplicitRoles ? "alta" : "média",
-      warnings
+      url: baseUrl,
+      tutors: [...tutorMap.values()],
+      monitors: [...monitorMap.values()],
+      studentIds: [...studentSet],
+      participantCount: participantSet.size,
+      pagesRead,
+      failedPages,
+      totalPagesDetected,
+      paginationComplete,
+      confidence,
+      unclassifiedCount,
+      collectionState,
+      warnings: Core.unique(warnings)
     };
   }
 
-  async function collectCourse(courseRef, settings) {
+  function enrichInstitutional(baseCourse, settings) {
+    const institutional = Institutional.normalizeCourse(baseCourse, settings.institutionalRules || []);
+    const exclusionReason = Institutional.exclusionReason(baseCourse, settings.exclusionPatterns || []);
+    return { ...institutional, excluded: Boolean(exclusionReason), exclusionReason };
+  }
+
+  async function collectCourse(courseRef, settings, adapter, run) {
     const startedAt = performance.now();
     const courseUrl = `${location.origin}/course/view.php?id=${encodeURIComponent(courseRef.id)}`;
-    const participantsUrl = `${location.origin}/user/index.php?id=${encodeURIComponent(courseRef.id)}&perpage=5000`;
-    const warnings = [];
 
     try {
-      const [courseDoc, participantDoc] = await Promise.all([
-        fetchDocument(courseUrl),
-        fetchDocument(participantsUrl)
-      ]);
-
-      const courseName = extractCourseName(courseDoc, courseRef.name);
-      const breadcrumb = extractBreadcrumb(courseDoc);
-      const parsed = parseParticipants(participantDoc, settings, courseRef.id);
-      warnings.push(...parsed.warnings);
+      Runtime.assertActive(run);
+      const courseDoc = await fetchDocument(courseUrl, settings, run);
+      const metadata = adapter.extractCourseMetadata(courseDoc, courseRef, location.origin);
+      const participants = await collectParticipants(courseRef.id, settings, adapter, run);
+      const modality = Core.inferModality({
+        name: metadata.name,
+        shortname: metadata.shortname,
+        categoryPath: metadata.categoryPath
+      }, settings.modalityRules);
+      const institutional = enrichInstitutional({
+        id: courseRef.id,
+        name: metadata.name,
+        shortname: metadata.shortname,
+        categoryId: metadata.categoryId,
+        categoryPath: metadata.categoryPath
+      }, settings);
 
       return {
         id: courseRef.id,
-        name: courseName,
-        className: courseName,
-        categoryPath: breadcrumb,
-        modality: inferModality(courseName, breadcrumb),
-        status: "Não identificado",
+        entityType: institutional.tipoEntidade || "moodle_course",
+        collectionState: participants.collectionState,
+        dataSource: "moodle",
+        courseCollectedAt: new Date().toISOString(),
+        adapterId: adapter.id,
+        name: metadata.name,
+        shortname: metadata.shortname,
+        categoryId: metadata.categoryId,
+        categoryPath: metadata.categoryPath,
+        cursoInstitucional: institutional.cursoInstitucional,
+        turma: institutional.turma,
+        unidadeCurricular: institutional.unidadeCurricular,
+        institutionalConfidence: institutional.institutionalConfidence,
+        institutionalEvidence: institutional.institutionalEvidence,
+        excluded: institutional.excluded,
+        exclusionReason: institutional.exclusionReason,
+        modality,
+        status: participants.collectionState === "completo" ? "Leitura completa" : "Leitura parcial",
         url: courseUrl,
-        participantsUrl,
-        tutors: parsed.tutors,
-        students: parsed.students,
-        participantCount: parsed.participantCount,
-        confidence: parsed.confidence,
-        warnings,
+        participantsUrl: participants.url,
+        tutors: participants.tutors,
+        monitors: participants.monitors,
+        studentIds: participants.studentIds,
+        enrollmentCount: participants.studentIds.length,
+        participantCount: participants.participantCount,
+        pagesRead: participants.pagesRead,
+        failedPages: participants.failedPages,
+        totalPagesDetected: participants.totalPagesDetected,
+        paginationComplete: participants.paginationComplete,
+        confidence: participants.confidence,
+        unclassifiedCount: participants.unclassifiedCount,
+        warnings: participants.warnings,
         durationMs: Math.round(performance.now() - startedAt)
       };
     } catch (error) {
+      Runtime.assertActive(run);
       return {
         id: courseRef.id,
-        name: courseRef.name || `Curso ${courseRef.id}`,
-        className: courseRef.name || `Curso ${courseRef.id}`,
+        entityType: "moodle_course",
+        collectionState: "erro",
+        dataSource: "moodle",
+        courseCollectedAt: new Date().toISOString(),
+        adapterId: adapter.id,
+        name: courseRef.discoveredName || `Curso ${courseRef.id}`,
+        shortname: "",
+        categoryId: "",
         categoryPath: [],
+        cursoInstitucional: null,
+        turma: null,
+        unidadeCurricular: null,
+        institutionalConfidence: "não_confirmada",
+        institutionalEvidence: [],
+        excluded: false,
+        exclusionReason: "",
         modality: "Não identificada",
         status: "Erro de leitura",
         url: courseUrl,
-        participantsUrl,
+        participantsUrl: "",
         tutors: [],
-        students: [],
+        monitors: [],
+        studentIds: [],
+        enrollmentCount: 0,
         participantCount: 0,
+        pagesRead: 0,
+        failedPages: 0,
+        totalPagesDetected: 0,
+        paginationComplete: false,
         confidence: "baixa",
+        unclassifiedCount: 0,
         warnings: [error.message],
         durationMs: Math.round(performance.now() - startedAt)
       };
     }
   }
 
-  async function collectAll() {
-    if (!SUPPORTED_HOSTS.has(location.host)) {
-      throw new Error("Ambiente Moodle não suportado por esta versão.");
+  async function collectWithConcurrency(items, concurrency, worker, run) {
+    const results = new Array(items.length);
+    let cursor = 0;
+    let completed = 0;
+
+    async function runWorker() {
+      while (true) {
+        Runtime.assertActive(run);
+        const index = cursor;
+        cursor += 1;
+        if (index >= items.length) return;
+        try {
+          results[index] = await worker(items[index], index);
+        } catch (error) {
+          Runtime.assertActive(run);
+          results[index] = {
+            id: items[index]?.id || `item-${index}`,
+            entityType: "moodle_course",
+            collectionState: "erro",
+            dataSource: "moodle",
+            name: items[index]?.discoveredName || `Curso ${index + 1}`,
+            tutors: [],
+            monitors: [],
+            studentIds: [],
+            enrollmentCount: 0,
+            confidence: "baixa",
+            excluded: false,
+            warnings: [error.message]
+          };
+        }
+        completed += 1;
+        chrome.runtime.sendMessage({
+          type: "GESTAO_TUTORES_PROGRESS",
+          progress: {
+            current: completed,
+            total: items.length,
+            course: results[index]?.name || items[index]?.discoveredName || `Curso ${index + 1}`,
+            state: results[index]?.dataSource === "cache" ? "cache" : results[index]?.collectionState || "nao_analisado"
+          }
+        }).catch(() => undefined);
+      }
+    }
+
+    const count = Math.max(1, Math.min(Number(concurrency || 1), items.length || 1));
+    await Promise.all(Array.from({ length: count }, runWorker));
+    return results;
+  }
+
+  async function saveSnapshot(snapshot) {
+    const snapshotKey = `gestaoTutoresSnapshot:${location.host}`;
+    const stored = await chrome.storage.local.get("gestaoTutoresHosts");
+    const hosts = Core.unique([...(stored.gestaoTutoresHosts || []), location.host]);
+    await chrome.storage.local.set({
+      [snapshotKey]: snapshot,
+      gestaoTutoresHosts: hosts,
+      gestaoTutoresLastHost: location.host
+    });
+  }
+
+  async function collectAll(mode, run) {
+    if (!SUPPORTED_HOSTS.has(location.host) || !Adapters.has(location.host)) {
+      throw new Error("Ambiente Moodle não suportado ou adaptador não registrado.");
     }
 
     const startedAt = performance.now();
     const settings = await getSettings();
-    const discovered = await discoverCourses();
-    const courses = discovered.slice(0, settings.maxCourses);
-    const results = [];
+    const adapter = Adapters.forHost(location.host);
+    const previousSnapshot = await getPreviousSnapshot();
+    const rulesRevision = settings.rulesRevision || "default";
+    Runtime.assertActive(run);
 
-    for (let index = 0; index < courses.length; index += 1) {
-      const course = await collectCourse(courses[index], settings);
-      results.push(course);
-      chrome.runtime.sendMessage({
-        type: "GESTAO_TUTORES_PROGRESS",
-        progress: {
-          current: index + 1,
-          total: courses.length,
-          course: course.name
-        }
-      }).catch(() => undefined);
+    const discovery = await adapter.discoverCourses({
+      currentDocument: document,
+      currentUrl: location.href,
+      origin: location.origin,
+      settings,
+      fetchDocument: (url) => fetchDocument(url, settings, run)
+    });
+    Runtime.assertActive(run);
+
+    const discovered = discovery.courses;
+    if (!discovered.length) {
+      const detail = (discovery.warnings || []).join(" | ") || "Nenhum link de curso foi encontrado nas fontes consultadas.";
+      throw new Error(`O coletor está ativo, mas nenhum curso Moodle foi descoberto. ${detail}`);
     }
 
+    const coursesToProcess = discovered.slice(0, Number(settings.maxCourses || Defaults.SETTINGS.maxCourses));
+    const reuseContext = {
+      mode,
+      host: location.host,
+      adapterId: adapter.id,
+      rulesetVersion: Defaults.RULESET_VERSION,
+      rulesRevision,
+      freshnessMinutes: Number(settings.incrementalFreshnessMinutes || Defaults.SETTINGS.incrementalFreshnessMinutes)
+    };
+
+    const results = await collectWithConcurrency(
+      coursesToProcess,
+      settings.courseConcurrency,
+      async (course) => {
+        Runtime.assertActive(run);
+        if (Runtime.canReuseCourse(previousSnapshot, course.id, reuseContext)) {
+          return Runtime.cachedCourse(previousSnapshot, course.id);
+        }
+        return collectCourse(course, settings, adapter, run);
+      },
+      run
+    );
+    Runtime.assertActive(run);
+
+    const quality = Quality.summarizeCollection(discovered.length, results, discovery);
+    const reusedCourses = results.filter((course) => course?.dataSource === "cache").length;
+    const refreshedCourses = results.length - reusedCourses;
     const snapshot = {
-      schemaVersion: 1,
-      environment: location.host === "ead.fieg.com.br" ? "Moodle Goiás" : "Moodle CTM GO",
+      schemaVersion: 6,
+      rulesetVersion: Defaults.RULESET_VERSION,
+      rulesRevision,
+      extensionVersion: chrome.runtime.getManifest().version,
+      adapterId: adapter.id,
+      environment: adapter.environmentName,
       host: location.host,
       origin: location.origin,
       collectedAt: new Date().toISOString(),
       sourceUrl: location.href,
+      collectionMode: mode,
       discoveredCourses: discovered.length,
       processedCourses: results.length,
+      reusedCourses,
+      refreshedCourses,
       truncated: discovered.length > results.length,
-      settings,
+      categoryPagesRead: discovery.categoryPagesRead,
+      categoryTraversalTruncated: discovery.categoryTraversalTruncated,
+      discoveryWarnings: discovery.warnings || [],
+      quality,
+      rules: {
+        tutorRoleCount: (settings.tutorRolePatterns || []).length,
+        monitorRoleCount: (settings.monitorRolePatterns || []).length,
+        modalityRuleCount: (settings.modalityRules || []).length,
+        institutionalRuleCount: (settings.institutionalRules || []).length,
+        exclusionPatternCount: (settings.exclusionPatterns || []).length
+      },
+      settings: {
+        maxCourses: settings.maxCourses,
+        maxCategoryPages: settings.maxCategoryPages,
+        maxPagesPerCourse: settings.maxPagesPerCourse,
+        courseConcurrency: settings.courseConcurrency,
+        requestTimeoutMs: settings.requestTimeoutMs,
+        requestRetries: settings.requestRetries,
+        incrementalFreshnessMinutes: settings.incrementalFreshnessMinutes
+      },
       courses: results,
       durationMs: Math.round(performance.now() - startedAt)
     };
 
-    await chrome.storage.local.set({
-      gestaoTutoresSnapshot: snapshot,
-      gestaoTutoresLastOrigin: location.origin
-    });
-
+    Runtime.assertActive(run);
+    await saveSnapshot(snapshot);
     return snapshot;
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== "GESTAO_TUTORES_COLLECT") return false;
+    if (message?.type === "GESTAO_TUTORES_PING") {
+      const adapterRegistered = Boolean(Adapters?.has?.(location.host));
+      sendResponse({
+        ok: Boolean(SUPPORTED_HOSTS.has(location.host) && adapterRegistered),
+        host: location.host,
+        supported: SUPPORTED_HOSTS.has(location.host),
+        adapterRegistered,
+        adapterId: adapterRegistered ? Adapters.forHost(location.host).id : null,
+        version: chrome.runtime.getManifest().version
+      });
+      return false;
+    }
 
-    collectAll()
+    if (message?.type === "GESTAO_TUTORES_CANCEL") {
+      if (activeRun) Runtime.cancelRun(activeRun);
+      sendResponse({ ok: true, cancelled: Boolean(activeRun) });
+      return false;
+    }
+
+    if (message?.type !== "GESTAO_TUTORES_COLLECT") return false;
+    if (activeRun && !activeRun.cancelled) {
+      sendResponse({ ok: false, error: "Já existe uma coleta em andamento. Cancele ou aguarde a conclusão." });
+      return false;
+    }
+
+    const mode = message.mode === "incremental" ? "incremental" : "full";
+    const run = Runtime.createRunControl(`gestao-tutores-${Date.now()}`);
+    activeRun = run;
+
+    collectAll(mode, run)
       .then((snapshot) => sendResponse({ ok: true, snapshot }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch((error) => {
+        if (error?.code === "GESTAO_TUTORES_CANCELLED" || run.cancelled) {
+          sendResponse({ ok: false, cancelled: true, error: "Coleta cancelada pelo usuário. O último snapshot válido foi preservado." });
+          return;
+        }
+        sendResponse({ ok: false, error: error.message });
+      })
+      .finally(() => {
+        if (activeRun === run) activeRun = null;
+      });
 
     return true;
   });
