@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const RULESET_VERSION = 4;
+  const RULESET_VERSION = 5;
 
   const MODALITY_RULES = [
     { label: "Aprendizagem", terms: ["aprendizagem", "aprendiz industrial"] },
@@ -15,6 +15,22 @@
     { label: "Pós-graduação", terms: ["pós-graduação", "pos-graduacao", "pos graduacao", "mba", "especialização", "especializacao"] },
     { label: "EJA", terms: ["eja", "educação de jovens e adultos", "educacao de jovens e adultos"] }
   ];
+
+  const ICT_WEIGHTS = {
+    quantitative: 70,
+    complexity: 30,
+    quantitativeComponents: {
+      uniqueStudents: 50,
+      enrollments: 20,
+      moodleCourses: 30
+    },
+    complexityComponents: {
+      institutionalCourses: 20,
+      classes: 25,
+      curriculumUnits: 35,
+      modalities: 20
+    }
+  };
 
   const SETTINGS = {
     maxCourses: 500,
@@ -33,6 +49,7 @@
     modalityRules: MODALITY_RULES,
     institutionalRules: [],
     exclusionPatterns: [],
+    ictWeights: ICT_WEIGHTS,
     historyRetentionDays: 90
   };
 
@@ -40,6 +57,7 @@
     SUPPORTED_HOSTS: ["ead.senai.br", "ead.fieg.com.br"],
     SETTINGS,
     MODALITY_RULES,
+    ICT_WEIGHTS,
     RULESET_VERSION
   };
 });
