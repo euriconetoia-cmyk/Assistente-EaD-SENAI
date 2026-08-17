@@ -33,6 +33,7 @@
         "adapters/moodle-goias.js",
         "adapters/moodle-ctm.js",
         "domain/roles.js",
+        "domain/institutional-map.js",
         "content/collector.js",
         "content/launcher.js"
       ],
