@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gestão de Tutores Moodle SENAI",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Dashboard gerencial de tutoria e monitoria com adaptadores por Moodle, controle de completude, qualidade de dados e métricas rastreáveis.",
   "minimum_chrome_version": "102",
   "permissions": ["storage", "tabs", "scripting"],
