@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Gestão de Tutores Moodle SENAI",
-  "version": "0.1.0",
-  "description": "Dashboard de carga de tutores com coleta local de cursos, participantes, modalidades e métricas nos Moodles SENAI/FIEG.",
+  "version": "0.3.0",
+  "description": "Dashboard gerencial de tutoria com coleta ampliada, qualidade de dados, visão de cursos e métricas de carga nos Moodles SENAI/FIEG.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage",
-    "downloads",
     "tabs"
   ],
   "host_permissions": [
@@ -27,6 +26,8 @@
         "https://ead.fieg.com.br/*"
       ],
       "js": [
+        "shared/core.js",
+        "shared/defaults.js",
         "content/collector.js",
         "content/launcher.js"
       ],
