@@ -14,92 +14,100 @@
       <p id="status-text">Nenhuma coleta carregada.</p>
     </div>
     <div class="top-actions">
-      <button id="btn-collect" class="primary" type="button">Atualizar do Moodle</button>
-      <button id="btn-export" type="button" disabled>Exportar CSV</button>
+      <label class="compact-field">Ambiente
+        <select id="environment-select"></select>
+      </label>
+      <button id="btn-collect" class="primary" type="button">Atualizar todos os cursos</button>
     </div>
   </header>
 
   <main>
     <section id="collection-progress" class="progress-card hidden" aria-live="polite">
-      <div class="progress-header">
-        <strong id="progress-title">Coletando dados</strong>
-        <span id="progress-counter">0/0</span>
-      </div>
+      <div class="progress-header"><strong id="progress-title">Coletando dados</strong><span id="progress-counter">0/0</span></div>
       <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
       <p id="progress-course">Preparando leitura do Moodle...</p>
     </section>
 
+    <section class="section-heading">
+      <div><p class="eyebrow">Base completa</p><h2>Indicadores gerais</h2></div>
+      <span>Os KPIs abaixo não são alterados pelos filtros das tabelas.</span>
+    </section>
     <section id="metrics" class="metrics" aria-label="Indicadores gerais"></section>
 
-    <section class="panel filters">
-      <div class="field grow">
-        <label for="filter-search">Pesquisar</label>
-        <input id="filter-search" type="search" placeholder="Tutor, curso ou turma">
-      </div>
-      <div class="field">
-        <label for="filter-modality">Modalidade</label>
-        <select id="filter-modality"><option value="">Todas</option></select>
-      </div>
-      <div class="field">
-        <label for="filter-load">Carga</label>
-        <select id="filter-load">
-          <option value="">Todas</option>
-          <option value="Alta">Alta</option>
-          <option value="Média">Média</option>
-          <option value="Baixa">Baixa</option>
-        </select>
-      </div>
-      <button id="btn-reset" type="button">Limpar filtros</button>
+    <nav class="tabs" aria-label="Seções da dashboard">
+      <button type="button" class="tab active" data-tab="executive">Visão Executiva</button>
+      <button type="button" class="tab" data-tab="tutors">Tutores</button>
+      <button type="button" class="tab" data-tab="courses">Cursos Moodle</button>
+      <button type="button" class="tab" data-tab="quality">Qualidade dos Dados</button>
+    </nav>
+
+    <section id="tab-executive" class="tab-panel active">
+      <section class="grid-two">
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Confiabilidade</p><h2>Situação da base</h2></div></div>
+          <div id="base-health"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Decisão</p><h2>Ações prioritárias</h2></div></div>
+          <div id="priority-actions" class="priority-list"></div>
+        </article>
+      </section>
+
+      <section id="workload-metrics" class="metrics metrics-five"></section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Comparativo robusto</p><h2>Carga por tutor</h2></div><span>Alunos únicos</span></div>
+          <div id="load-chart" class="load-chart empty">Sem dados.</div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Distribuição global</p><h2>Modalidades</h2></div><span>Cursos Moodle</span></div>
+          <div id="modality-summary" class="modality-summary empty">Sem dados.</div>
+        </article>
+      </section>
     </section>
 
-    <section class="grid-two">
-      <article class="panel">
-        <div class="panel-heading">
-          <div><p class="eyebrow">Comparativo</p><h2>Carga por tutor</h2></div>
-          <span>Alunos únicos</span>
-        </div>
-        <div id="load-chart" class="load-chart empty">Sem dados.</div>
-      </article>
-      <article class="panel">
-        <div class="panel-heading">
-          <div><p class="eyebrow">Distribuição</p><h2>Modalidades</h2></div>
-          <span>Turmas</span>
-        </div>
-        <div id="modality-summary" class="modality-summary empty">Sem dados.</div>
-      </article>
+    <section id="tab-tutors" class="tab-panel">
+      <section class="panel filters">
+        <div class="field grow"><label for="tutor-search">Pesquisar tutor ou curso</label><input id="tutor-search" type="search" placeholder="Nome, e-mail, curso ou modalidade"></div>
+        <div class="field"><label for="tutor-modality">Modalidade</label><select id="tutor-modality"><option value="">Todas</option></select></div>
+        <div class="field"><label for="tutor-load">Carga</label><select id="tutor-load"><option value="">Todas</option><option>Crítica</option><option>Alta</option><option>Regular</option><option>Baixa</option></select></div>
+        <button id="btn-reset-tutors" type="button">Limpar</button>
+        <button id="btn-export-tutors" type="button">Exportar tutores</button>
+      </section>
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Operação</p><h2>Lista por tutor</h2><p id="tutor-result-summary">Sem dados.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Tutor</th><th>Papéis</th><th>Cursos Moodle</th><th>Vínculos</th><th>Alunos únicos</th><th>Modalidades</th><th>Média por curso</th><th>Carga</th><th></th></tr></thead><tbody id="tutor-table-body"></tbody></table></div>
+      </section>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading table-heading">
-        <div><p class="eyebrow">Operação</p><h2>Lista por tutor</h2><p id="result-summary">Sem dados.</p></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Tutor</th><th>Turmas</th><th>Cursos</th><th>Matrículas</th><th>Alunos únicos</th><th>Modalidades</th><th>Média por turma</th><th>Carga</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="tutor-table-body"><tr><td colspan="9" class="empty-cell">Execute uma coleta para começar.</td></tr></tbody>
-        </table>
-      </div>
+    <section id="tab-courses" class="tab-panel">
+      <section class="panel filters">
+        <div class="field grow"><label for="course-search">Pesquisar curso</label><input id="course-search" type="search" placeholder="Nome, shortname, categoria ou tutor"></div>
+        <div class="field"><label for="course-modality">Modalidade</label><select id="course-modality"><option value="">Todas</option></select></div>
+        <div class="field"><label for="course-tutor-status">Tutoria</label><select id="course-tutor-status"><option value="">Todos</option><option value="none">Sem tutor</option><option value="single">Um tutor</option><option value="multiple">Múltiplos tutores</option></select></div>
+        <div class="field"><label for="course-confidence">Confiança</label><select id="course-confidence"><option value="">Todas</option><option value="alta">Alta</option><option value="média">Média</option><option value="baixa">Baixa</option></select></div>
+        <button id="btn-reset-courses" type="button">Limpar</button>
+        <button id="btn-export-courses" type="button">Exportar cursos</button>
+      </section>
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Cobertura</p><h2>Todos os cursos Moodle processados</h2><p id="course-result-summary">Sem dados.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Tutor(es)</th><th>Vínculos</th><th>Modalidade</th><th>Categoria</th><th>Confiança</th><th>Páginas</th><th>Alertas</th><th></th></tr></thead><tbody id="course-table-body"></tbody></table></div>
+      </section>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading">
-        <div><p class="eyebrow">Qualidade dos dados</p><h2>Diagnóstico</h2></div>
-      </div>
-      <div id="diagnostics" class="diagnostics"><p class="empty">Nenhum diagnóstico disponível.</p></div>
+    <section id="tab-quality" class="tab-panel">
+      <section id="quality-metrics" class="metrics"></section>
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Auditoria</p><h2>Problemas por curso</h2><p>Os avisos são agregados aqui em vez de ocupar a dashboard principal.</p></div><button id="btn-export-quality" type="button">Exportar qualidade</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Severidade</th><th>Problema</th><th>Detalhe</th><th></th></tr></thead><tbody id="quality-table-body"></tbody></table></div>
+      </section>
     </section>
   </main>
 
-  <dialog id="tutor-dialog">
-    <form method="dialog" class="dialog-shell">
-      <div class="dialog-header"><h2 id="dialog-title">Tutor</h2><button aria-label="Fechar">Fechar</button></div>
-      <div id="dialog-content"></div>
-    </form>
-  </dialog>
+  <dialog id="tutor-dialog"><form method="dialog" class="dialog-shell"><div class="dialog-header"><h2 id="dialog-title">Tutor</h2><button aria-label="Fechar">Fechar</button></div><div id="dialog-content"></div></form></dialog>
 
+  <script src="../shared/core.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
