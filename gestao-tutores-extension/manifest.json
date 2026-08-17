@@ -29,6 +29,7 @@
         "shared/core.js",
         "shared/defaults.js",
         "shared/quality.js",
+        "storage/history.js",
         "adapters/registry.js",
         "adapters/moodle-base.js",
         "adapters/moodle-goias.js",
@@ -36,6 +37,7 @@
         "domain/roles.js",
         "domain/institutional-map.js",
         "content/collector.js",
+        "content/history-watcher.js",
         "content/launcher.js"
       ],
       "run_at": "document_idle",
