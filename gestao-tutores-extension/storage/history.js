@@ -1,13 +1,14 @@
 (function (root, factory) {
-  const api = factory(root?.GestaoTutoresCore);
+  const api = factory(root?.GestaoTutoresCore, root?.GestaoTutoresWorkload);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.GestaoTutoresHistory = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (Core) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Core, Workload) {
   "use strict";
 
   if (!Core) throw new Error("GestaoTutoresCore é obrigatório para histórico.");
+  if (!Workload) throw new Error("GestaoTutoresWorkload é obrigatório para histórico.");
 
-  function buildHistoryEntry(snapshot) {
+  function buildHistoryEntry(snapshot, ictWeights) {
     const tutorMap = new Map();
     const globalStudents = new Set();
     let globalEnrollments = 0;
@@ -27,39 +28,43 @@
             id: key,
             name: tutor.name || "Tutor sem nome",
             roles: new Set(),
-            studentIds: new Set(),
-            courseIds: new Set(),
-            institutionalCourses: new Set(),
-            classes: new Set(),
-            curriculumUnits: new Set(),
-            modalities: new Set(),
-            enrollments: 0
+            courses: []
           });
         }
         const entry = tutorMap.get(key);
         (tutor.roles || []).forEach((role) => entry.roles.add(role));
-        studentIds.forEach((id) => entry.studentIds.add(id));
-        entry.courseIds.add(course.id);
-        if (course.cursoInstitucional) entry.institutionalCourses.add(course.cursoInstitucional);
-        if (course.turma) entry.classes.add(course.turma);
-        if (course.unidadeCurricular) entry.curriculumUnits.add(course.unidadeCurricular);
-        if (course.modality && course.modality !== "Não identificada") entry.modalities.add(course.modality);
-        entry.enrollments += Number(course.enrollmentCount ?? studentIds.length);
+        entry.courses.push(course);
       });
     });
 
-    const tutors = [...tutorMap.values()].map((entry) => ({
+    const tutorObjects = [...tutorMap.values()].map((entry) => ({
       id: entry.id,
       name: entry.name,
       roles: [...entry.roles],
-      uniqueStudents: entry.studentIds.size,
-      enrollments: entry.enrollments,
-      moodleCourses: entry.courseIds.size,
-      institutionalCourses: entry.institutionalCourses.size,
-      classes: entry.classes.size,
-      curriculumUnits: entry.curriculumUnits.size,
-      modalities: entry.modalities.size
-    })).sort((a, b) => a.name.localeCompare(b.name));
+      courses: entry.courses
+    }));
+    const profiles = new Map(Workload.buildProfiles(tutorObjects, ictWeights).map((profile) => [profile.tutorId, profile]));
+
+    const tutors = tutorObjects.map((tutor) => {
+      const profile = profiles.get(tutor.id);
+      const raw = profile?.raw || Workload.rawMetrics(tutor);
+      return {
+        id: tutor.id,
+        name: tutor.name,
+        roles: tutor.roles,
+        uniqueStudents: raw.uniqueStudents,
+        enrollments: raw.enrollments,
+        moodleCourses: raw.moodleCourses,
+        institutionalCourses: raw.institutionalCourses,
+        classes: raw.classes,
+        curriculumUnits: raw.curriculumUnits,
+        modalities: raw.modalities,
+        quantitativeScore: profile?.quantitative?.score || 0,
+        complexityScore: profile?.complexity?.score || 0,
+        ict: profile?.ict || 0,
+        ictClass: Workload.classifyIct(profile?.ict || 0)
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       id: `${snapshot.host}:${snapshot.collectedAt}`,
@@ -72,6 +77,7 @@
       rulesRevision: snapshot.rulesRevision || "default",
       adapterId: snapshot.adapterId,
       quality: { ...(snapshot.quality || {}) },
+      ictWeights: ictWeights || Workload.DEFAULT_WEIGHTS,
       global: {
         tutors: tutors.length,
         eligibleCourses,
@@ -99,11 +105,11 @@
     return [...map.values()].sort((a, b) => new Date(a.collectedAt) - new Date(b.collectedAt));
   }
 
-  async function save(snapshot, retentionDays) {
+  async function save(snapshot, retentionDays, ictWeights) {
     if (typeof chrome === "undefined" || !chrome.storage?.local) return;
     const key = `gestaoTutoresHistory:${snapshot.host}`;
     const stored = await chrome.storage.local.get(key);
-    const entry = buildHistoryEntry(snapshot);
+    const entry = buildHistoryEntry(snapshot, ictWeights);
     const history = pruneHistory(upsertHistory(stored[key] || [], entry), retentionDays);
     await chrome.storage.local.set({ [key]: history });
   }
