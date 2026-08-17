@@ -10,7 +10,7 @@
   button.setAttribute("aria-label", "Abrir painel de Gestão de Tutores");
   button.style.cssText = [
     "position:fixed",
-    "right:18px",
+    "left:18px",
     "bottom:18px",
     "z-index:2147483646",
     "border:0",
