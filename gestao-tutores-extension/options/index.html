@@ -12,9 +12,9 @@
 <body>
   <main style="padding:0">
     <section class="panel">
-      <p class="eyebrow">Gestão de Tutores v0.4</p>
+      <p class="eyebrow">Gestão de Tutores v0.4.2</p>
       <h1>Configurações do produto</h1>
-      <p class="help">As configurações afetam análise e leitura, nunca alteram cursos, participantes ou papéis no Moodle. Mudanças de regras serão versionadas nos próximos snapshots para manter rastreabilidade.</p>
+      <p class="help">As configurações afetam análise e leitura, nunca alteram cursos, participantes ou papéis no Moodle. Mudanças de regras são versionadas nos próximos snapshots para manter rastreabilidade.</p>
       <div class="settings-grid">
         <h2 class="subheading">Coleta e desempenho</h2>
         <div class="settings-row">
@@ -31,6 +31,8 @@
 
         <h2 class="subheading">Papéis</h2>
         <label class="field"><span>Papéis considerados como tutor</span><textarea id="tutor-patterns"></textarea></label>
+        <label class="field"><span>Papéis considerados como monitor</span><textarea id="monitor-patterns"></textarea></label>
+        <p class="help">Padrão CTM/GO: Professor - GO é Tutor. Moderador - GO, Monitor - GO e Monitor Edição - CTM-GO são Monitores. Uma pessoa pode possuir os dois vínculos simultaneamente.</p>
         <label class="field"><span>Papéis considerados como estudante</span><textarea id="student-patterns"></textarea></label>
         <label class="field"><span>Papéis de gestão</span><textarea id="management-patterns"></textarea></label>
         <label class="field"><span>Papéis de equipe que não devem ser contados como estudantes</span><textarea id="staff-patterns"></textarea></label>
