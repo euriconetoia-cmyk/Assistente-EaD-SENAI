@@ -6,47 +6,30 @@
   <title>Configurações da Gestão de Tutores</title>
   <link rel="stylesheet" href="../dashboard/styles.css">
   <style>
-    body{max-width:900px;margin:0 auto;padding:30px}.settings-grid{display:grid;gap:16px}.settings-grid textarea{min-height:120px;resize:vertical;border:1px solid #cfd6dd;border-radius:9px;padding:12px;font:inherit}.settings-grid input{border:1px solid #cfd6dd;border-radius:9px;padding:10px 12px}.settings-actions{display:flex;gap:10px;align-items:center}.help{color:#667085;font-size:13px;line-height:1.5}.saved{color:#25613a;font-weight:700}
+    body{max-width:980px;margin:0 auto;padding:28px}.settings-grid{display:grid;gap:16px}.settings-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.settings-grid textarea{min-height:115px;resize:vertical;border:1px solid #cfd6dd;border-radius:9px;padding:12px;font:inherit}.settings-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.help{color:#667085;font-size:12px;line-height:1.55}.saved{color:#25613a;font-weight:700}@media(max-width:700px){.settings-row{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main style="padding:0">
     <section class="panel">
-      <p class="eyebrow">Gestão de Tutores</p>
+      <p class="eyebrow">Gestão de Tutores v0.3</p>
       <h1>Configurações de coleta</h1>
-      <p class="help">Ajuste os nomes de papéis exatamente como aparecem no Moodle. Use um termo por linha. A extensão trabalha apenas com dados que o usuário autenticado já pode visualizar.</p>
+      <p class="help">As configurações abaixo afetam somente a leitura dos Moodles. A extensão não altera cursos, participantes ou papéis. Os nomes de papéis devem refletir o que aparece no seu ambiente real.</p>
       <div class="settings-grid">
-        <label class="field">
-          <span>Máximo de cursos por coleta</span>
-          <input id="max-courses" type="number" min="1" max="500" value="80">
-        </label>
-        <label class="field">
-          <span>Papéis considerados como tutor</span>
-          <textarea id="tutor-patterns">tutor
-tutor ead
-professor tutor
-docente tutor</textarea>
-        </label>
-        <label class="field">
-          <span>Papéis considerados como estudante</span>
-          <textarea id="student-patterns">estudante
-aluno
-student
-aprendiz</textarea>
-        </label>
-        <label class="field">
-          <span>Papéis de equipe que não devem ser contados como estudantes quando a coluna de papéis não estiver disponível</span>
-          <textarea id="staff-patterns">administrador
-manager
-coordenador
-coordenação
-professor
-teacher
-docente
-instrutor
-monitor
-tutor</textarea>
-        </label>
+        <div class="settings-row">
+          <label class="field"><span>Máximo de cursos por coleta</span><input id="max-courses" type="number" min="1" max="1000"></label>
+          <label class="field"><span>Máximo de categorias percorridas</span><input id="max-category-pages" type="number" min="1" max="1000"></label>
+          <label class="field"><span>Máximo de páginas de participantes por curso</span><input id="max-pages" type="number" min="1" max="500"></label>
+          <label class="field"><span>Cursos processados simultaneamente</span><input id="concurrency" type="number" min="1" max="8"></label>
+        </div>
+
+        <label class="field"><span>Papéis considerados como tutor</span><textarea id="tutor-patterns"></textarea></label>
+        <label class="field"><span>Papéis considerados como estudante</span><textarea id="student-patterns"></textarea></label>
+        <label class="field"><span>Papéis de gestão</span><textarea id="management-patterns"></textarea></label>
+        <label class="field"><span>Papéis de equipe que não devem ser contados como estudantes</span><textarea id="staff-patterns"></textarea></label>
+        <label class="field"><span>Regras de modalidade</span><textarea id="modality-rules" style="min-height:170px"></textarea></label>
+        <p class="help">Formato das modalidades: uma linha por modalidade, usando <strong>Modalidade=termo1|termo2|termo3</strong>. Os termos são comparados com nome, shortname e caminho de categoria do curso.</p>
+
         <div class="settings-actions">
           <button id="save" class="primary" type="button">Salvar configurações</button>
           <button id="reset" type="button">Restaurar padrão</button>
@@ -55,6 +38,7 @@ tutor</textarea>
       </div>
     </section>
   </main>
+  <script src="../shared/defaults.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
