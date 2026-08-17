@@ -24,11 +24,12 @@
   });
 
   function eligibleCourses(tutor) {
-    return (tutor?.courses || []).filter((course) => !course.excluded && course.collectionState !== "erro");
+    return (tutor?.courses || []).filter((course) => !course.excluded && course.collectionState === "completo");
   }
 
   function rawMetrics(tutor) {
     const courses = eligibleCourses(tutor);
+    const allNonExcluded = (tutor?.courses || []).filter((course) => !course.excluded);
     const studentIds = new Set();
     let enrollments = 0;
     courses.forEach((course) => {
@@ -45,7 +46,8 @@
       curriculumUnits: Core.unique(courses.map((course) => course.unidadeCurricular).filter(Boolean)).length,
       modalities: Core.unique(courses.map((course) => course.modality).filter((value) => value && value !== "Não identificada")).length,
       excludedCourses: (tutor?.courses || []).filter((course) => course.excluded).length,
-      partialCourses: courses.filter((course) => course.collectionState === "parcial").length
+      partialCourses: allNonExcluded.filter((course) => course.collectionState === "parcial").length,
+      errorCourses: allNonExcluded.filter((course) => course.collectionState === "erro").length
     };
   }
 
