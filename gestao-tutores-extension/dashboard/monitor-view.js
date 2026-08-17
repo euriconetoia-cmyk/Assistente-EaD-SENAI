@@ -3,12 +3,36 @@
 
   const Core = globalThis.GestaoTutoresCore;
   const environment = document.querySelector("#environment-select");
-  const metrics = document.querySelector("#monitor-metrics");
-  const table = document.querySelector("#monitor-table-body");
-  const summary = document.querySelector("#monitor-result-summary");
   const globalMetrics = document.querySelector("#metrics");
 
-  if (!Core || !environment || !metrics || !table || !summary) return;
+  if (!Core || !environment) return;
+
+  function ensureMonitorUi() {
+    const tabs = document.querySelector(".tabs");
+    if (tabs && !tabs.querySelector('[data-tab="monitors"]')) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tab";
+      button.dataset.tab = "monitors";
+      button.textContent = "Monitores";
+      const coursesTab = tabs.querySelector('[data-tab="courses"]');
+      tabs.insertBefore(button, coursesTab || null);
+    }
+
+    if (!document.querySelector("#tab-monitors")) {
+      const panel = document.createElement("section");
+      panel.id = "tab-monitors";
+      panel.className = "tab-panel";
+      panel.innerHTML = `
+        <section id="monitor-metrics" class="metrics"></section>
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">Operação</p><h2>Lista por monitor</h2><p id="monitor-result-summary">Sem dados.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Monitor</th><th>Papéis identificados</th><th>Cursos Moodle</th><th>Cursos</th></tr></thead><tbody id="monitor-table-body"></tbody></table></div>
+        </section>`;
+      const coursesPanel = document.querySelector("#tab-courses");
+      coursesPanel?.parentNode?.insertBefore(panel, coursesPanel);
+    }
+  }
 
   function formatNumber(value) {
     return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
@@ -56,6 +80,12 @@
   }
 
   async function load() {
+    ensureMonitorUi();
+    const metrics = document.querySelector("#monitor-metrics");
+    const table = document.querySelector("#monitor-table-body");
+    const summary = document.querySelector("#monitor-result-summary");
+    if (!metrics || !table || !summary) return;
+
     const host = environment.value;
     if (!host) return;
     const stored = await chrome.storage.local.get(`gestaoTutoresSnapshot:${host}`);
@@ -83,12 +113,12 @@
     ensureGlobalMonitorCard(monitors.length);
   }
 
+  ensureMonitorUi();
   environment.addEventListener("change", () => setTimeout(() => load().catch(console.error), 250));
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     const key = `gestaoTutoresSnapshot:${environment.value}`;
     if (changes[key]) setTimeout(() => load().catch(console.error), 250);
   });
-
   setTimeout(() => load().catch(console.error), 350);
 })();
