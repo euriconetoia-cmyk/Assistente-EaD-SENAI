@@ -42,18 +42,19 @@ jobs:
             manifest.options_page,
             ...(manifest.content_scripts || []).flatMap((item) => item.js || [])
           ].filter(Boolean);
-          const missing = refs.filter((file) => !fs.existsSync(file));
+          const extraDashboardFiles = ['dashboard/app.js', 'dashboard/collection-actions.js', 'dashboard/collector-client.js', 'dashboard/monitor-view.js'];
+          const missing = [...refs, ...extraDashboardFiles].filter((file) => !fs.existsSync(file));
           if (missing.length) {
-            console.error('Arquivos referenciados pelo manifest ausentes:', missing);
+            console.error('Arquivos necessários ausentes:', missing);
             process.exit(1);
           }
-          console.log(`manifest.json validado: ${refs.length} arquivo(s) referenciado(s).`);
+          console.log(`Pacote validado: ${refs.length + extraDashboardFiles.length} arquivo(s) obrigatório(s).`);
           NODE
       - name: Build beta artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: gestao-tutores-moodle-senai-v0.4-beta
+          name: gestao-tutores-moodle-senai-v0.4.2-beta
           path: |
             gestao-tutores-extension/**
             !gestao-tutores-extension/node_modules/**
