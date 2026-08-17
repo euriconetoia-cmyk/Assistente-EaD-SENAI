@@ -5,6 +5,7 @@
   const Defaults = globalThis.GestaoTutoresDefaults;
   const Adapters = globalThis.GestaoTutoresAdapters;
   const Roles = globalThis.GestaoTutoresRoles;
+  const Institutional = globalThis.GestaoTutoresInstitutionalMap;
   const SUPPORTED_HOSTS = new Set(Defaults.SUPPORTED_HOSTS);
 
   async function getSettings() {
@@ -131,6 +132,16 @@
     };
   }
 
+  function enrichInstitutional(baseCourse, settings) {
+    const institutional = Institutional.normalizeCourse(baseCourse, settings.institutionalRules || []);
+    const exclusionReason = Institutional.exclusionReason(baseCourse, settings.exclusionPatterns || []);
+    return {
+      ...institutional,
+      excluded: Boolean(exclusionReason),
+      exclusionReason
+    };
+  }
+
   async function collectCourse(courseRef, settings, adapter) {
     const startedAt = performance.now();
     const courseUrl = `${location.origin}/course/view.php?id=${encodeURIComponent(courseRef.id)}`;
@@ -144,16 +155,31 @@
         shortname: metadata.shortname,
         categoryPath: metadata.categoryPath
       }, settings.modalityRules);
+      const baseCourse = {
+        id: courseRef.id,
+        name: metadata.name,
+        shortname: metadata.shortname,
+        categoryId: metadata.categoryId,
+        categoryPath: metadata.categoryPath
+      };
+      const institutional = enrichInstitutional(baseCourse, settings);
 
       return {
         id: courseRef.id,
-        entityType: "moodle_course",
+        entityType: institutional.tipoEntidade || "moodle_course",
         collectionState: participants.collectionState,
         adapterId: adapter.id,
         name: metadata.name,
         shortname: metadata.shortname,
         categoryId: metadata.categoryId,
         categoryPath: metadata.categoryPath,
+        cursoInstitucional: institutional.cursoInstitucional,
+        turma: institutional.turma,
+        unidadeCurricular: institutional.unidadeCurricular,
+        institutionalConfidence: institutional.institutionalConfidence,
+        institutionalEvidence: institutional.institutionalEvidence,
+        excluded: institutional.excluded,
+        exclusionReason: institutional.exclusionReason,
         modality,
         status: participants.collectionState === "completo" ? "Leitura completa" : "Leitura parcial",
         url: courseUrl,
@@ -181,6 +207,13 @@
         shortname: "",
         categoryId: "",
         categoryPath: [],
+        cursoInstitucional: null,
+        turma: null,
+        unidadeCurricular: null,
+        institutionalConfidence: "não_confirmada",
+        institutionalEvidence: [],
+        excluded: false,
+        exclusionReason: "",
         modality: "Não identificada",
         status: "Erro de leitura",
         url: courseUrl,
@@ -223,6 +256,7 @@
             studentIds: [],
             enrollmentCount: 0,
             confidence: "baixa",
+            excluded: false,
             warnings: [error.message]
           };
         }
@@ -248,6 +282,7 @@
     const completeCourses = results.filter((course) => course.collectionState === "completo").length;
     const partialCourses = results.filter((course) => course.collectionState === "parcial").length;
     const errorCourses = results.filter((course) => course.collectionState === "erro").length;
+    const excludedCourses = results.filter((course) => course.excluded).length;
     const notAnalyzedCourses = Math.max(0, discoveredCount - results.length);
     const coverage = discoveredCount ? Math.round((results.length / discoveredCount) * 1000) / 10 : 0;
     const reliability = discoveredCount ? Math.round((completeCourses / discoveredCount) * 1000) / 10 : 0;
@@ -256,6 +291,7 @@
       completeCourses,
       partialCourses,
       errorCourses,
+      excludedCourses,
       notAnalyzedCourses,
       coverage,
       reliability,
@@ -300,7 +336,7 @@
     const quality = summarizeCollection(discovered.length, results, discovery);
 
     const snapshot = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       rulesetVersion: Defaults.RULESET_VERSION,
       extensionVersion: chrome.runtime.getManifest().version,
       adapterId: adapter.id,
@@ -316,6 +352,11 @@
       categoryTraversalTruncated: discovery.categoryTraversalTruncated,
       discoveryWarnings: discovery.warnings || [],
       quality,
+      rules: {
+        modalityRuleCount: (settings.modalityRules || []).length,
+        institutionalRuleCount: (settings.institutionalRules || []).length,
+        exclusionPatternCount: (settings.exclusionPatterns || []).length
+      },
       settings: {
         maxCourses: settings.maxCourses,
         maxCategoryPages: settings.maxCategoryPages,
