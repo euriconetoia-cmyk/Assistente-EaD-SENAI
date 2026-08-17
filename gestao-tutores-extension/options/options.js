@@ -9,6 +9,7 @@
     concurrency: document.querySelector("#concurrency"),
     requestTimeout: document.querySelector("#request-timeout"),
     requestRetries: document.querySelector("#request-retries"),
+    incrementalFreshness: document.querySelector("#incremental-freshness"),
     historyRetention: document.querySelector("#history-retention"),
     tutors: document.querySelector("#tutor-patterns"),
     students: document.querySelector("#student-patterns"),
@@ -98,6 +99,7 @@
     els.concurrency.value = settings.courseConcurrency;
     els.requestTimeout.value = Math.round(Number(settings.requestTimeoutMs || DEFAULTS.requestTimeoutMs) / 1000);
     els.requestRetries.value = Number(settings.requestRetries ?? DEFAULTS.requestRetries);
+    els.incrementalFreshness.value = Number(settings.incrementalFreshnessMinutes ?? DEFAULTS.incrementalFreshnessMinutes);
     els.historyRetention.value = Number(settings.historyRetentionDays ?? DEFAULTS.historyRetentionDays);
     els.tutors.value = (settings.tutorRolePatterns || []).join("\n");
     els.students.value = (settings.studentRolePatterns || []).join("\n");
@@ -138,6 +140,7 @@
       courseConcurrency: clamp(els.concurrency.value, 1, 8, DEFAULTS.courseConcurrency),
       requestTimeoutMs: clamp(els.requestTimeout.value, 3, 120, DEFAULTS.requestTimeoutMs / 1000) * 1000,
       requestRetries: clamp(els.requestRetries.value, 0, 3, DEFAULTS.requestRetries),
+      incrementalFreshnessMinutes: clamp(els.incrementalFreshness.value, 1, 240, DEFAULTS.incrementalFreshnessMinutes),
       historyRetentionDays: clamp(els.historyRetention.value, 1, 365, DEFAULTS.historyRetentionDays),
       tutorRolePatterns: lines(els.tutors.value),
       studentRolePatterns: lines(els.students.value),
