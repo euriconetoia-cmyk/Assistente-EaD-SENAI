@@ -1,6 +1,7 @@
 name: Gestao Tutores CI
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'gestao-tutores-extension/**'
@@ -10,6 +11,7 @@ on:
       - 'agent/gestao-tutores-v3'
     paths:
       - 'gestao-tutores-extension/**'
+      - '.github/workflows/gestao-tutores-ci.yml'
 
 jobs:
   validate:
@@ -30,3 +32,11 @@ jobs:
         run: npm run check:syntax
       - name: Tests
         run: npm test
+      - name: Build beta artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gestao-tutores-moodle-senai-v0.4-beta
+          path: gestao-tutores-extension
+          if-no-files-found: error
+          retention-days: 7
