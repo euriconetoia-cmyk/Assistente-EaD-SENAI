@@ -6,16 +6,17 @@
   <title>Configurações da Gestão de Tutores</title>
   <link rel="stylesheet" href="../dashboard/styles.css">
   <style>
-    body{max-width:980px;margin:0 auto;padding:28px}.settings-grid{display:grid;gap:16px}.settings-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.settings-grid textarea{min-height:115px;resize:vertical;border:1px solid #cfd6dd;border-radius:9px;padding:12px;font:inherit}.settings-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.help{color:#667085;font-size:12px;line-height:1.55}.saved{color:#25613a;font-weight:700}.danger-zone{border:1px solid #fecaca;background:#fff7f7;border-radius:12px;padding:14px}.danger-zone h2{font-size:16px;margin-top:0}@media(max-width:700px){.settings-row{grid-template-columns:1fr}}
+    body{max-width:1050px;margin:0 auto;padding:28px}.settings-grid{display:grid;gap:16px}.settings-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.settings-grid textarea{min-height:115px;resize:vertical;border:1px solid #cfd6dd;border-radius:9px;padding:12px;font:inherit}.settings-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.help{color:#667085;font-size:12px;line-height:1.55}.saved{color:#25613a;font-weight:700}.danger-zone{border:1px solid #fecaca;background:#fff7f7;border-radius:12px;padding:14px}.danger-zone h2{font-size:16px;margin-top:0}details{border:1px solid #e1e6eb;border-radius:12px;padding:14px;background:#fafbfc}details summary{font-weight:700;cursor:pointer}details[open] summary{margin-bottom:16px}.subheading{font-size:15px;margin:2px 0 0}@media(max-width:700px){.settings-row{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main style="padding:0">
     <section class="panel">
       <p class="eyebrow">Gestão de Tutores v0.4</p>
-      <h1>Configurações de coleta</h1>
-      <p class="help">As configurações abaixo afetam somente a leitura dos Moodles. A extensão não altera cursos, participantes ou papéis. Os nomes de papéis devem refletir o que aparece no ambiente real.</p>
+      <h1>Configurações do produto</h1>
+      <p class="help">As configurações afetam análise e leitura, nunca alteram cursos, participantes ou papéis no Moodle. Mudanças de regras serão versionadas nos próximos snapshots para manter rastreabilidade.</p>
       <div class="settings-grid">
+        <h2 class="subheading">Coleta e desempenho</h2>
         <div class="settings-row">
           <label class="field"><span>Máximo de cursos por coleta</span><input id="max-courses" type="number" min="1" max="1000"></label>
           <label class="field"><span>Máximo de categorias percorridas</span><input id="max-category-pages" type="number" min="1" max="1000"></label>
@@ -23,16 +24,44 @@
           <label class="field"><span>Cursos processados simultaneamente</span><input id="concurrency" type="number" min="1" max="8"></label>
           <label class="field"><span>Timeout por requisição, em segundos</span><input id="request-timeout" type="number" min="3" max="120"></label>
           <label class="field"><span>Tentativas adicionais por requisição</span><input id="request-retries" type="number" min="0" max="3"></label>
+          <label class="field"><span>Retenção do histórico local, em dias</span><input id="history-retention" type="number" min="1" max="365"></label>
         </div>
+        <p class="help">Concorrência maior pode reduzir o tempo total, mas também aumenta a pressão sobre o Moodle. O padrão permanece conservador até benchmark no ambiente institucional.</p>
 
-        <p class="help">Concorrência maior pode reduzir o tempo total, mas também aumenta a pressão sobre o Moodle. O padrão deve permanecer conservador e só deve ser elevado após benchmark no ambiente institucional.</p>
-
+        <h2 class="subheading">Papéis</h2>
         <label class="field"><span>Papéis considerados como tutor</span><textarea id="tutor-patterns"></textarea></label>
         <label class="field"><span>Papéis considerados como estudante</span><textarea id="student-patterns"></textarea></label>
         <label class="field"><span>Papéis de gestão</span><textarea id="management-patterns"></textarea></label>
         <label class="field"><span>Papéis de equipe que não devem ser contados como estudantes</span><textarea id="staff-patterns"></textarea></label>
+
+        <h2 class="subheading">Modalidade e escopo gerencial</h2>
         <label class="field"><span>Regras de modalidade</span><textarea id="modality-rules" style="min-height:170px"></textarea></label>
-        <p class="help">Formato das modalidades: uma linha por modalidade, usando <strong>Modalidade=termo1|termo2|termo3</strong>. Os termos são comparados com nome, shortname e caminho de categoria do curso.</p>
+        <p class="help">Formato: uma linha por modalidade, usando <strong>Modalidade=termo1|termo2|termo3</strong>. Os termos são comparados com nome, shortname e caminho de categoria.</p>
+        <label class="field"><span>Termos para excluir da carga gerencial</span><textarea id="exclusion-patterns" placeholder="curso de apoio&#10;template&#10;ambiente de teste"></textarea></label>
+        <p class="help">Uma exclusão não apaga o curso. O curso continua auditável, mas recebe marcação de excluído e não entra no cálculo de carga.</p>
+
+        <details>
+          <summary>Regras institucionais avançadas</summary>
+          <p class="help">Use somente regras previamente validadas. Sem regras, Curso Institucional, Turma e UC permanecem não confirmados. O formato é JSON.</p>
+          <label class="field"><span>Regras Curso Institucional, Turma e UC</span><textarea id="institutional-rules" style="min-height:260px" spellcheck="false"></textarea></label>
+          <p class="help">Exemplo: [{"target":"turma","source":"shortname","type":"regex","pattern":"^LOG\\.(\\d{4}\\.\\d{3})-","value":"$1"}]</p>
+        </details>
+
+        <details>
+          <summary>Índice de Carga do Tutor</summary>
+          <p class="help">O ICT é analítico e configurável. Não representa norma institucional. Pesos iguais a zero retiram a dimensão do índice.</p>
+          <div class="settings-row">
+            <label class="field"><span>Peso Carga Quantitativa</span><input id="ict-quantitative" type="number" min="0" max="100"></label>
+            <label class="field"><span>Peso Complexidade</span><input id="ict-complexity" type="number" min="0" max="100"></label>
+            <label class="field"><span>Quantitativo: alunos únicos</span><input id="ict-students" type="number" min="0" max="100"></label>
+            <label class="field"><span>Quantitativo: vínculos</span><input id="ict-enrollments" type="number" min="0" max="100"></label>
+            <label class="field"><span>Quantitativo: cursos Moodle</span><input id="ict-moodle-courses" type="number" min="0" max="100"></label>
+            <label class="field"><span>Complexidade: cursos institucionais</span><input id="ict-institutional-courses" type="number" min="0" max="100"></label>
+            <label class="field"><span>Complexidade: turmas</span><input id="ict-classes" type="number" min="0" max="100"></label>
+            <label class="field"><span>Complexidade: UCs</span><input id="ict-ucs" type="number" min="0" max="100"></label>
+            <label class="field"><span>Complexidade: modalidades</span><input id="ict-modalities" type="number" min="0" max="100"></label>
+          </div>
+        </details>
 
         <div class="settings-actions">
           <button id="save" class="primary" type="button">Salvar configurações</button>
@@ -44,7 +73,7 @@
 
     <section class="danger-zone">
       <h2>Dados locais</h2>
-      <p class="help">As coletas ficam armazenadas localmente no navegador e separadas por ambiente. Use o botão abaixo para remover snapshots e referências de ambientes sem alterar suas regras de configuração.</p>
+      <p class="help">As coletas ficam armazenadas localmente e separadas por ambiente. A limpeza remove snapshots e histórico, mas preserva as configurações.</p>
       <button id="clear-data" type="button">Limpar coletas locais</button>
       <span id="clear-status" class="help" aria-live="polite"></span>
     </section>
