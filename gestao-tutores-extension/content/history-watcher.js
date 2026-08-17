@@ -11,8 +11,8 @@
       Promise.resolve()
         .then(async () => {
           const stored = await chrome.storage.local.get("gestaoTutoresSettings");
-          const retention = Number(stored.gestaoTutoresSettings?.historyRetentionDays || Defaults.SETTINGS.historyRetentionDays);
-          await History.save(change.newValue, retention);
+          const settings = { ...Defaults.SETTINGS, ...(stored.gestaoTutoresSettings || {}) };
+          await History.save(change.newValue, Number(settings.historyRetentionDays), settings.ictWeights);
         })
         .catch((error) => console.error("Gestão de Tutores: falha ao salvar histórico", error));
     });
