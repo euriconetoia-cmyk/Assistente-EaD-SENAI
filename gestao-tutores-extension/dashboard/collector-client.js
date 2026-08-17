@@ -15,13 +15,12 @@
     "domain/roles.js",
     "domain/institutional-map.js",
     "content/collector.js",
+    "content/collector-health.js",
     "content/history-watcher.js",
     "content/launcher.js"
   ];
 
-  function delay(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function send(tabId, message) {
     return new Promise((resolve, reject) => {
@@ -35,43 +34,87 @@
 
   async function ping(tabId) {
     const response = await send(tabId, { type: "GESTAO_TUTORES_PING" });
-    if (!response?.ok) throw new Error(response?.error || "O coletor não respondeu ao diagnóstico.");
+    if (!response?.ok) throw new Error(response?.error || "O diagnóstico do coletor não respondeu.");
+    if (!response.dependenciesReady || !response.adapterRegistered) {
+      throw new Error("Os módulos de coleta do Moodle não foram inicializados completamente.");
+    }
     return response;
+  }
+
+  async function waitForTabComplete(tabId, timeoutMs = 25000) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab?.status === "complete") {
+        await delay(500);
+        return tab;
+      }
+      await delay(200);
+    }
+    throw new Error("A página do Moodle demorou demais para recarregar.");
+  }
+
+  async function reloadAndWait(tabId) {
+    await chrome.tabs.reload(tabId);
+    return waitForTabComplete(tabId);
   }
 
   async function inject(tabId) {
     if (!chrome.scripting?.executeScript) {
-      throw new Error("A extensão não possui acesso ao mecanismo de reinjeção do coletor.");
+      throw new Error("O navegador não disponibilizou a reinjeção automática do coletor.");
     }
     await chrome.scripting.executeScript({
       target: { tabId, allFrames: false },
       files: CONTENT_FILES
     });
+    await delay(250);
   }
 
   async function ensureReady(tabId) {
     try {
-      const diagnostic = await ping(tabId);
-      return { injected: false, diagnostic };
-    } catch (firstError) {
-      await inject(tabId);
-      await delay(150);
+      return { recovery: "none", diagnostic: await ping(tabId) };
+    } catch (_firstError) {
       try {
-        const diagnostic = await ping(tabId);
-        return { injected: true, diagnostic };
-      } catch (secondError) {
-        throw new Error(`Não foi possível ativar o coletor na aba do Moodle. Atualize a aba e tente novamente. Detalhe: ${secondError.message || firstError.message}`);
+        await reloadAndWait(tabId);
+        return { recovery: "reload", diagnostic: await ping(tabId) };
+      } catch (_reloadError) {
+        await inject(tabId);
+        try {
+          return { recovery: "injection", diagnostic: await ping(tabId) };
+        } catch (finalError) {
+          throw new Error(`Não foi possível ativar o coletor na aba do Moodle. Detalhe: ${finalError.message}`);
+        }
       }
     }
   }
 
   async function collect(tabId, mode) {
-    const readiness = await ensureReady(tabId);
-    const response = await send(tabId, {
+    const ready = await ensureReady(tabId);
+    let response = await send(tabId, {
       type: "GESTAO_TUTORES_COLLECT",
       mode: mode === "incremental" ? "incremental" : "full"
     });
-    return { ...response, collectorDiagnostic: readiness.diagnostic, collectorInjected: readiness.injected };
+
+    if (response === undefined) {
+      await reloadAndWait(tabId);
+      await ping(tabId);
+      response = await send(tabId, {
+        type: "GESTAO_TUTORES_COLLECT",
+        mode: mode === "incremental" ? "incremental" : "full"
+      });
+    }
+
+    if (!response) {
+      throw new Error("O Moodle está conectado, mas o módulo de coleta não respondeu. Recarregue a extensão e tente novamente.");
+    }
+    if (response.ok && Number(response.snapshot?.discoveredCourses || 0) === 0) {
+      return {
+        ok: false,
+        error: "O coletor foi ativado, mas nenhum curso Moodle foi descoberto. Abra uma página com acesso aos cursos e tente Reconstruir base novamente.",
+        diagnostic: ready.diagnostic
+      };
+    }
+    return { ...response, collectorRecovery: ready.recovery, collectorDiagnostic: ready.diagnostic };
   }
 
   async function cancel(tabId) {
@@ -79,10 +122,5 @@
     return send(tabId, { type: "GESTAO_TUTORES_CANCEL" });
   }
 
-  globalThis.GestaoTutoresCollectorClient = {
-    ensureReady,
-    ping,
-    collect,
-    cancel
-  };
+  globalThis.GestaoTutoresCollectorClient = { ensureReady, ping, collect, cancel };
 })();
