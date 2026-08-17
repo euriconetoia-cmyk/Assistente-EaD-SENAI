@@ -32,6 +32,7 @@
         "adapters/moodle-base.js",
         "adapters/moodle-goias.js",
         "adapters/moodle-ctm.js",
+        "domain/roles.js",
         "content/collector.js",
         "content/launcher.js"
       ],
