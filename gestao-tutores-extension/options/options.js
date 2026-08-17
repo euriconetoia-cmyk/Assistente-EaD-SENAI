@@ -12,6 +12,7 @@
     incrementalFreshness: document.querySelector("#incremental-freshness"),
     historyRetention: document.querySelector("#history-retention"),
     tutors: document.querySelector("#tutor-patterns"),
+    monitors: document.querySelector("#monitor-patterns"),
     students: document.querySelector("#student-patterns"),
     management: document.querySelector("#management-patterns"),
     staff: document.querySelector("#staff-patterns"),
@@ -102,6 +103,7 @@
     els.incrementalFreshness.value = Number(settings.incrementalFreshnessMinutes ?? DEFAULTS.incrementalFreshnessMinutes);
     els.historyRetention.value = Number(settings.historyRetentionDays ?? DEFAULTS.historyRetentionDays);
     els.tutors.value = (settings.tutorRolePatterns || []).join("\n");
+    els.monitors.value = (settings.monitorRolePatterns || []).join("\n");
     els.students.value = (settings.studentRolePatterns || []).join("\n");
     els.management.value = (settings.managementRolePatterns || []).join("\n");
     els.staff.value = (settings.staffRolePatterns || []).join("\n");
@@ -143,6 +145,7 @@
       incrementalFreshnessMinutes: clamp(els.incrementalFreshness.value, 1, 240, DEFAULTS.incrementalFreshnessMinutes),
       historyRetentionDays: clamp(els.historyRetention.value, 1, 365, DEFAULTS.historyRetentionDays),
       tutorRolePatterns: lines(els.tutors.value),
+      monitorRolePatterns: lines(els.monitors.value),
       studentRolePatterns: lines(els.students.value),
       managementRolePatterns: lines(els.management.value),
       staffRolePatterns: lines(els.staff.value),
@@ -168,6 +171,7 @@
     };
 
     if (!settings.tutorRolePatterns.length) return setStatus("Informe ao menos um papel de tutor.", true);
+    if (!settings.monitorRolePatterns.length) return setStatus("Informe ao menos um papel de monitor.", true);
     if (!settings.studentRolePatterns.length) return setStatus("Informe ao menos um papel de estudante.", true);
     if (!settings.modalityRules.length) return setStatus("Informe ao menos uma regra válida de modalidade.", true);
     if (settings.ictWeights.quantitative + settings.ictWeights.complexity <= 0) return setStatus("O ICT precisa de ao menos um peso geral maior que zero.", true);
