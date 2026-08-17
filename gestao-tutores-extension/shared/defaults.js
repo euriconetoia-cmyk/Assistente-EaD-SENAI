@@ -5,6 +5,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
+  const RULESET_VERSION = 3;
+
   const MODALITY_RULES = [
     { label: "Aprendizagem", terms: ["aprendizagem", "aprendiz industrial"] },
     { label: "Técnico", terms: ["curso técnico", "curso tecnico", "técnico em", "tecnico em", "tec."] },
@@ -19,6 +21,8 @@
     maxCategoryPages: 250,
     maxPagesPerCourse: 80,
     courseConcurrency: 4,
+    requestTimeoutMs: 20000,
+    requestRetries: 1,
     tutorRolePatterns: ["tutor", "tutor online", "tutor ead", "professor tutor", "docente tutor"],
     studentRolePatterns: ["estudante", "aluno", "student", "aprendiz"],
     managementRolePatterns: ["coordenação", "coordenacao", "coordenador", "gestor", "manager", "administrador", "admin"],
@@ -32,6 +36,7 @@
   return {
     SUPPORTED_HOSTS: ["ead.senai.br", "ead.fieg.com.br"],
     SETTINGS,
-    MODALITY_RULES
+    MODALITY_RULES,
+    RULESET_VERSION
   };
 });
