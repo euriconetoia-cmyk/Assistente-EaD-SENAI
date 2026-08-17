@@ -54,7 +54,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: gestao-tutores-moodle-senai-v0.4.2-beta
+          name: gestao-tutores-moodle-senai-v0.4.3-beta
           path: |
             gestao-tutores-extension/**
             !gestao-tutores-extension/node_modules/**
