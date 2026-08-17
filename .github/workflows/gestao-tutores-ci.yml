@@ -32,11 +32,34 @@ jobs:
         run: npm run check:syntax
       - name: Tests
         run: npm test
+      - name: Package integrity
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+          const refs = [
+            manifest.background?.service_worker,
+            manifest.options_page,
+            ...(manifest.content_scripts || []).flatMap((item) => item.js || [])
+          ].filter(Boolean);
+          const missing = refs.filter((file) => !fs.existsSync(file));
+          if (missing.length) {
+            console.error('Arquivos referenciados pelo manifest ausentes:', missing);
+            process.exit(1);
+          }
+          console.log(`manifest.json validado: ${refs.length} arquivo(s) referenciado(s).`);
+          NODE
       - name: Build beta artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: gestao-tutores-moodle-senai-v0.4-beta
-          path: gestao-tutores-extension
+          path: |
+            gestao-tutores-extension/**
+            !gestao-tutores-extension/node_modules/**
+            !gestao-tutores-extension/tests/**
+            !gestao-tutores-extension/docs/**
+            !gestao-tutores-extension/package.json
+            !gestao-tutores-extension/package-lock.json
           if-no-files-found: error
           retention-days: 7
