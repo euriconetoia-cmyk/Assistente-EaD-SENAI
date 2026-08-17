@@ -31,6 +31,7 @@
         "shared/quality.js",
         "metrics/workload.js",
         "storage/history.js",
+        "collectors/runtime.js",
         "adapters/registry.js",
         "adapters/moodle-base.js",
         "adapters/moodle-goias.js",
