@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const RULESET_VERSION = 3;
+  const RULESET_VERSION = 4;
 
   const MODALITY_RULES = [
     { label: "Aprendizagem", terms: ["aprendizagem", "aprendiz industrial"] },
@@ -30,7 +30,10 @@
       "administrador", "admin", "manager", "gestor", "coordenador", "coordenação", "coordenacao",
       "professor", "teacher", "docente", "instrutor", "monitor", "tutor", "guest", "convidado"
     ],
-    modalityRules: MODALITY_RULES
+    modalityRules: MODALITY_RULES,
+    institutionalRules: [],
+    exclusionPatterns: [],
+    historyRetentionDays: 90
   };
 
   return {
