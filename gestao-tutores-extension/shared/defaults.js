@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const RULESET_VERSION = 5;
+  const RULESET_VERSION = 6;
 
   const MODALITY_RULES = [
     { label: "Aprendizagem", terms: ["aprendizagem", "aprendiz industrial"] },
@@ -39,6 +39,7 @@
     courseConcurrency: 4,
     requestTimeoutMs: 20000,
     requestRetries: 1,
+    incrementalFreshnessMinutes: 15,
     tutorRolePatterns: ["tutor", "tutor online", "tutor ead", "professor tutor", "docente tutor"],
     studentRolePatterns: ["estudante", "aluno", "student", "aprendiz"],
     managementRolePatterns: ["coordenação", "coordenacao", "coordenador", "gestor", "manager", "administrador", "admin"],
