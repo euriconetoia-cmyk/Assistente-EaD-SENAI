@@ -28,6 +28,7 @@
       "js": [
         "shared/core.js",
         "shared/defaults.js",
+        "shared/quality.js",
         "adapters/registry.js",
         "adapters/moodle-base.js",
         "adapters/moodle-goias.js",
