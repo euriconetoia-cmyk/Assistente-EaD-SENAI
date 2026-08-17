@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Gestão de Tutores Moodle SENAI",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Dashboard gerencial de tutoria com adaptadores por Moodle, controle de completude, qualidade de dados e métricas rastreáveis.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://ead.senai.br/*",
