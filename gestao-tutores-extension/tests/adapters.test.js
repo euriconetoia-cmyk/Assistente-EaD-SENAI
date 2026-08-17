@@ -128,6 +128,40 @@ async function main() {
   }
 
   {
+    const adapter = global.GestaoTutoresAdapters.forHost("ead.senai.br");
+    const currentDocument = new JSDOM('<!doctype html><html><body><a href="/course/view.php?id=9998">Curso fora do escopo na página atual</a></body></html>', {
+      url: "https://ead.senai.br/my/"
+    }).window.document;
+    const docs = new Map([
+      ["https://ead.senai.br/course/management.php?categoryid=11", fixture("ctm-scope-category-11.html", "https://ead.senai.br/course/management.php?categoryid=11")],
+      ["https://ead.senai.br/course/management.php?categoryid=12", fixture("ctm-scope-category-12.html", "https://ead.senai.br/course/management.php?categoryid=12")],
+      ["https://ead.senai.br/course/management.php?categoryid=13", fixture("ctm-scope-category-13.html", "https://ead.senai.br/course/management.php?categoryid=13")]
+    ]);
+    const requested = [];
+    const discovery = await adapter.discoverCourses({
+      currentDocument,
+      currentUrl: "https://ead.senai.br/my/",
+      origin: "https://ead.senai.br",
+      settings: { maxCategoryPages: 20 },
+      fetchDocument: async (url) => {
+        requested.push(url);
+        if (!docs.has(url)) throw new Error(`URL fora do escopo solicitada: ${url}`);
+        return docs.get(url);
+      }
+    });
+
+    assert.deepEqual(discovery.courses.map((course) => course.id).sort(), ["1101", "1201", "1301"]);
+    assert.equal(discovery.courses.some((course) => course.id === "9998" || course.id === "9999"), false, "cursos externos não podem entrar no escopo CTM/DR-GO");
+    assert.equal(requested.includes("https://ead.senai.br/my/"), false, "CTM não deve consultar Meus cursos");
+    assert.equal(requested.includes("https://ead.senai.br/course/index.php"), false, "CTM não deve consultar catálogo geral");
+    assert.equal(requested[0], "https://ead.senai.br/course/management.php?categoryid=11");
+    assert.equal(discovery.scope.categoryId, "11");
+    assert.equal(discovery.scope.label, "CTM/DR-GO");
+    assert.equal(discovery.categoryPagesRead, 2);
+    assert.equal(discovery.categoryTraversalTruncated, false);
+  }
+
+  {
     const adapter = global.GestaoTutoresAdapters.forHost("ead.fieg.com.br");
     const emptyDoc = new JSDOM("<!doctype html><html><body><div>sem tabela</div></body></html>", { url: "https://ead.fieg.com.br/user/index.php?id=999" }).window.document;
     const extracted = adapter.extractParticipants(emptyDoc, {
