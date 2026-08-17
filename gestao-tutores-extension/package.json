@@ -1,6 +1,6 @@
 {
   "name": "gestao-tutores-moodle-senai",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "description": "Módulo gerencial de tutoria e monitoria para Moodle SENAI/FIEG com adaptadores independentes e controle de completude.",
   "scripts": {
