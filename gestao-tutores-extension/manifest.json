@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Gestão de Tutores Moodle SENAI",
-  "version": "0.3.0",
-  "description": "Dashboard gerencial de tutoria com coleta ampliada, qualidade de dados, visão de cursos e métricas de carga nos Moodles SENAI/FIEG.",
+  "version": "0.4.0",
+  "description": "Dashboard gerencial de tutoria com adaptadores por Moodle, controle de completude, qualidade de dados e métricas rastreáveis.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage",
@@ -28,6 +28,10 @@
       "js": [
         "shared/core.js",
         "shared/defaults.js",
+        "adapters/registry.js",
+        "adapters/moodle-base.js",
+        "adapters/moodle-goias.js",
+        "adapters/moodle-ctm.js",
         "content/collector.js",
         "content/launcher.js"
       ],
