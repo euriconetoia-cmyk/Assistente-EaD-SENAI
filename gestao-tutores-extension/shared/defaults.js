@@ -5,7 +5,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const RULESET_VERSION = 6;
+  const RULESET_VERSION = 7;
 
   const MODALITY_RULES = [
     { label: "Aprendizagem", terms: ["aprendizagem", "aprendiz industrial"] },
@@ -40,12 +40,27 @@
     requestTimeoutMs: 20000,
     requestRetries: 1,
     incrementalFreshnessMinutes: 15,
-    tutorRolePatterns: ["tutor", "tutor online", "tutor ead", "professor tutor", "docente tutor"],
+    tutorRolePatterns: [
+      "tutor",
+      "tutor online",
+      "tutor ead",
+      "professor tutor",
+      "docente tutor",
+      "professor - go"
+    ],
+    monitorRolePatterns: [
+      "moderador - go",
+      "monitor - go",
+      "monitor edição - ctm-go",
+      "monitor edicao - ctm-go"
+    ],
     studentRolePatterns: ["estudante", "aluno", "student", "aprendiz"],
     managementRolePatterns: ["coordenação", "coordenacao", "coordenador", "gestor", "manager", "administrador", "admin"],
     staffRolePatterns: [
       "administrador", "admin", "manager", "gestor", "coordenador", "coordenação", "coordenacao",
-      "professor", "teacher", "docente", "instrutor", "monitor", "tutor", "guest", "convidado"
+      "professor", "professor - go", "teacher", "docente", "instrutor",
+      "monitor", "monitor - go", "monitor edição - ctm-go", "monitor edicao - ctm-go", "moderador - go",
+      "tutor", "guest", "convidado"
     ],
     modalityRules: MODALITY_RULES,
     institutionalRules: [],
