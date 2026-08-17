@@ -46,27 +46,13 @@
 
     <section id="tab-executive" class="tab-panel active">
       <section class="grid-two">
-        <article class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">Confiabilidade</p><h2>Situação da base</h2></div></div>
-          <div id="base-health"></div>
-        </article>
-        <article class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">Decisão</p><h2>Ações prioritárias</h2></div></div>
-          <div id="priority-actions" class="priority-list"></div>
-        </article>
+        <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Confiabilidade</p><h2>Situação da base</h2></div></div><div id="base-health"></div></article>
+        <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Decisão</p><h2>Ações prioritárias</h2></div></div><div id="priority-actions" class="priority-list"></div></article>
       </section>
-
       <section id="workload-metrics" class="metrics metrics-five"></section>
-
       <section class="grid-two">
-        <article class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">Comparativo robusto</p><h2>ICT por tutor</h2></div><span>Carga quantitativa + complexidade</span></div>
-          <div id="load-chart" class="load-chart empty">Sem dados.</div>
-        </article>
-        <article class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">Distribuição global</p><h2>Modalidades</h2></div><span>Cursos Moodle</span></div>
-          <div id="modality-summary" class="modality-summary empty">Sem dados.</div>
-        </article>
+        <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Comparativo robusto</p><h2>ICT por tutor</h2></div><span>Carga quantitativa + complexidade</span></div><div id="load-chart" class="load-chart empty">Sem dados.</div></article>
+        <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Distribuição global</p><h2>Modalidades</h2></div><span>Cursos Moodle</span></div><div id="modality-summary" class="modality-summary empty">Sem dados.</div></article>
       </section>
     </section>
 
@@ -75,13 +61,9 @@
         <div class="field grow"><label for="tutor-search">Pesquisar tutor ou curso</label><input id="tutor-search" type="search" placeholder="Nome, e-mail, curso ou modalidade"></div>
         <div class="field"><label for="tutor-modality">Modalidade</label><select id="tutor-modality"><option value="">Todas</option></select></div>
         <div class="field"><label for="tutor-load">Carga comparativa</label><select id="tutor-load"><option value="">Todas</option><option>Crítica</option><option>Alta</option><option>Regular</option><option>Baixa</option></select></div>
-        <button id="btn-reset-tutors" type="button">Limpar</button>
-        <button id="btn-export-tutors" type="button">Exportar tutores</button>
+        <button id="btn-reset-tutors" type="button">Limpar</button><button id="btn-export-tutors" type="button">Exportar tutores</button>
       </section>
-      <section class="panel">
-        <div class="panel-heading"><div><p class="eyebrow">Operação</p><h2>Lista por tutor</h2><p id="tutor-result-summary">Sem dados.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Tutor</th><th>Papéis</th><th>Cursos completos</th><th>Vínculos</th><th>Alunos únicos</th><th>Carga quant.</th><th>Complexidade</th><th>ICT</th><th>Carga comparativa</th><th></th></tr></thead><tbody id="tutor-table-body"></tbody></table></div>
-      </section>
+      <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Operação</p><h2>Lista por tutor</h2><p id="tutor-result-summary">Sem dados.</p></div></div><div class="table-wrap"><table><thead><tr><th>Tutor</th><th>Papéis</th><th>Cursos completos</th><th>Vínculos</th><th>Alunos únicos</th><th>Carga quant.</th><th>Complexidade</th><th>ICT</th><th>Carga comparativa</th><th></th></tr></thead><tbody id="tutor-table-body"></tbody></table></div></section>
     </section>
 
     <section id="tab-courses" class="tab-panel">
@@ -91,30 +73,14 @@
         <div class="field"><label for="course-tutor-status">Tutoria</label><select id="course-tutor-status"><option value="">Todos</option><option value="none">Sem tutor</option><option value="single">Um tutor</option><option value="multiple">Múltiplos tutores</option></select></div>
         <div class="field"><label for="course-state">Completude</label><select id="course-state"><option value="">Todos</option><option value="completo">Completo</option><option value="parcial">Parcial</option><option value="erro">Erro</option></select></div>
         <div class="field"><label for="course-confidence">Confiança</label><select id="course-confidence"><option value="">Todas</option><option value="alta">Alta</option><option value="média">Média</option><option value="baixa">Baixa</option></select></div>
-        <button id="btn-reset-courses" type="button">Limpar</button>
-        <button id="btn-export-courses" type="button">Exportar cursos</button>
+        <button id="btn-reset-courses" type="button">Limpar</button><button id="btn-export-courses" type="button">Exportar cursos</button>
       </section>
-      <section class="panel">
-        <div class="panel-heading"><div><p class="eyebrow">Cobertura</p><h2>Todos os cursos Moodle processados</h2><p id="course-result-summary">Sem dados.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Curso institucional</th><th>Turma</th><th>UC</th><th>Tutor(es)</th><th>Vínculos</th><th>Modalidade</th><th>Escopo</th><th>Estado</th><th>Confiança</th><th>Alertas</th><th></th></tr></thead><tbody id="course-table-body"></tbody></table></div>
-      </section>
+      <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Cobertura</p><h2>Todos os cursos Moodle processados</h2><p id="course-result-summary">Sem dados.</p></div></div><div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Curso institucional</th><th>Turma</th><th>UC</th><th>Tutor(es)</th><th>Vínculos</th><th>Modalidade</th><th>Escopo</th><th>Estado</th><th>Confiança</th><th>Alertas</th><th></th></tr></thead><tbody id="course-table-body"></tbody></table></div></section>
     </section>
 
-    <section id="tab-quality" class="tab-panel">
-      <section id="quality-metrics" class="metrics"></section>
-      <section class="panel">
-        <div class="panel-heading"><div><p class="eyebrow">Auditoria</p><h2>Problemas por curso</h2><p>Os avisos são agregados aqui em vez de ocupar a dashboard principal.</p></div><button id="btn-export-quality" type="button">Exportar qualidade</button></div>
-        <div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Severidade</th><th>Problema</th><th>Detalhe</th><th></th></tr></thead><tbody id="quality-table-body"></tbody></table></div>
-      </section>
-    </section>
+    <section id="tab-quality" class="tab-panel"><section id="quality-metrics" class="metrics"></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Auditoria</p><h2>Problemas por curso</h2><p>Os avisos são agregados aqui em vez de ocupar a dashboard principal.</p></div><button id="btn-export-quality" type="button">Exportar qualidade</button></div><div class="table-wrap"><table><thead><tr><th>Curso Moodle</th><th>Severidade</th><th>Problema</th><th>Detalhe</th><th></th></tr></thead><tbody id="quality-table-body"></tbody></table></div></section></section>
 
-    <section id="tab-history" class="tab-panel">
-      <section id="history-metrics" class="metrics"></section>
-      <section class="panel">
-        <div class="panel-heading"><div><p class="eyebrow">Tendência</p><h2>Variação por tutor</h2><p id="history-summary">O histórico será criado após as coletas.</p></div><button id="btn-export-history" type="button">Exportar histórico</button></div>
-        <div class="table-wrap"><table><thead><tr><th>Tutor</th><th>Alunos atuais</th><th>Variação</th><th>Cursos atuais</th><th>Variação</th><th>ICT atual</th><th>Variação ICT</th><th>Última coleta</th></tr></thead><tbody id="history-table-body"></tbody></table></div>
-      </section>
-    </section>
+    <section id="tab-history" class="tab-panel"><section id="history-metrics" class="metrics"></section><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Tendência</p><h2>Variação por tutor</h2><p id="history-summary">O histórico será criado após as coletas.</p></div><button id="btn-export-history" type="button">Exportar histórico</button></div><div class="table-wrap"><table><thead><tr><th>Tutor</th><th>Alunos atuais</th><th>Variação</th><th>Cursos atuais</th><th>Variação</th><th>ICT atual</th><th>Variação ICT</th><th>Última coleta</th></tr></thead><tbody id="history-table-body"></tbody></table></div></section></section>
   </main>
 
   <dialog id="tutor-dialog"><form method="dialog" class="dialog-shell"><div class="dialog-header"><h2 id="dialog-title">Tutor</h2><button aria-label="Fechar">Fechar</button></div><div id="dialog-content"></div></form></dialog>
@@ -122,7 +88,9 @@
   <script src="../shared/core.js"></script>
   <script src="../metrics/workload.js"></script>
   <script src="../storage/history.js"></script>
+  <script src="collector-client.js"></script>
   <script src="app.js"></script>
   <script src="collection-actions.js"></script>
+  <script src="collection-bridge.js"></script>
 </body>
 </html>
