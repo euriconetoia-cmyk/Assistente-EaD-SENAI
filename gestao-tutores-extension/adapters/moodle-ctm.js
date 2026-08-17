@@ -18,8 +18,7 @@
     courseLinkSelector: [
       '#course-category-listings a[href*="/course/view.php"]',
       '[data-region="course-listing"] a[href*="/course/view.php"]',
-      '.course-listing a[href*="/course/view.php"]',
-      'a[href*="/course/view.php"]'
+      '.course-listing a[href*="/course/view.php"]'
     ].join(","),
     categoryLinkSelector: [
       '#course-category-listings a[href*="categoryid="]',
