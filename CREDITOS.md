@@ -1,6 +1,6 @@
 # Créditos
 
-Assistente EaD SENAI V3.0.1
+Assistente EaD SENAI 3.6.0
 
 ## Desenvolvimento, especificação e integração
 

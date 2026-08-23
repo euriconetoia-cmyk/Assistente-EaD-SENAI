@@ -1,0 +1,1110 @@
+#mqi-import-button.mqi-import-button {
+  margin-left: .5rem;
+}
+
+#mqi-import-button.mqi-import-button.btn-primary {
+  background: #0f6cbf;
+  border-color: #0f6cbf;
+}
+
+#mqi-import-button.mqi-import-button.btn-primary:hover {
+  background: #0d5ca3;
+  border-color: #0d5ca3;
+}
+
+#mqi-import-button.mqi-import-disabled,
+#mqi-import-button.mqi-import-disabled:hover {
+  background: #e9ecef;
+  border-color: #ced4da;
+  color: #6c757d;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+#mqi-import-button.mqi-floating-fallback {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #0f6cbf;
+  color: #fff;
+  font: 600 14px Arial, sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .22);
+  cursor: pointer;
+}
+
+#mqi-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(32, 44, 64, .28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+#mqi-modal {
+  width: min(590px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d9e1ea;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(15, 27, 51, .22);
+  color: #1d2125;
+  font: 14px Arial, sans-serif;
+}
+
+#mqi-modal .mqi-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 10px;
+}
+
+#mqi-modal .mqi-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #212529;
+}
+
+#mqi-modal #mqi-close {
+  border: 0;
+  background: transparent;
+  color: #4f5962;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#mqi-modal .mqi-tabs {
+  display: flex;
+  gap: 18px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e5e9ef;
+}
+
+#mqi-modal .mqi-tab {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #495057;
+  padding: 10px 2px 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#mqi-modal .mqi-tab.is-active {
+  color: #0f6cbf;
+  border-bottom-color: #0f6cbf;
+  font-weight: 700;
+}
+
+#mqi-modal .mqi-modal-body {
+  padding: 18px 20px 10px;
+}
+
+#mqi-modal .mqi-tab-panel {
+  display: none;
+}
+
+#mqi-modal .mqi-tab-panel.is-active {
+  display: block;
+}
+
+#mqi-modal .mqi-panel-intro {
+  margin: 0 0 10px;
+  color: #38404a;
+}
+
+#mqi-modal .mqi-subtle-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+#mqi-modal .mqi-link-button {
+  border: 0;
+  background: transparent;
+  color: #0f6cbf;
+  text-decoration: underline;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+#mqi-modal .mqi-field {
+  margin-bottom: 14px;
+}
+
+#mqi-modal .mqi-field label:first-child {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #212529;
+}
+
+#mqi-modal .mqi-input,
+#mqi-modal .mqi-textarea,
+#mqi-modal .mqi-select-trigger,
+#mqi-modal textarea#mqि-correction-prompt,
+#mqi-modal .mqi-prompt-details textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c9d1d9;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2328;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+#mqi-modal .mqi-input,
+#mqi-modal .mqi-select-trigger {
+  min-height: 42px;
+}
+
+#mqi-modal .mqi-select-trigger {
+  text-align: left;
+  position: relative;
+  cursor: pointer;
+}
+
+#mqi-modal .mqi-select-trigger::after {
+  content: '▾';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #495057;
+}
+
+#mqi-modal .mqi-textarea,
+#mqi-modal .mqi-prompt-details textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+#mqi-modal .mqi-help-text {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+}
+
+#mqi-modal .mqi-check {
+  display: block;
+  margin: 8px 0;
+  color: #2f343a;
+}
+
+#mqi-modal .mqi-check input {
+  margin-right: 8px;
+}
+
+#mqi-modal .mqi-prompt-details {
+  margin: 12px 0 16px;
+  border: 1px solid #d9e1ea;
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+#mqi-modal .mqi-prompt-details summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+#mqi-modal .mqi-prompt-details summary::-webkit-details-marker {
+  display: none;
+}
+
+#mqi-modal .mqi-prompt-details textarea {
+  width: calc(100% - 28px);
+  margin: 0 14px 14px;
+  min-height: 220px;
+  background: #fff;
+}
+
+#mqi-modal .mqi-file-field {
+  margin-top: 16px;
+}
+
+#mqi-modal .mqi-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+#mqi-modal .mqi-actions button {
+  min-width: 126px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+#mqi-modal .mqi-actions button.secondary {
+  border: 1px solid #c9d1d9;
+  background: #fff;
+  color: #21476b;
+}
+
+#mqi-modal .mqi-actions button.secondary:hover {
+  background: #f4f7fb;
+}
+
+#mqi-modal .mqi-actions button.primary {
+  border: 1px solid #0f6cbf;
+  background: #0f6cbf;
+  color: #fff;
+}
+
+#mqi-modal .mqi-actions button.primary:hover {
+  background: #0d5ca3;
+  border-color: #0d5ca3;
+}
+
+#mqi-modal .mqi-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+#mqi-modal .mqi-grade-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#mqi-modal .mqi-grade-hint {
+  color: #5b6671;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#mqi-modal .mqi-note-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+#mqi-modal .mqi-note-box--warning {
+  background: #fff8e1;
+  color: #7a5b00;
+  border: 1px solid #f1d27a;
+}
+
+#mqi-modal .mqi-modal-footer {
+  border-top: 1px solid #e5e9ef;
+  padding: 14px 20px 18px;
+}
+
+#mqi-modal .mqi-log {
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#mqi-modal .mqi-log--info {
+  background: #eef5fc;
+  color: #184b7a;
+  border: 1px solid #c8dff5;
+}
+
+#mqi-modal .mqi-log--success {
+  background: #edf8f2;
+  color: #165b38;
+  border: 1px solid #b9e1c8;
+}
+
+#mqi-modal .mqi-log--warning {
+  background: #fff8e6;
+  color: #7a5b00;
+  border: 1px solid #f1d27a;
+}
+
+#mqi-modal .mqi-log--error {
+  background: #fdeeee;
+  color: #842029;
+  border: 1px solid #f0b9bf;
+}
+
+#mqi-modal .mqi-report-title {
+  margin-bottom: 8px;
+}
+
+#mqi-modal .mqi-report-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#mqi-modal .mqi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#mqi-modal .mqi-chip--info { background: #e7f1fb; color: #0b4f8a; }
+#mqi-modal .mqi-chip--success { background: #eaf8ef; color: #166534; }
+#mqi-modal .mqi-chip--neutral { background: #eef1f4; color: #495057; }
+#mqi-modal .mqi-chip--review { background: #f1e8ff; color: #6f42c1; }
+#mqi-modal .mqi-chip--warning { background: #fff3cd; color: #8a5b00; }
+#mqi-modal .mqi-chip--danger { background: #fde2e1; color: #b42318; }
+#mqi-modal .mqi-chip--muted { background: #f1f3f5; color: #495057; }
+
+#mqi-modal .mqi-report-note {
+  margin-bottom: 8px;
+}
+
+#mqi-modal .mqi-report-list ul {
+  margin: 6px 0 0 18px;
+}
+
+#mqi-modal .mqi-credit {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  text-align: right;
+}
+
+tr.mqi-found {
+  outline: 2px solid rgba(15, 108, 191, .18);
+}
+
+tr.mqi-applied {
+  outline: 2px solid rgba(25, 135, 84, .22);
+}
+
+tr.mqi-ambiguous {
+  outline: 2px solid rgba(234, 179, 8, .35);
+}
+
+tr.mqi-status-success td { background: rgba(25, 135, 84, .08) !important; }
+tr.mqi-status-info td { background: rgba(13, 110, 253, .08) !important; }
+tr.mqi-status-review td { background: rgba(111, 66, 193, .10) !important; }
+tr.mqi-status-warning td { background: rgba(255, 193, 7, .16) !important; }
+tr.mqi-status-danger td { background: rgba(220, 53, 69, .12) !important; }
+tr.mqi-status-muted td { background: rgba(108, 117, 125, .08) !important; }
+tr.mqi-status-neutral td { background: rgba(15, 108, 191, .05) !important; }
+
+tr.mqi-status-info { outline: 2px solid rgba(13, 110, 253, .35) !important; }
+tr.mqi-status-warning { outline: 2px solid rgba(255, 193, 7, .42) !important; }
+tr.mqi-status-danger { outline: 2px solid rgba(220, 53, 69, .38) !important; }
+tr.mqi-status-review { outline: 2px solid rgba(111, 66, 193, .38) !important; }
+tr.mqi-status-muted { outline: 2px solid rgba(108, 117, 125, .28) !important; }
+
+.mqi-row-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.mqi-row-badge--success { background: #eaf8ef; color: #166534; }
+.mqi-row-badge--info { background: #e7f1ff; color: #084298; }
+.mqi-row-badge--review { background: #f1e8ff; color: #6f42c1; }
+.mqi-row-badge--warning { background: #fff3cd; color: #8a5b00; }
+.mqi-row-badge--danger { background: #fde2e1; color: #b42318; }
+.mqi-row-badge--muted { background: #eef1f4; color: #495057; }
+.mqi-row-badge--neutral { background: #e7f1fb; color: #0b4f8a; }
+
+@media (max-width: 720px) {
+  #mqi-modal .mqi-two-columns {
+    grid-template-columns: 1fr;
+  }
+
+  #mqi-modal .mqi-actions {
+    justify-content: stretch;
+  }
+
+  #mqi-modal .mqi-actions button {
+    flex: 1 1 100%;
+  }
+}
+
+
+#mqi-modal .mqi-instructions-callout {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #c8dff5;
+  border-radius: 8px;
+  background: #eef5fc;
+  color: #184b7a;
+}
+
+#mqi-modal .mqi-instruction-list {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #e0e5eb;
+  border-radius: 8px;
+  background: #fafbfc;
+  color: #38404a;
+}
+
+#mqi-modal .mqi-bulk-grade-field {
+  max-width: 100%;
+}
+
+#mqi-modal .mqi-bulk-scope-help {
+  margin-top: 2px;
+}
+
+#mqi-modal .mqi-credit a {
+  color: #0f6cbf;
+  text-decoration: none;
+}
+
+#mqi-modal .mqi-credit a:hover,
+#mqi-modal .mqi-credit a:focus {
+  text-decoration: underline;
+}
+
+.mqi-student-download.mqi-download-busy {
+  opacity: .65;
+  cursor: progress;
+  pointer-events: none;
+}
+
+#mqi-modal .mqi-control-disabled { opacity: .58; cursor: not-allowed; }
+#mqi-modal .mqi-control-disabled input { cursor: not-allowed; }
+
+
+/* Sessões recolhíveis do modal (v0.6.0) */
+#mqi-modal .mqi-sections {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+#mqi-modal .mqi-section {
+  margin: 0;
+  border: 1px solid #d9e1ea;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+#mqi-modal .mqi-section[open] {
+  box-shadow: 0 2px 8px rgba(15, 27, 51, .05);
+}
+
+#mqi-modal .mqi-section-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  color: #1d2125;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+#mqi-modal summary.mqi-section-header::-webkit-details-marker {
+  display: none;
+}
+
+#mqi-modal .mqi-section-header:hover {
+  background: #f8fafc;
+}
+
+#mqi-modal .mqi-section-header--fixed {
+  cursor: default;
+  background: #f8fbfe;
+  border-bottom: 1px solid #e5e9ef;
+}
+
+#mqi-modal .mqi-section-header--fixed:hover {
+  background: #f8fbfe;
+}
+
+#mqi-modal .mqi-section-heading {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+}
+
+#mqi-modal .mqi-section-heading strong {
+  font-size: 16px;
+  color: #20252a;
+}
+
+#mqi-modal .mqi-section-heading small {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#mqi-modal .mqi-section-icon {
+  width: 24px;
+  flex: 0 0 24px;
+  color: #0f6cbf;
+  font-size: 20px;
+  text-align: center;
+  line-height: 1;
+}
+
+#mqi-modal .mqi-section-chevron {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-right: 2px solid #52606d;
+  border-bottom: 2px solid #52606d;
+  transform: rotate(-45deg);
+  transition: transform .16s ease;
+}
+
+#mqi-modal details[open] > summary .mqi-section-chevron {
+  transform: rotate(45deg) translateY(-2px);
+}
+
+#mqi-modal .mqi-required-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e7f1fb;
+  color: #0b4f8a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#mqi-modal .mqi-section-content {
+  padding: 14px;
+}
+
+#mqi-modal .mqi-section--fixed .mqi-section-content {
+  padding-top: 14px;
+}
+
+/* Indicadores de correções pendentes na página do curso */
+.mqi-pending-badge-layer {
+  position: relative !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+.mqi-pending-icon-reference,
+.mqi-assignment-has-pending > .activity-item,
+.mqi-assignment-has-pending .activity-grid {
+  overflow: visible !important;
+}
+
+.mqi-pending-badge {
+  position: absolute;
+  z-index: 1000;
+  top: -6px;
+  left: 29px;
+  right: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  font: 700 12px/1 Arial, sans-serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .24);
+  pointer-events: none;
+}
+
+
+/* O Moodle Nacional aplica recortes diferentes ao contêiner do ícone.
+   A etiqueta fica na grade da atividade, fora do elemento recortado. */
+.activity-wrapper.mqi-assignment-has-pending .mqi-pending-badge-layer {
+  overflow: visible !important;
+}
+
+.mqi-pending-badge--pending {
+  background: #dc3545;
+}
+
+.mqi-pending-badge--loading {
+  background: #6c757d;
+  color: #fff;
+}
+
+.mqi-pending-badge--error {
+  background: #6c757d;
+  color: #fff;
+}
+
+.mqi-pending-badge--verify {
+  background: #b7791f;
+  color: #fff;
+}
+
+.mqi-assignment-import {
+  display: inline-flex;
+  align-items: center;
+  margin: 7px 0 0 8px;
+  padding: 4px 8px;
+  border: 1px solid #0f6cbf;
+  border-radius: 5px;
+  color: #0f6cbf !important;
+  background: #fff;
+  font: 600 12px/1.2 Arial, sans-serif;
+  text-decoration: none !important;
+}
+
+.mqi-assignment-import:hover,
+.mqi-assignment-import:focus {
+  background: #eef5fc;
+  color: #0b579b !important;
+}
+
+li.mqi-assignment-has-pending > .activity-item {
+  border-color: rgba(220, 53, 69, .38) !important;
+}
+
+.mqi-course-pending-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  background: #fff;
+  color: #3b4550;
+  box-shadow: 0 1px 3px rgba(15, 27, 51, .05);
+  font-size: 13px;
+}
+
+.mqi-course-pending-summary__icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: #495057;
+  font-weight: 700;
+}
+
+.mqi-course-pending-summary__text {
+  flex: 1 1 auto;
+}
+
+.mqi-course-pending-summary__refresh {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f6cbf;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.mqi-course-pending-summary__refresh:hover,
+.mqi-course-pending-summary__refresh:focus {
+  background: #eef5fc;
+}
+
+.mqi-course-pending-summary.has-pending {
+  border-color: #f1b5bb;
+  background: #fff7f7;
+  color: #842029;
+}
+
+.mqi-course-pending-summary.has-pending .mqi-course-pending-summary__icon {
+  background: #dc3545;
+  color: #fff;
+}
+
+.mqi-course-pending-summary.is-clear {
+  border-color: #b9e1c8;
+  background: #f4fbf7;
+  color: #165b38;
+}
+
+.mqi-course-pending-summary.is-clear .mqi-course-pending-summary__icon {
+  background: #198754;
+  color: #fff;
+}
+
+.mqi-course-pending-summary.has-error:not(.has-pending) {
+  border-color: #f1d27a;
+  background: #fffaf0;
+  color: #7a5b00;
+}
+
+.mqi-course-pending-summary.is-loading .mqi-course-pending-summary__refresh {
+  opacity: .55;
+  cursor: progress;
+}
+
+@media (max-width: 720px) {
+  #mqi-modal .mqi-section-heading small {
+    display: none;
+  }
+
+  .mqi-course-pending-summary {
+    align-items: flex-start;
+  }
+}
+
+
+/* Modal compacto com validação automática (v0.7.0) */
+#mqi-modal .mqi-modal-body {
+  padding: 18px 22px 12px;
+}
+
+#mqi-modal .mqi-tab-panel[hidden] {
+  display: none !important;
+}
+
+#mqi-modal .mqi-prompt-field {
+  margin-top: 18px;
+}
+
+#mqi-modal .mqi-prompt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+#mqi-modal .mqi-prompt-textarea {
+  min-height: 112px;
+  max-height: 180px;
+  overflow: auto;
+  resize: vertical;
+  line-height: 1.42;
+}
+
+#mqi-modal .mqi-prompt-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+#mqi-modal .mqi-copy-prompt {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: #0f6cbf;
+  padding: 7px 0;
+  white-space: nowrap;
+  font: 600 13px Arial, sans-serif;
+  cursor: pointer;
+  text-align: right;
+}
+
+#mqi-modal .mqi-copy-prompt:hover,
+#mqi-modal .mqi-copy-prompt:focus {
+  color: #0d5ca3;
+  text-decoration: underline;
+}
+
+#mqi-modal .mqi-auto-validation {
+  margin-top: 4px;
+}
+
+#mqi-modal .mqi-actions--single {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+#mqi-modal .mqi-actions button:disabled,
+#mqi-modal .mqi-actions button:disabled:hover {
+  border-color: #b9c2cc;
+  background: #dce3ea;
+  color: #67717c;
+  cursor: not-allowed;
+}
+
+#mqi-modal .mqi-modal-footer {
+  padding-top: 12px;
+}
+
+/* Indicadores na página de categorias (v0.7.2) */
+.mqi-category-vigency-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 6px 0 0 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: 700 12px/1.2 Arial, sans-serif;
+  vertical-align: middle;
+}
+
+.mqi-category-vigency-badge--current {
+  border-color: #0f6cbf;
+  background: #e7f1ff;
+  color: #084f8c;
+}
+
+.mqi-category-vigency-badge--overlap {
+  border-color: #198754;
+  background: #eaf8ef;
+  color: #146c43;
+}
+
+.mqi-category-vigency-badge--future,
+.mqi-category-vigency-badge--ended,
+.mqi-category-vigency-badge--unknown {
+  border-color: #adb5bd;
+  background: #f1f3f5;
+  color: #495057;
+}
+
+.mqi-category-pending-badge {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  font: 700 12px/1 Arial, sans-serif;
+  vertical-align: middle;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .22);
+}
+
+.mqi-category-pending-badge--pending {
+  background: #dc3545;
+}
+
+.mqi-category-pending-badge--clear {
+  background: #198754;
+  color: #fff;
+  font-size: 13px;
+}
+
+.mqi-category-pending-badge--loading,
+.mqi-category-pending-badge--error {
+  background: #6c757d;
+}
+
+.mqi-category-pending-badge--verify {
+  background: #b7791f;
+}
+
+.mqi-category-course-has-pending {
+  border-color: #dc3545 !important;
+  background-color: rgba(220, 53, 69, .045) !important;
+}
+
+.mqi-category-course-has-pending.coursebox,
+.mqi-category-course-has-pending.course-card,
+.mqi-category-course-has-pending.card,
+.mqi-category-course-has-pending.dashboard-card {
+  box-shadow: inset 5px 0 0 #dc3545, 0 0 0 1px rgba(220, 53, 69, .24) !important;
+}
+
+.mqi-category-course-is-clear.coursebox,
+.mqi-category-course-is-clear.course-card,
+.mqi-category-course-is-clear.card,
+.mqi-category-course-is-clear.dashboard-card {
+  box-shadow: inset 3px 0 0 rgba(25, 135, 84, .62);
+}
+
+.mqi-category-course-needs-verification.coursebox,
+.mqi-category-course-needs-verification.course-card,
+.mqi-category-course-needs-verification.card,
+.mqi-category-course-needs-verification.dashboard-card {
+  box-shadow: inset 3px 0 0 rgba(183, 121, 31, .72);
+}
+
+.mqi-category-pending-summary {
+  margin-bottom: 18px;
+}
+
+.mqi-my-courses-dashboard {
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid #cfd8e3;
+  border-radius: 12px;
+  background: #fff;
+  color: #202124;
+  box-shadow: 0 4px 16px rgba(15, 27, 51, .08);
+  font-family: Arial, sans-serif;
+}
+
+.mqi-my-courses-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mqi-my-courses-head h2 { margin: 0 0 5px; color: #084f8c; font-size: 20px; }
+.mqi-my-courses-head p { margin: 0; color: #5f6368; font-size: 13px; }
+.mqi-my-courses-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mqi-my-courses-actions button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid #0f6cbf;
+  border-radius: 7px;
+  background: #fff;
+  color: #0b579b;
+  font-weight: 700;
+}
+.mqi-my-courses-actions button:last-child { background: #0f6cbf; color: #fff; }
+.mqi-my-courses-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.mqi-my-courses-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.mqi-my-courses-metrics span { padding: 7px 9px; border-radius: 7px; background: #eef5fc; color: #084f8c; font-size: 13px; }
+.mqi-my-courses-metrics span.is-danger { background: #fde8e7; color: #b42318; }
+.mqi-my-courses-table-wrap { overflow: auto; border: 1px solid #dde3ea; border-radius: 8px; }
+.mqi-my-courses-table { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px; }
+.mqi-my-courses-table th, .mqi-my-courses-table td { padding: 9px 10px; border-bottom: 1px solid #e5e9ef; text-align: left; vertical-align: top; }
+.mqi-my-courses-table th { background: #f5f8fb; color: #344054; }
+.mqi-my-courses-table td div { margin-top: 3px; color: #667085; font-size: 11px; }
+.mqi-my-courses-table tr.has-pending td { background: rgba(220, 53, 69, .07); }
+.mqi-my-courses-table tr.has-pending td:first-child { border-left: 4px solid #dc3545; }
+.mqi-my-courses-table tr.needs-review td { background: rgba(183, 121, 31, .07); }
+.mqi-my-courses-dashboard.is-loading #mqi-my-courses-refresh { opacity: .65; }
+
+@media (max-width: 760px) {
+  .mqi-my-courses-head { flex-direction: column; }
+  .mqi-my-courses-actions { width: 100%; }
+  .mqi-my-courses-actions button { flex: 1 1 180px; }
+}
+
+@media (max-width: 620px) {
+  #mqi-modal {
+    width: min(100%, calc(100vw - 20px));
+  }
+
+  #mqi-modal .mqi-tabs {
+    gap: 8px;
+  }
+
+  #mqi-modal .mqi-tab {
+    flex: 1 1 50%;
+    font-size: 14px;
+  }
+
+  #mqi-modal .mqi-prompt-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #mqi-modal .mqi-prompt-actions {
+    align-items: flex-start;
+  }
+
+  #mqi-modal .mqi-copy-prompt {
+    justify-self: start;
+    text-align: left;
+  }
+}
+
+/* Downloads de pendências organizados por curso e categoria (v0.8.1) */
+.mqi-course-pending-summary__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.mqi-course-pending-summary__download,
+.mqi-course-pending-summary__import {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid #0f6cbf;
+  border-radius: 6px;
+  background: #0f6cbf;
+  color: #fff;
+  font: 600 12px/1.2 Arial, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mqi-course-pending-summary__import {
+  border-color: #0f6cbf;
+  background: #fff;
+  color: #0f6cbf;
+}
+
+.mqi-course-pending-summary__download:hover,
+.mqi-course-pending-summary__download:focus,
+.mqi-course-pending-summary__import:hover,
+.mqi-course-pending-summary__import:focus {
+  border-color: #0b579b;
+  background: #0b579b;
+  color: #fff;
+}
+
+.mqi-course-pending-summary__download:disabled,
+.mqi-course-pending-summary__download.is-busy,
+.mqi-course-pending-summary__import:disabled {
+  border-color: #7f9db7;
+  background: #7f9db7;
+  cursor: progress;
+  opacity: .85;
+}
+
+@media (max-width: 760px) {
+  .mqi-course-pending-summary {
+    flex-wrap: wrap;
+  }
+
+  .mqi-course-pending-summary__text {
+    min-width: calc(100% - 40px);
+  }
+
+  .mqi-course-pending-summary__actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 34px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  #mqi-backdrop { background: rgba(3, 7, 18, .76); }
+  #mqi-modal, .mqi-tab-panel, .mqi-field, .mqi-log { background: #172033; color: #eef2f7; border-color: #3b4658; }
+  .mqi-modal-header, .mqi-tabs, .mqi-modal-footer { background: #111827; color: #eef2f7; border-color: #3b4658; }
+  .mqi-input, .mqi-textarea, .mqi-select-trigger { background: #1f2937; color: #eef2f7; border-color: #4b5563; }
+  .mqi-help-text, .mqi-panel-intro, .mqi-credit { color: #b8c2d1; }
+}

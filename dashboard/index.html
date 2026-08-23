@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Central de Gestão Moodle</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
+  <header class="page-head">
+    <div><p class="eyebrow">Assistente EaD SENAI</p><h1>Central de Gestão Moodle</h1><p id="generated-at" role="status">Carregando dados agregados…</p></div>
+    <div class="actions"><button id="refresh-source" type="button">Atualizar no Moodle</button><button id="theme-toggle" type="button" aria-label="Alternar tema">Tema</button></div>
+  </header>
+  <div class="app-shell">
+    <nav class="side-nav" aria-label="Seções da Central">
+      <button class="nav-item is-active" data-view="overview" aria-current="page">Visão geral</button>
+      <button class="nav-item" data-view="courses">Turmas e UCs</button>
+      <button class="nav-item" data-view="risk">Alunos em risco</button>
+      <button class="nav-item" data-view="performance">Notas e desempenho</button>
+      <button class="nav-item" data-view="tutors">Tutores e monitores</button>
+      <button class="nav-item" data-view="calendar">Calendário</button>
+      <button class="nav-item" data-view="queue">Fila de trabalho</button>
+      <button class="nav-item" data-view="environments">Ambientes</button>
+      <button class="nav-item" data-view="history">Histórico</button>
+      <button class="nav-item" data-view="reports">Relatórios</button>
+    </nav>
+    <main id="workspace">
+      <section class="filters" aria-label="Filtros globais">
+        <label>Ambiente<select id="filter-environment"><option value="">Todos</option></select></label>
+        <label>Vigência<select id="filter-vigency"><option value="">Todas</option><option value="current">UC atual</option><option value="overlap">Vigente em sobreposição</option><option value="future">Ainda não iniciada</option><option value="ended">Encerrada</option><option value="unknown">Período não identificado</option></select></label>
+        <label>Situação<select id="filter-status"><option value="">Todas</option><option value="pending">Com pendências</option><option value="clear">Sem pendências</option><option value="review">Leitura incompleta</option></select></label>
+        <label>Pesquisar<input id="filter-search" type="search" placeholder="Turma, UC ou ID"></label>
+      </section>
+      <p id="partial-warning" class="warning" hidden>O Moodle não forneceu uma relação integral dos cursos. Os indicadores representam apenas o inventário identificado.</p>
+      <div id="view-root" tabindex="-1"></div>
+    </main>
+  </div>
+  <script src="dashboard.js"></script>
+</body>
+</html>

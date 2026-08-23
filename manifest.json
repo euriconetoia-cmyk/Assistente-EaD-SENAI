@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Assistente EaD SENAI V3.0.1 - Integração Contextual",
-  "version": "3.0.1",
-  "description": "Central da tutoria Moodle SENAI/FIEG com painel lateral, notificações de pendências diretamente nas UCs e atividades, importação contextual de notas e download seletivo de envios pendentes.",
+  "name": "Assistente EaD SENAI",
+  "version": "3.6.0",
+  "description": "Painel de tutoria Moodle para acompanhar alunos, atividades, notas, pendências e fechamento de UCs.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage",
-    "downloads"
+    "alarms"
   ],
   "host_permissions": [
     "https://ead.senai.br/*",
@@ -14,6 +14,9 @@
   ],
   "background": {
     "service_worker": "background/service-worker.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "action": {
     "default_title": "Abrir Assistente EaD SENAI"
@@ -25,10 +28,11 @@
         "https://ead.fieg.com.br/*"
       ],
       "css": [
-        "content/styles.css"
+        "content/page-layout.css"
       ],
       "js": [
         "content/namespace.js",
+        "content/shared-validation.js",
         "content/utils.js",
         "content/language.js",
         "content/storage.js",
@@ -37,6 +41,7 @@
         "content/rules.js",
         "content/exporters.js",
         "content/assisted-grading.js",
+        "content/batch-grading.js",
         "content/communications.js",
         "content/ui.js",
         "content/main.js"
@@ -49,18 +54,27 @@
         "https://ead.fieg.com.br/mod/assign/view.php*",
         "https://ead.fieg.com.br/course/view.php*",
         "https://ead.fieg.com.br/course/index.php*",
+        "https://ead.fieg.com.br/my/*",
         "https://ead.senai.br/mod/assign/view.php*",
         "https://ead.senai.br/course/view.php*",
-        "https://ead.senai.br/course/index.php*"
+        "https://ead.senai.br/course/index.php*",
+        "https://ead.senai.br/my/*"
       ],
       "css": [
         "content/importer/contextual-importer.css"
       ],
       "js": [
+        "content/shared-validation.js",
         "content/importer/contextual-importer.js"
       ],
       "run_at": "document_idle",
       "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/styles.css", "assets/icon32.png", "dashboard/index.html", "dashboard/dashboard.css", "dashboard/dashboard.js"],
+      "matches": ["https://ead.senai.br/*", "https://ead.fieg.com.br/*"]
     }
   ],
   "icons": {
