@@ -1,0 +1,106 @@
+# Alterações
+
+## 3.6.0
+
+- Central de Gestão Moodle redesenhada como página HTML independente;
+- dez áreas: visão geral, turmas e UCs, risco, desempenho, tutores, calendário, fila, ambientes, histórico e relatórios;
+- filtros globais compartilhados entre todas as áreas;
+- fila de trabalho priorizada por pendências e integridade da leitura;
+- histórico local limitado às 24 análises mais recentes;
+- exportações de relatório geral, calendário e fila em CSV, backup JSON e impressão otimizada para PDF;
+- tema claro e escuro, navegação por teclado e estados explícitos para dados não fornecidos pelo Moodle;
+- nenhuma nova permissão e nenhuma persistência nominal de alunos no dashboard agregado.
+
+## 3.5.0
+
+- botão “Mostrar calendário” com turmas e UCs futuras ordenadas pela data de início;
+- botão “Abrir dashboard” em página própria da extensão;
+- indicadores consolidados de cursos, UCs atuais, futuras, alunos reconhecidos e pendências;
+- conclusão de atividades, média das turmas e cobertura da leitura quando as fontes estiverem disponíveis;
+- filtros por ambiente, vigência, situação e pesquisa textual;
+- exportação do dashboard para CSV;
+- impressão otimizada para exportação em PDF;
+- dados acadêmicos individuais não são incluídos no dashboard agregado.
+
+## 3.4.0
+
+- nova visão geral das turmas na página inicial do Moodle;
+- inventário ampliado pela página “Meus cursos”, com eliminação de duplicidades pelo ID;
+- identificação de UC atual e vigências em sobreposição por turma;
+- análise gradual de pendências com duas consultas simultâneas;
+- tabela geral com período, vigência, pendências e situação da leitura;
+- exportação CSV de todas as turmas identificadas;
+- indicação explícita quando o inventário ou alguma leitura ficar parcial.
+
+## 3.3.2
+
+- identificação automática da UC atual pela data inicial mais recente dentro do período vigente;
+- identificação das demais UCs vigentes em sobreposição, futuras, encerradas ou sem período reconhecido;
+- importação abre a visão completa dos participantes para evitar falsos alunos não encontrados;
+- conferência relê notas em campos numéricos, listas de escala e células de nota exibidas pelo Moodle.
+
+## 3.3.1
+
+- todos os cartões de UCs exibidos passam a ser analisados;
+- todas as tarefas encontradas em cada UC entram na contagem;
+- cada cartão mostra a quantidade de pendências de forma textual;
+- UCs com pendências recebem borda e destaque vermelho reforçado;
+- leitura, conferência e vigência recebem estados explícitos.
+
+## 3.3.0
+
+- nova fase transacional de conferência após o Moodle confirmar o salvamento;
+- comparação por aluno entre nota e feedback esperados e os valores relidos no Moodle;
+- estados Confirmado, Divergente, Não localizado e Não verificável;
+- URL de conferência separada, com todos os participantes, para evitar que alunos recém-corrigidos desapareçam do filtro de pendências;
+- painel de conferência no modal, filtro de divergências, atualização do painel do curso, registro resumido no Histórico e relatório CSV detalhado;
+- situação do CSV tratada como classificação de relatório, sem simular alteração acadêmica inexistente;
+- validação da identidade interna nos manipuladores de mensagens;
+- estado transacional migrado para o esquema 3, sem reutilizar lotes incompatíveis de versões anteriores.
+
+## 3.2.4
+
+- confirmação de salvamento processada antes da validação da rota, incluindo o retorno `action=quickgradingresult` do Moodle;
+- restauração automática e limitada da tela `action=grading` quando o formulário de opções remover esse parâmetro;
+- espera coordenada do recarregamento após habilitar a avaliação rápida, evitando disputa entre navegações;
+- teste de integração para redirecionamento, envio, confirmação e encerramento do lote.
+
+## 3.2.3
+
+- compatibilidade com o botão “Salvar” do rodapé fixo da avaliação rápida do Moodle 5;
+- envio seguro pelo próprio formulário `action=quickgrade` quando o botão estiver fora do formulário ou for ocultado pelo tema;
+- detecção ampliada das confirmações de salvamento e das mensagens de falha do Moodle;
+- lote finalizado com erro agora exibe “Corrigir e tentar novamente” e não aparenta conclusão integral.
+
+## 3.2.2
+
+- seleção simultânea de até 30 arquivos CSV no importador de notas;
+- compatibilidade com CSV combinado e com vários CSVs individuais;
+- CSV individual não precisa conter `cmid` ou `atividade` quando a atividade for reconhecida ou confirmada no modal;
+- reconhecimento seguro pelo CMID ou pelo nome completo da atividade presente no nome do arquivo;
+- seleção manual da atividade para arquivos que não puderem ser associados com segurança;
+- validação de duplicidades entre arquivos diferentes e limite total de 20 MB por lote;
+- prévia por arquivo, atividade e quantidade de registros antes da confirmação.
+
+## 3.2.1
+
+- correção da contagem de pendências para não considerar participantes sem envio como trabalhos aguardando avaliação;
+- botão “Importar notas” posicionado ao lado de “Baixar atividades” no resumo inicial do curso;
+- prévia e cópia da mensagem automática no detalhe do aluno;
+- recuperação mais robusta do rascunho em diferentes rotas do mensageiro do Moodle;
+- preenchimento do campo de mensagem com eventos nativos e confirmação antes de apagar o rascunho;
+- testes de regressão para contagem, importação e mensagens automáticas.
+
+## 3.2.0
+
+- processamento em lote transacional, persistente e retomável;
+- bloqueio de notas inválidas, negativas, duplicadas e correspondências incompletas;
+- associação exata por CMID ou atividade, sem salvamento por correspondência aproximada;
+- sobrescrita desativada por padrão e confirmação em duas etapas;
+- verificação explícita da confirmação de salvamento do Moodle;
+- painel em Shadow DOM, navegação simplificada, tema escuro, foco e avisos acessíveis;
+- varreduras automáticas opt-in, com cache, limites e menor concorrência;
+- tratamento explícito de erros do armazenamento, retenção e minimização de dados;
+- proteção contra fórmulas em CSV;
+- permissões mínimas, CSP explícita, metadados consistentes e documentação de privacidade;
+- suíte automatizada de testes e validação do pacote.

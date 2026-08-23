@@ -1,0 +1,19 @@
+html.mat-assistant-page-open,
+body.mat-assistant-page-open { overflow-x: hidden !important; }
+
+@media (min-width: 1200px) {
+  body.mat-assistant-page-open {
+    width: calc(100% - clamp(390px, 38vw, 560px)) !important;
+    max-width: calc(100% - clamp(390px, 38vw, 560px)) !important;
+    margin-right: clamp(390px, 38vw, 560px) !important;
+    transition: width .24s ease, max-width .24s ease, margin-right .24s ease !important;
+  }
+  body.mat-assistant-page-open #page-wrapper,
+  body.mat-assistant-page-open #page,
+  body.mat-assistant-page-open .page-wrapper { max-width: 100% !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.mat-assistant-page-open,
+  body:not(.mat-assistant-page-open) { transition: none !important; }
+}
