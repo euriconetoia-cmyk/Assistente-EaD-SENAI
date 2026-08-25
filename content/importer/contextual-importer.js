@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.6.2';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.6.3';
   const S = globalThis.MAT_SHARED;
 
   const STATE = {
@@ -2067,12 +2067,13 @@
     return null;
   }
 
-  async function fetchPendingEvaluationCount(assignment) {
-    const cached = readCourseBadgeCache(assignment.assignmentId);
+  async function fetchPendingEvaluationCount(assignment, { force = false } = {}) {
+    const cached = force ? null : readCourseBadgeCache(assignment.assignmentId);
     if (cached !== null) return cached;
 
     if (COURSE_BADGE_STATE.inFlight.has(assignment.assignmentId)) {
-      return COURSE_BADGE_STATE.inFlight.get(assignment.assignmentId);
+      const activeResult = await COURSE_BADGE_STATE.inFlight.get(assignment.assignmentId);
+      if (!force) return activeResult;
     }
 
     const request = (async () => {
@@ -2489,9 +2490,9 @@
     updateCoursePendingSummary(assignments, errorCount);
 
     const toFetch = assignments.filter(assignment => force || !Number.isFinite(COURSE_BADGE_STATE.results.get(assignment.assignmentId)?.count));
-    await runWithConcurrency(toFetch.slice(0, 30), 2, async assignment => {
+    await runWithConcurrency(toFetch, 2, async assignment => {
       try {
-        const result = await fetchPendingEvaluationCount(assignment);
+        const result = await fetchPendingEvaluationCount(assignment, { force });
         COURSE_BADGE_STATE.results.set(assignment.assignmentId, result);
         ensurePendingBadge(assignment, result.count > 0 ? 'pending' : (result.requiresVerification ? 'verify' : 'empty'), result.count);
       } catch (error) {
@@ -2917,7 +2918,7 @@
 
       await runWithConcurrency(assignments, 1, async assignment => {
         try {
-          const result = await fetchPendingEvaluationCount(assignment);
+          const result = await fetchPendingEvaluationCount(assignment, { force });
           COURSE_BADGE_STATE.results.set(assignment.assignmentId, result);
           counts.set(assignment.assignmentId, result);
         } catch (error) {
@@ -3151,15 +3152,33 @@
     });
   }
 
+  function readMyCoursesPagination(doc, currentPage) {
+    const pageNumbers = [...doc.querySelectorAll('a[href*="page="]')]
+      .map(link => Number(new URL(link.getAttribute('href') || link.href, window.location.origin).searchParams.get('page')))
+      .filter(Number.isFinite);
+    const lastPage = pageNumbers.length ? Math.max(...pageNumbers) : currentPage;
+    const nextLink = doc.querySelector('a[rel="next"], .pagination a[aria-label*="Próxima" i], .pagination a[aria-label*="Next" i]');
+    return { lastPage, hasNext: Boolean(nextLink) || currentPage < lastPage };
+  }
+
   async function buildMyCoursesInventory() {
     const inventory = new Map();
     mergeMyCourseInventory(inventory, collectMyCoursesFromDocument());
     MY_COURSES_STATE.inventoryPartial = false;
     try {
       const allCoursesUrl = new URL('/my/courses.php', window.location.origin);
-      allCoursesUrl.searchParams.set('perpage', '1000');
-      const { doc, finalUrl } = await fetchHtmlDocument(allCoursesUrl.href, 'Meus cursos');
-      mergeMyCourseInventory(inventory, collectMyCoursesFromDocument(doc, finalUrl));
+      allCoursesUrl.searchParams.set('perpage', '96');
+      const maxPages = 100;
+      for (let page = 0; page < maxPages; page += 1) {
+        allCoursesUrl.searchParams.set('page', String(page));
+        const { doc, finalUrl } = await fetchHtmlDocument(allCoursesUrl.href, `Meus cursos, página ${page + 1}`);
+        const pageCourses = collectMyCoursesFromDocument(doc, finalUrl);
+        const previousSize = inventory.size;
+        mergeMyCourseInventory(inventory, pageCourses);
+        const pagination = readMyCoursesPagination(doc, page);
+        if (!pagination.hasNext || inventory.size === previousSize) break;
+        if (page === maxPages - 1) MY_COURSES_STATE.inventoryPartial = true;
+      }
     } catch (error) {
       MY_COURSES_STATE.inventoryPartial = true;
       console.warn('A relação completa de cursos não pôde ser carregada; serão usados os cartões disponíveis.', error);
