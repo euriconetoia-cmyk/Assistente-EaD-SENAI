@@ -349,6 +349,64 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
+  const zipCrcTable = (() => {
+    const table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+      table[index] = value >>> 0;
+    }
+    return table;
+  })();
+
+  const zipCrc32 = (bytes) => {
+    let value = 0xffffffff;
+    for (const byte of bytes) value = (value >>> 8) ^ zipCrcTable[(value ^ byte) & 0xff];
+    return (value ^ 0xffffffff) >>> 0;
+  };
+
+  const zipWrite16 = (target, offset, value) => {
+    target[offset] = value & 0xff;
+    target[offset + 1] = (value >>> 8) & 0xff;
+  };
+
+  const zipWrite32 = (target, offset, value) => {
+    zipWrite16(target, offset, value & 0xffff);
+    zipWrite16(target, offset + 2, value >>> 16);
+  };
+
+  const makeZipBlob = (entries) => {
+    const encoder = new TextEncoder();
+    const now = new Date();
+    const year = Math.max(1980, now.getFullYear());
+    const dosDate = ((year - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+    let offset = 0;
+    const localParts = [];
+    const directoryParts = [];
+    entries.forEach((entry) => {
+      const name = encoder.encode(String(entry.name || 'arquivo'));
+      const bytes = entry.bytes instanceof Uint8Array ? entry.bytes : encoder.encode(String(entry.content ?? ''));
+      const checksum = zipCrc32(bytes);
+      const header = new Uint8Array(30 + name.length);
+      zipWrite32(header, 0, 0x04034b50); zipWrite16(header, 4, 20); zipWrite16(header, 6, 0x0800);
+      zipWrite16(header, 10, dosTime); zipWrite16(header, 12, dosDate); zipWrite32(header, 14, checksum);
+      zipWrite32(header, 18, bytes.length); zipWrite32(header, 22, bytes.length); zipWrite16(header, 26, name.length); header.set(name, 30);
+      localParts.push(header, bytes);
+      const directory = new Uint8Array(46 + name.length);
+      zipWrite32(directory, 0, 0x02014b50); zipWrite16(directory, 4, 20); zipWrite16(directory, 6, 20); zipWrite16(directory, 8, 0x0800);
+      zipWrite16(directory, 12, dosTime); zipWrite16(directory, 14, dosDate); zipWrite32(directory, 16, checksum);
+      zipWrite32(directory, 20, bytes.length); zipWrite32(directory, 24, bytes.length); zipWrite16(directory, 28, name.length); zipWrite32(directory, 42, offset); directory.set(name, 46);
+      directoryParts.push(directory);
+      offset += header.length + bytes.length;
+    });
+    const directoryLength = directoryParts.reduce((total, part) => total + part.length, 0);
+    const end = new Uint8Array(22);
+    zipWrite32(end, 0, 0x06054b50); zipWrite16(end, 8, entries.length); zipWrite16(end, 10, entries.length);
+    zipWrite32(end, 12, directoryLength); zipWrite32(end, 16, offset);
+    return new Blob([...localParts, ...directoryParts, end], { type: 'application/zip' });
+  };
+
   MAT.utils = {
     normalizeText,
     cleanText,
@@ -375,6 +433,7 @@
     sleep,
     mapWithConcurrency,
     hash,
-    downloadBlob
+    downloadBlob,
+    makeZipBlob
   };
 })();
