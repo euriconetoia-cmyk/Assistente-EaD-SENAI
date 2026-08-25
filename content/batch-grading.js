@@ -9,20 +9,7 @@
   const MAX_BATCH_ACTIVITIES = 30;
   const MAX_BATCH_FILES = 30;
   const MAX_BATCH_TOTAL_BYTES = 20 * 1024 * 1024;
-  const MAX_AI_PACKAGE_BYTES = 100 * 1024 * 1024;
-
-  const LOTE_SECTION = [
-    '',
-    '## Lote de múltiplas atividades',
-    '',
-    'Quando esta correção envolver mais de uma atividade ao mesmo tempo (várias atividades enviadas juntas), adapte a saída da seguinte forma:',
-    '',
-    '- Inclua as colunas `cmid` e `atividade` no início do CSV.',
-    '- Preserve o `cmid` e o nome exatamente como aparecem no arquivo `manifesto_atividades.csv`.',
-    '- Formato: `cmid;atividade;nome;nota;feedback;situacao`',
-    '- Gere uma única tabela CSV cobrindo todos os alunos de todas as atividades enviadas, com uma linha por aluno por atividade.',
-    '- Todas as demais regras deste agente (limitações, estilo, tratamento de fóruns, validação) continuam se aplicando normalmente a cada linha.'
-  ].join('\n');
+  const MAX_AI_SINGLE_ACTIVITY_BYTES = 500 * 1024 * 1024;
 
   const csvEscape = (value) => `"${S.neutralizeSpreadsheetFormula(value).replace(/"/g, '""')}"`;
   const slug = (value = '') => U.normalizeText(value).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80) || 'uc';
@@ -97,6 +84,16 @@
   const pendingAssignments = (snapshot) => (snapshot?.activityPanorama?.assignments || [])
     .filter((assignment) => (assignment.metrics?.pending || 0) > 0 && assignment.cmid && (assignment.gradingUrl || assignment.url));
 
+  function buildAiActivityPackageEntries(activityEntries, manifestRow) {
+    const manifestCsv = '\ufeff' + ['cmid;atividade;prazo;nota_maxima;enunciado;criterios;url_atividade', manifestRow.map(csvEscape).join(';')].join('\n');
+    return [
+      { name: 'manifesto_atividade.csv', content: manifestCsv },
+      { name: 'agente-corretor-moodle-universal.md', content: `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}\n` },
+      { name: 'LEIA-ME.txt', content: 'Este pacote corresponde a uma única atividade. Antes de corrigir, leia dados_da_atividade.txt, enunciado_da_atividade.txt e criterios_de_avaliacao.txt. O arquivo envios_dos_alunos.zip contém as entregas desta atividade. Se houver aviso de dado não localizado, não invente essa informação e solicite conferência humana.' },
+      ...activityEntries,
+    ];
+  }
+
   async function downloadAllForCorrection() {
     const snapshot = MAT.state.snapshot;
     if (!snapshot) return MAT.ui.toast('Execute a análise completa antes de baixar tudo.');
@@ -108,23 +105,22 @@
     }
 
     const courseSlug = slug(snapshot.course?.name);
-    const entries = [];
-    const manifestRows = [];
-    let totalBytes = 0;
-    MAT.ui.toast(`Preparando pacote completo de ${pending.length} atividade(s). Aguarde a coleta dos enunciados e envios.`);
+    let downloadedCount = 0;
+    const failures = [];
+    MAT.ui.toast(`Preparando ${pending.length} pacote(s), um para cada atividade. Aguarde a coleta dos enunciados e envios.`);
 
-    try {
-      for (let index = 0; index < pending.length; index += 1) {
-        const assignment = pending[index];
+    for (let index = 0; index < pending.length; index += 1) {
+      const assignment = pending[index];
+      try {
         MAT.ui.toast(`Preparando ${index + 1} de ${pending.length}: ${assignment.name}`);
         const [doc, submissionsZip] = await Promise.all([
           fetchMoodleResource(buildAssignmentViewUrl(assignment), `Enunciado de ${assignment.name}`),
           fetchMoodleResource(buildDownloadAllUrl(assignment), `Entregas de ${assignment.name}`, true),
         ]);
-        totalBytes += submissionsZip.length;
-        if (totalBytes > MAX_AI_PACKAGE_BYTES) throw new Error('O pacote ultrapassou 100 MB. Baixe as atividades em grupos menores.');
+        if (submissionsZip.length > MAX_AI_SINGLE_ACTIVITY_BYTES) {
+          throw new Error(`${assignment.name}: os envios desta atividade ultrapassam o limite individual de 500 MB.`);
+        }
         const context = extractAssignmentContext(doc, assignment);
-        const folder = `${String(index + 1).padStart(2, '0')}_${assignment.cmid}_${slug(assignment.name)}`;
         const metadata = [
           `Curso ou UC: ${snapshot.course?.name || 'Não identificado'}`,
           `Atividade: ${assignment.name}`,
@@ -137,26 +133,27 @@
           '',
           context.warnings.length ? `AVISOS:\n${context.warnings.map((warning) => `- ${warning}`).join('\n')}` : 'Nenhum aviso de contexto.',
         ].join('\n');
-        entries.push(
-          { name: `${folder}/envios_dos_alunos.zip`, bytes: submissionsZip },
-          { name: `${folder}/enunciado_da_atividade.txt`, content: context.description || 'Enunciado não localizado automaticamente. Consulte o link informado em dados_da_atividade.txt antes de corrigir.' },
-          { name: `${folder}/criterios_de_avaliacao.txt`, content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
-          { name: `${folder}/dados_da_atividade.txt`, content: metadata },
-        );
-        manifestRows.push([assignment.cmid, assignment.name, context.dueText, context.gradeText, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)]);
+        const activityEntries = [
+          { name: 'envios_dos_alunos.zip', bytes: submissionsZip },
+          { name: 'enunciado_da_atividade.txt', content: context.description || 'Enunciado não localizado automaticamente. Consulte o link informado em dados_da_atividade.txt antes de corrigir.' },
+          { name: 'criterios_de_avaliacao.txt', content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
+          { name: 'dados_da_atividade.txt', content: metadata },
+        ];
+        const manifestRow = [assignment.cmid, assignment.name, context.dueText, context.gradeText, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
+        const filename = `correcao_ia_${courseSlug}_${assignment.cmid}_${slug(assignment.name)}_${new Date().toISOString().slice(0, 10)}.zip`;
+        U.downloadBlob(U.makeZipBlob(buildAiActivityPackageEntries(activityEntries, manifestRow)), filename, 'application/zip');
+        downloadedCount += 1;
+        if (index < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, 250));
+      } catch (error) {
+        failures.push(`${assignment.name}: ${error?.message || 'falha na preparação'}`);
       }
-
-      const manifestCsv = '\ufeff' + ['cmid;atividade;prazo;nota_maxima;enunciado;criterios;url_atividade', ...manifestRows.map((row) => row.map(csvEscape).join(';'))].join('\n');
-      entries.unshift(
-        { name: 'manifesto_atividades.csv', content: manifestCsv },
-        { name: 'agente-corretor-moodle-universal-lote.md', content: `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}${LOTE_SECTION}\n` },
-        { name: 'LEIA-ME.txt', content: 'Cada pasta contém o contexto da atividade e o ZIP original dos envios. Antes de corrigir, leia dados_da_atividade.txt, enunciado_da_atividade.txt e criterios_de_avaliacao.txt. Se houver aviso de dado não localizado, não invente essa informação e solicite conferência humana.' },
-      );
-      U.downloadBlob(U.makeZipBlob(entries), `pacote_correcao_ia_${courseSlug}_${new Date().toISOString().slice(0, 10)}.zip`, 'application/zip');
-      MAT.ui.toast(`Pacote completo preparado: ${pending.length} atividade(s), com enunciados, critérios disponíveis e envios.`);
-    } catch (error) {
-      MAT.ui.toast(error?.message || 'Não foi possível preparar o pacote completo para correção com IA.');
     }
+
+    if (failures.length) {
+      MAT.ui.toast(`${downloadedCount} pacote(s) baixado(s) e ${failures.length} com falha. ${failures.slice(0, 2).join(' ')}`, 'error');
+      return;
+    }
+    MAT.ui.toast(`${downloadedCount} pacote(s) preparado(s), um para cada atividade. Se o Chrome solicitar, permita vários downloads para esta página.`);
   }
 
   // -----------------------------------------------------------------------------------
