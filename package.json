@@ -1,6 +1,6 @@
 {
   "name": "assistente-ead-senai",
-  "version": "3.6.2",
+  "version": "3.6.3",
   "private": true,
   "description": "Validação local da extensão Assistente EaD SENAI",
   "scripts": {
