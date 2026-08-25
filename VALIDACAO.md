@@ -1,4 +1,4 @@
-# Validação da versão 3.6.3
+# Validação da versão 3.6.4
 
 Data: 22/08/2026
 
