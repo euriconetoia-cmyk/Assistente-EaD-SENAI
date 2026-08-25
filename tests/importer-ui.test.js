@@ -43,6 +43,14 @@ test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () 
   assert.match(styles, /border-color: #dc3545 !important/);
 });
 
+test('atualização de pendências ignora cache antigo e consulta todas as atividades', () => {
+  assert.match(source, /fetchPendingEvaluationCount\(assignment, \{ force = false \} = \{\}\)/);
+  assert.match(source, /const cached = force \? null : readCourseBadgeCache/);
+  assert.match(source, /fetchPendingEvaluationCount\(assignment, \{ force \}\)/);
+  assert.match(source, /runWithConcurrency\(toFetch, 2/);
+  assert.doesNotMatch(source, /runWithConcurrency\(toFetch\.slice\(0, 30\)/);
+});
+
 test('categoria identifica UC atual e sobreposições pelo período informado', () => {
   assert.match(source, /per\[ií\]odo/);
   assert.match(source, /function classifyCourseVigency/);
@@ -67,6 +75,11 @@ test('página inicial monta inventário e relatório geral das turmas', () => {
   assert.match(source, /Gerar relatório geral CSV/);
   assert.match(source, /relatorio_geral_turmas_/);
   assert.match(source, /neutralizeSpreadsheetFormula/);
+  assert.match(source, /perpage', '96'/);
+  assert.match(source, /function readMyCoursesPagination/);
+  assert.match(source, /for \(let page = 0; page < maxPages; page \+= 1\)/);
+  assert.match(source, /if \(!pagination\.hasNext \|\| inventory\.size === previousSize\) break/);
+  assert.doesNotMatch(source, /perpage', '1000'/);
   assert.match(styles, /\.mqi-my-courses-dashboard/);
 });
 
