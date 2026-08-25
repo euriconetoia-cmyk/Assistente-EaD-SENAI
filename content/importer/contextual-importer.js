@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 43049)
-Total output lines: 3637
-
 (() => {
   'use strict';
 
@@ -1306,7 +1303,1181 @@ Total output lines: 3637
     row.classList.remove('mqi-status-success', 'mqi-status-info', 'mqi-status-warning', 'mqi-status-danger', 'mqi-status-review', 'mqi-status-muted', 'mqi-status-neutral');
     row.classList.add(`mqi-status-${meta.tone}`);
 
-    const host = rowItem.name…13049 tokens truncated…> {
+    const host = rowItem.nameCell || row.querySelector('td') || row;
+    const badge = document.createElement('span');
+    badge.className = `mqi-row-badge mqi-row-badge--${meta.tone}`;
+    badge.textContent = meta.label;
+    const previous = host.querySelector('.mqi-row-badge');
+    if (previous) previous.remove();
+    host.appendChild(badge);
+  }
+
+  function buildImportReport({ apply = false, overrides = null } = {}) {
+    clearHighlights();
+
+    const readiness = getPageReadiness();
+    if (!readiness.isSupported) return { error: formatPageReadinessError(readiness) };
+    if (!STATE.records.length) return { error: 'Importe um arquivo CSV ou XLSX primeiro.' };
+
+    const allowFlexible = overrides?.flexMatch ?? (document.getElementById('mqi-flex-match')?.checked ?? false);
+    const overwriteGrade = overrides?.overwriteGrade ?? (document.getElementById('mqi-overwrite-grade')?.checked ?? false);
+    const overwriteFeedback = overrides?.overwriteFeedback ?? (document.getElementById('mqi-overwrite-feedback')?.checked ?? false);
+    const decimalSeparator = detectPageDecimalSeparator();
+    const maxGrade = extractPageMaxGradeNumber();
+    const moodleRows = getMoodleRows();
+
+    const report = {
+      mode: 'import',
+      apply,
+      fileName: STATE.fileName,
+      records: STATE.records.length,
+      pageRows: moodleRows.length,
+      found: [],
+      applied: [],
+      skipped: [],
+      notFound: [],
+      ambiguous: [],
+      attention: [],
+      blocking: [],
+      warnings: [...STATE.validationWarnings],
+      situationCounts: {},
+      verificationPlan: []
+    };
+
+    if (!readiness.gradeCount && STATE.records.some(record => record.nota)) {
+      report.blocking.push('A atividade não possui campo de nota para um ou mais registros.');
+    }
+    if (!readiness.feedbackCount && STATE.records.some(record => record.feedback)) {
+      report.blocking.push('A atividade não possui campo de feedback para um ou mais registros.');
+    }
+
+    for (const record of STATE.records) {
+      if (record.nota && maxGrade !== null) {
+        const numericGrade = Number(normalizeGradeForPage(record.nota, '.'));
+        if (!Number.isFinite(numericGrade) || numericGrade < 0) {
+          report.blocking.push(`${record.nome || record.studentId}: nota inválida ${record.nota}.`);
+          report.skipped.push(`${record.nome}: nota inválida`);
+          continue;
+        }
+        if (numericGrade > maxGrade) {
+          report.blocking.push(`${record.nome || record.studentId}: nota ${record.nota} acima do limite ${maxGrade}.`);
+          report.skipped.push(`${record.nome}: nota acima do limite da atividade`);
+          continue;
+        }
+      }
+
+      const result = findStudentRow(record, moodleRows, allowFlexible);
+
+      if (result.status === 'not_found') {
+        report.notFound.push(record.nome);
+        report.blocking.push(`${record.nome || record.studentId}: aluno não encontrado na página atual.`);
+        continue;
+      }
+      if (result.status === 'ambiguous') {
+        report.ambiguous.push(`${record.nome} → ${result.matches.map(item => item.name).join(' | ')}`);
+        report.blocking.push(`${record.nome || record.studentId}: aluno ambíguo na página atual.`);
+        result.matches.forEach(item => item.row.classList.add('mqi-ambiguous'));
+        continue;
+      }
+
+      const match = result.match;
+      match.row.classList.add('mqi-found');
+      if (record.situacao) {
+        markRowSituation(match, record.situacao);
+        const meta = situationMeta(record.situacao);
+        report.situationCounts[meta.label] = (report.situationCounts[meta.label] || 0) + 1;
+        if (meta.alert) report.attention.push(`${record.nome}: ${meta.label}`);
+      }
+
+      report.found.push(`${record.nome} → ${match.name}${result.method ? ` (${result.method})` : ''}`);
+
+      if (!apply) continue;
+
+      let changed = false;
+      const changedFields = [];
+      const skippedFields = [];
+      const grade = normalizeGradeForPage(record.nota, decimalSeparator);
+      let expectedGrade = null;
+      let expectedFeedback = null;
+
+      if (match.gradeInput && grade) {
+        if (overwriteGrade || !match.gradeInput.value.trim()) {
+          if (setGradeFieldValue(match.gradeInput, grade)) {
+            changed = true;
+            changedFields.push('nota');
+            expectedGrade = grade;
+          } else {
+            report.blocking.push(`${record.nome}: a nota ${grade} não existe na escala configurada nesta atividade.`);
+            skippedFields.push('nota incompatível com a escala');
+          }
+        } else {
+          skippedFields.push('nota já preenchida');
+        }
+      }
+
+      if (match.feedbackTextarea && record.feedback) {
+        if (overwriteFeedback || !match.feedbackTextarea.value.trim()) {
+          match.feedbackTextarea.value = record.feedback;
+          dispatchFieldEvents(match.feedbackTextarea);
+          changed = true;
+          changedFields.push('feedback');
+          expectedFeedback = record.feedback;
+        } else {
+          skippedFields.push('feedback já preenchido');
+        }
+      }
+
+      if (record.situacao) {
+        skippedFields.push(`situação registrada apenas no relatório: ${situationMeta(record.situacao).label}`);
+      }
+
+      if (changed) {
+        if (!record.situacao) match.row.classList.add('mqi-applied');
+        report.applied.push(`${record.nome}: ${changedFields.join(' + ')}`);
+        report.verificationPlan.push({
+          studentId: record.studentId || match.userId || '',
+          nome: record.nome || match.name,
+          moodleName: match.name,
+          expectedGrade,
+          expectedFeedback,
+        });
+      } else {
+        report.skipped.push(`${record.nome}: ${skippedFields.join(', ') || 'sem alteração aplicável'}`);
+      }
+    }
+
+    return report;
+  }
+
+  function buildBatchVerification(plan = []) {
+    const moodleRows = getMoodleRows();
+    const items = [];
+
+    for (const expected of Array.isArray(plan) ? plan : []) {
+      const result = findStudentRow(expected, moodleRows, false);
+      if (result.status !== 'found') {
+        items.push({
+          studentId: expected.studentId || '',
+          nome: expected.nome || '',
+          moodleName: '',
+          status: result.status === 'ambiguous' ? 'not_verifiable' : 'not_found',
+          grade: { expected: expected.expectedGrade ?? '', actual: '', status: expected.expectedGrade === null ? 'not_requested' : 'not_verifiable' },
+          feedback: { expected: expected.expectedFeedback ?? '', actual: '', status: expected.expectedFeedback === null ? 'not_requested' : 'not_verifiable' },
+          message: result.status === 'ambiguous' ? 'Mais de um estudante corresponde ao identificador.' : 'Estudante não localizado na releitura do Moodle.',
+        });
+        continue;
+      }
+
+      const match = result.match;
+      const comparison = S.compareSavedFields(expected, {
+        hasGradeField: Boolean(match.gradeInput),
+        actualGrade: readGradeFieldValue(match.gradeInput, match.row),
+        hasFeedbackField: Boolean(match.feedbackTextarea),
+        actualFeedback: match.feedbackTextarea?.value ?? '',
+      });
+      match.row.classList.add(comparison.status === 'confirmed' ? 'mqi-status-success' : comparison.status === 'divergent' ? 'mqi-status-danger' : 'mqi-status-warning');
+      items.push({
+        studentId: expected.studentId || match.userId || '',
+        nome: expected.nome || match.name,
+        moodleName: match.name,
+        ...comparison,
+        message: comparison.status === 'confirmed'
+          ? 'Nota e feedback solicitados foram confirmados no Moodle.'
+          : comparison.status === 'divergent'
+            ? 'Há diferença entre o CSV e o valor relido no Moodle.'
+            : 'Um dos campos não pôde ser conferido nesta página.',
+      });
+    }
+
+    const summary = items.reduce((totals, item) => {
+      totals.total += 1;
+      if (item.status === 'confirmed') totals.confirmed += 1;
+      else if (item.status === 'divergent') totals.divergent += 1;
+      else if (item.status === 'not_found') totals.notFound += 1;
+      else totals.notVerifiable += 1;
+      return totals;
+    }, { total: 0, confirmed: 0, divergent: 0, notFound: 0, notVerifiable: 0 });
+
+    return { items, summary, verifiedAt: new Date().toISOString() };
+  }
+
+  function previewImport() {
+    const report = buildImportReport({ apply: false });
+    if (report.error) return log(`<strong>Não foi possível verificar.</strong> ${escapeHtml(report.error)}`, 'error');
+    STATE.lastReport = report;
+    renderReport(report);
+  }
+
+  function requireSecondConfirmation(buttonId, message) {
+    const button = document.getElementById(buttonId);
+    if (!button) return false;
+    if (button.dataset.confirm === 'true') {
+      delete button.dataset.confirm;
+      button.textContent = buttonId === 'mqi-apply-import' ? 'Preencher página' : 'Lançar para todos';
+      return true;
+    }
+    button.dataset.confirm = 'true';
+    button.textContent = 'Confirmar preenchimento';
+    log(`<strong>Confirmação necessária.</strong> ${escapeHtml(message)} Revise a prévia e pressione o botão novamente. O formulário não será salvo automaticamente.`, 'warning');
+    window.setTimeout(() => {
+      if (button.isConnected && button.dataset.confirm === 'true') {
+        delete button.dataset.confirm;
+        button.textContent = buttonId === 'mqi-apply-import' ? 'Preencher página' : 'Lançar para todos';
+      }
+    }, 10000);
+    return false;
+  }
+
+  function applyImport() {
+    const preview = buildImportReport({ apply: false });
+    const blockers = [...STATE.validationErrors, ...(preview.blocking || [])];
+    if (preview.error) return log(`<strong>Não foi possível preencher.</strong> ${escapeHtml(preview.error)}`, 'error');
+    if (blockers.length) return log(`<strong>Lote bloqueado.</strong> Corrija antes de preencher: ${escapeHtml(blockers.slice(0, 3).join(' '))}`, 'error');
+    if (!requireSecondConfirmation('mqi-apply-import', `A prévia identificou ${preview.found.length} aluno(s).`)) return;
+    const report = buildImportReport({ apply: true });
+    if (report.error) return log(`<strong>Não foi possível preencher.</strong> ${escapeHtml(report.error)}`, 'error');
+    STATE.lastReport = report;
+    renderReport(report);
+  }
+
+  function buildBulkPayload() {
+    const scope = document.getElementById('mqi-bulk-scope')?.value || 'submitted';
+    const grade = (document.getElementById('mqi-bulk-grade')?.value || '').trim();
+    const feedback = (document.getElementById('mqi-bulk-feedback')?.value || '').trim();
+    const overwriteGrade = document.getElementById('mqi-bulk-overwrite-grade')?.checked ?? false;
+    const overwriteFeedback = document.getElementById('mqi-bulk-overwrite-feedback')?.checked ?? false;
+
+    if (!grade && !feedback) {
+      return { error: 'Informe ao menos uma nota padrão ou um feedback genérico.' };
+    }
+
+    const readiness = getPageReadiness();
+    if (grade && !readiness.gradeCount && !feedback) {
+      return { error: 'Esta atividade não possui campo de nota. Informe um feedback genérico para continuar.' };
+    }
+    if (grade && !isValidImportedGrade(grade)) {
+      return { error: 'A nota padrão informada é inválida.' };
+    }
+    const maxGrade = extractPageMaxGradeNumber();
+    if (grade && maxGrade !== null) {
+      const numericGrade = Number(normalizeGradeForPage(grade, '.'));
+      if (Number.isFinite(numericGrade) && numericGrade > maxGrade) {
+        return { error: `A nota padrão não pode ultrapassar ${maxGrade}.` };
+      }
+    }
+
+    return {
+      scope,
+      grade: readiness.gradeCount ? grade : '',
+      feedback,
+      overwriteGrade,
+      overwriteFeedback
+    };
+  }
+
+  function buildBulkReport({ apply = false } = {}) {
+    clearHighlights();
+
+    const readiness = getPageReadiness();
+    if (!readiness.isSupported) return { error: formatPageReadinessError(readiness) };
+
+    const payload = buildBulkPayload();
+    if (payload.error) return { error: payload.error };
+
+    const decimalSeparator = detectPageDecimalSeparator();
+    const allRows = getMoodleRows();
+    const targets = payload.scope === 'submitted' ? allRows.filter(item => item.hasSubmission) : allRows;
+    if (!targets.length) return { error: 'Nenhum aluno elegível foi encontrado para o lançamento em massa.' };
+
+    const report = {
+      mode: 'bulk',
+      apply,
+      scope: payload.scope,
+      totalTargets: targets.length,
+      applied: [],
+      skipped: [],
+      attention: [],
+      situationCounts: {},
+    };
+
+    for (const item of targets) {
+      item.row.classList.add('mqi-found');
+      let changed = false;
+      const changedFields = [];
+      const skippedFields = [];
+
+      if (payload.grade && item.gradeInput) {
+        const normalizedGrade = normalizeGradeForPage(payload.grade, decimalSeparator);
+        if (payload.overwriteGrade || !item.gradeInput.value.trim()) {
+          const gradeAccepted = !apply || setGradeFieldValue(item.gradeInput, normalizedGrade);
+          if (gradeAccepted) {
+            changed = true;
+            changedFields.push('nota');
+          } else {
+            skippedFields.push('nota incompatível com a escala');
+            report.attention.push(`${item.name}: a nota ${normalizedGrade} não existe na escala da atividade.`);
+          }
+        } else {
+          skippedFields.push('nota já preenchida');
+        }
+      }
+
+      if (payload.feedback && item.feedbackTextarea) {
+        const message = payload.feedback.replace(/\{\s*nome\s*\}/gi, item.name.split(' ')[0]);
+        if (payload.overwriteFeedback || !item.feedbackTextarea.value.trim()) {
+          if (apply) {
+            item.feedbackTextarea.value = message;
+            dispatchFieldEvents(item.feedbackTextarea);
+          }
+          changed = true;
+          changedFields.push('feedback');
+        } else {
+          skippedFields.push('feedback já preenchido');
+        }
+      }
+
+      if (changed) {
+        if (apply) item.row.classList.add('mqi-applied');
+        report.applied.push(`${item.name}: ${changedFields.join(' + ')}`);
+      } else {
+        report.skipped.push(`${item.name}: ${skippedFields.join(', ') || 'sem alteração aplicável'}`);
+      }
+    }
+
+    return report;
+  }
+
+  function previewBulkLaunch() {
+    const report = buildBulkReport({ apply: false });
+    if (report.error) return log(`<strong>Não foi possível verificar.</strong> ${escapeHtml(report.error)}`, 'error');
+    STATE.lastReport = report;
+    renderReport(report);
+  }
+
+  function applyBulkLaunch() {
+    const preview = buildBulkReport({ apply: false });
+    if (preview.error) return log(`<strong>Não foi possível lançar.</strong> ${escapeHtml(preview.error)}`, 'error');
+    if (!requireSecondConfirmation('mqi-apply-bulk', `A prévia identificou ${preview.totalTargets} aluno(s).`)) return;
+    const report = buildBulkReport({ apply: true });
+    if (report.error) return log(`<strong>Não foi possível lançar.</strong> ${escapeHtml(report.error)}`, 'error');
+    STATE.lastReport = report;
+    renderReport(report);
+  }
+
+  function reportTone(report) {
+    if (report.notFound?.length || report.ambiguous?.length) return 'warning';
+    if (report.attention?.length) return 'warning';
+    if (report.mode === 'import' && Object.keys(report.situationCounts || {}).length) return 'info';
+    return report.apply ? 'success' : 'info';
+  }
+
+  function renderReport(report) {
+    const tone = reportTone(report);
+    const scopeLabel = report.mode === 'bulk'
+      ? (report.scope === 'submitted' ? 'Todos com envio' : 'Todos os alunos exibidos')
+      : `Arquivo: ${escapeHtml(report.fileName)}`;
+
+    const chips = [];
+    if (report.mode === 'import') {
+      chips.push(`<span class="mqi-chip mqi-chip--info">Registros: ${report.records}</span>`);
+      chips.push(`<span class="mqi-chip mqi-chip--info">Encontrados: ${report.found.length}</span>`);
+      if (report.apply) chips.push(`<span class="mqi-chip mqi-chip--success">Preenchidos: ${report.applied.length}</span>`);
+      if (report.ambiguous.length) chips.push(`<span class="mqi-chip mqi-chip--warning">Ambíguos: ${report.ambiguous.length}</span>`);
+      if (report.notFound.length) chips.push(`<span class="mqi-chip mqi-chip--warning">Não encontrados: ${report.notFound.length}</span>`);
+    } else {
+      chips.push(`<span class="mqi-chip mqi-chip--info">Alvos: ${report.totalTargets}</span>`);
+      chips.push(`<span class="mqi-chip mqi-chip--success">Atingidos: ${report.applied.length}</span>`);
+      if (report.skipped.length) chips.push(`<span class="mqi-chip mqi-chip--warning">Ignorados: ${report.skipped.length}</span>`);
+    }
+
+    Object.entries(report.situationCounts || {}).forEach(([label, count]) => {
+      const meta = SITUATIONS.find(item => item.label === label) || situationMeta('');
+      chips.push(`<span class="mqi-chip mqi-chip--${meta.tone}">${escapeHtml(label)}: ${count}</span>`);
+    });
+
+    const sections = [];
+    if (report.warnings?.length) {
+      sections.push(`<div class="mqi-report-list"><div><strong>Avisos do arquivo</strong></div><ul>${report.warnings.slice(0, 6).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`);
+    }
+    if (report.attention?.length) {
+      sections.push(`<div class="mqi-report-list"><div><strong>Correções com atenção</strong></div><ul>${report.attention.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`);
+    }
+    if (report.ambiguous?.length) {
+      sections.push(`<div class="mqi-report-list"><div><strong>Nomes ambíguos</strong></div><ul>${report.ambiguous.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`);
+    }
+    if (report.notFound?.length) {
+      sections.push(`<div class="mqi-report-list"><div><strong>Não encontrados</strong></div><ul>${report.notFound.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`);
+    }
+    if (report.skipped?.length) {
+      sections.push(`<div class="mqi-report-list"><div><strong>Ignorados</strong></div><ul>${report.skipped.slice(0, 8).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`);
+    }
+
+    const actionText = report.apply
+      ? 'Preenchimento concluído. Revise a tabela e clique no botão nativo do Moodle para salvar.'
+      : 'Verificação concluída. Nenhum campo foi salvo ainda.';
+
+    log(`
+      <div class="mqi-report-title"><strong>${report.mode === 'bulk' ? 'Lançamento em massa' : 'Importação de arquivo'}</strong> · ${scopeLabel}</div>
+      <div class="mqi-report-chips">${chips.join('')}</div>
+      <div class="mqi-report-note">${escapeHtml(actionText)}</div>
+      ${sections.join('')}
+    `, tone);
+  }
+
+  async function parseXlsxFile(file) {
+    const buffer = await file.arrayBuffer();
+    const files = await unzipXlsx(buffer);
+
+    const sharedStrings = parseSharedStrings(files['xl/sharedStrings.xml']);
+    const workbookRels = parseWorkbookRels(files['xl/_rels/workbook.xml.rels']);
+    const sheetPath = firstSheetPath(files['xl/workbook.xml'], workbookRels) || 'xl/worksheets/sheet1.xml';
+    const sheetXml = files[sheetPath] || files['xl/worksheets/sheet1.xml'];
+
+    if (!sheetXml) throw new Error('Não foi possível localizar a primeira planilha no XLSX.');
+    return parseSheetXml(sheetXml, sharedStrings);
+  }
+
+  async function unzipXlsx(arrayBuffer) {
+    const view = new DataView(arrayBuffer);
+    const bytes = new Uint8Array(arrayBuffer);
+    const eocdOffset = findEndOfCentralDirectory(view);
+    if (eocdOffset < 0) throw new Error('Arquivo XLSX inválido: diretório ZIP não encontrado.');
+
+    const totalEntries = view.getUint16(eocdOffset + 10, true);
+    const centralOffset = view.getUint32(eocdOffset + 16, true);
+    const files = {};
+    let totalUncompressedBytes = 0;
+    let ptr = centralOffset;
+
+    for (let i = 0; i < totalEntries; i++) {
+      if (view.getUint32(ptr, true) !== 0x02014b50) break;
+      const method = view.getUint16(ptr + 10, true);
+      const compressedSize = view.getUint32(ptr + 20, true);
+      const uncompressedSize = view.getUint32(ptr + 24, true);
+      const fileNameLength = view.getUint16(ptr + 28, true);
+      const extraLength = view.getUint16(ptr + 30, true);
+      const commentLength = view.getUint16(ptr + 32, true);
+      const localHeaderOffset = view.getUint32(ptr + 42, true);
+      const fileName = decodeUtf8(bytes.slice(ptr + 46, ptr + 46 + fileNameLength));
+
+      if (!fileName.endsWith('/')) {
+        if (uncompressedSize > MAX_XLSX_UNCOMPRESSED_BYTES || totalUncompressedBytes + uncompressedSize > MAX_XLSX_UNCOMPRESSED_BYTES) {
+          throw new Error('O XLSX excede o limite de 12 MB após descompactação.');
+        }
+        const localNameLength = view.getUint16(localHeaderOffset + 26, true);
+        const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+        const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+        let contentBytes;
+
+        if (method === 0) {
+          contentBytes = compressed;
+        } else if (method === 8) {
+          contentBytes = await inflateRaw(compressed);
+        } else {
+          throw new Error(`Método de compressão XLSX não suportado: ${method}`);
+        }
+
+        files[fileName] = decodeUtf8(contentBytes);
+        totalUncompressedBytes += contentBytes.byteLength;
+        if (totalUncompressedBytes > MAX_XLSX_UNCOMPRESSED_BYTES) {
+          throw new Error('O XLSX excede o limite de 12 MB após descompactação.');
+        }
+      }
+
+      ptr += 46 + fileNameLength + extraLength + commentLength;
+    }
+
+    return files;
+  }
+
+  function findEndOfCentralDirectory(view) {
+    const min = Math.max(0, view.byteLength - 65557);
+    for (let i = view.byteLength - 22; i >= min; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) return i;
+    }
+    return -1;
+  }
+
+  async function inflateRaw(bytes) {
+    if (!('DecompressionStream' in window)) {
+      throw new Error('Este navegador não oferece DecompressionStream. Use CSV ou Chrome/Edge atualizado.');
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    const result = await new Response(stream).arrayBuffer();
+    return new Uint8Array(result);
+  }
+
+  function decodeUtf8(bytes) {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  function parseSharedStrings(xml) {
+    if (!xml) return [];
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    return [...doc.querySelectorAll('si')].map(si => [...si.querySelectorAll('t')].map(t => t.textContent || '').join(''));
+  }
+
+  function parseWorkbookRels(xml) {
+    if (!xml) return {};
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const rels = {};
+    [...doc.querySelectorAll('Relationship')].forEach(rel => {
+      rels[rel.getAttribute('Id')] = rel.getAttribute('Target');
+    });
+    return rels;
+  }
+
+  function firstSheetPath(workbookXml, rels) {
+    if (!workbookXml) return null;
+    const doc = new DOMParser().parseFromString(workbookXml, 'application/xml');
+    const sheet = doc.querySelector('sheet');
+    if (!sheet) return null;
+    const relId = sheet.getAttribute('r:id') || sheet.getAttribute('id');
+    const target = rels[relId];
+    if (!target) return null;
+    return target.startsWith('xl/') ? target : `xl/${target.replace(/^\//, '')}`;
+  }
+
+  function parseSheetXml(xml, sharedStrings) {
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const rows = [];
+
+    [...doc.querySelectorAll('sheetData row')].forEach(rowEl => {
+      const row = [];
+      [...rowEl.querySelectorAll('c')].forEach(cell => {
+        const ref = cell.getAttribute('r') || '';
+        const colIndex = columnIndexFromCellRef(ref);
+        const type = cell.getAttribute('t');
+        let value = '';
+
+        if (type === 'inlineStr') {
+          value = [...cell.querySelectorAll('is t')].map(t => t.textContent || '').join('');
+        } else {
+          const raw = cell.querySelector('v')?.textContent || '';
+          value = type === 's' ? (sharedStrings[Number(raw)] || '') : raw;
+        }
+        row[colIndex] = value;
+      });
+
+      rows.push(row.map(cell => cell ?? ''));
+    });
+
+    return rows.filter(row => row.some(cell => String(cell).trim() !== ''));
+  }
+
+  function columnIndexFromCellRef(ref) {
+    const letters = (ref.match(/[A-Z]+/) || ['A'])[0];
+    let index = 0;
+    for (const letter of letters) {
+      index = index * 26 + (letter.charCodeAt(0) - 64);
+    }
+    return index - 1;
+  }
+
+  function isCourseViewPage() {
+    const url = new URL(window.location.href);
+    return /\/course\/view\.php$/.test(url.pathname) && /^\d+$/.test(url.searchParams.get('id') || '');
+  }
+
+  function getAssignmentIdFromUrl(href) {
+    try {
+      const url = new URL(href, window.location.href);
+      if (!/\/mod\/assign\/view\.php$/.test(url.pathname)) return '';
+      return url.searchParams.get('id') || '';
+    } catch {
+      return '';
+    }
+  }
+
+  function collectCourseAssignments(root = document) {
+    const cards = [...root.querySelectorAll('li.activity.assign.modtype_assign, li.activity.modtype_assign')];
+    const found = new Map();
+
+    cards.forEach(card => {
+      const link = card.querySelector('.activitytitle.modtype_assign a[href*="/mod/assign/view.php"], a[href*="/mod/assign/view.php"]');
+      if (!link) return;
+      const assignmentId = getAssignmentIdFromUrl(link.href) || card.dataset.id || '';
+      if (!assignmentId || found.has(assignmentId)) return;
+
+      const iconHost = card.querySelector('.activity-icon.activityiconcontainer, .activityiconcontainer, .activity-icon')
+        || card.querySelector('.activity-name-area, .activityname')
+        || card;
+      const badgeHost = card.querySelector('.activity-grid')
+        || card.querySelector('.activity-item')
+        || card;
+      const name = extractCourseActivityName(card, link);
+      found.set(assignmentId, { assignmentId, card, link, iconHost, badgeHost, name });
+    });
+
+    return [...found.values()];
+  }
+
+  function extractCourseActivityName(card, link) {
+    const instance = card.querySelector('.instancename');
+    if (instance) {
+      const clone = instance.cloneNode(true);
+      clone.querySelectorAll('.accesshide, .visually-hidden, .sr-only').forEach(node => node.remove());
+      const text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text) return text;
+    }
+    return (link.textContent || '').replace(/\s+/g, ' ').trim() || `Atividade ${getAssignmentIdFromUrl(link.href)}`;
+  }
+
+  function getCourseBadgeCacheKey(assignmentId) {
+    return `mqi:pending:${window.location.origin}:${assignmentId}`;
+  }
+
+  function currentMoodleOrigin() {
+    return new URL(window.location.href).origin;
+  }
+
+  function readCourseBadgeCache(assignmentId) {
+    try {
+      const raw = sessionStorage.getItem(getCourseBadgeCacheKey(assignmentId));
+      if (!raw) return null;
+      const cached = JSON.parse(raw);
+      if (!Number.isFinite(cached?.count) || !Number.isFinite(cached?.timestamp)) return null;
+      if (Date.now() - cached.timestamp > COURSE_BADGE_CACHE_TTL) return null;
+      // Entradas antigas guardavam apenas o número. Um zero legado não pode
+      // continuar sendo exibido como ausência confirmada de pendências.
+      return {
+        count: cached.count,
+        requiresVerification: cached.requiresVerification ?? cached.count === 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCourseBadgeCache(assignmentId, result) {
+    try {
+      sessionStorage.setItem(getCourseBadgeCacheKey(assignmentId), JSON.stringify({
+        count: result.count,
+        requiresVerification: Boolean(result.requiresVerification),
+        timestamp: Date.now(),
+      }));
+    } catch {
+      // O cache é apenas uma otimização; falhas não impedem o recurso.
+    }
+  }
+
+  function clearCourseBadgeCache(assignments = collectCourseAssignments()) {
+    assignments.forEach(({ assignmentId }) => {
+      try {
+        sessionStorage.removeItem(getCourseBadgeCacheKey(assignmentId));
+      } catch {
+        // Ignora armazenamento indisponível.
+      }
+      COURSE_BADGE_STATE.results.delete(assignmentId);
+    });
+  }
+
+  function ensurePendingBadge(assignment, state = 'loading', count = null, message = '') {
+    const { iconHost, badgeHost, assignmentId, name } = assignment;
+    if (!(badgeHost instanceof Element)) return null;
+
+    badgeHost.classList.add('mqi-pending-badge-layer');
+    if (iconHost instanceof Element) iconHost.classList.add('mqi-pending-icon-reference');
+
+    let badge = assignment.card.querySelector(`.mqi-pending-badge[data-assignment-id="${CSS.escape(assignmentId)}"]`);
+
+    if (state === 'empty') {
+      badge?.remove();
+      badgeHost.classList.remove('mqi-pending-badge-layer');
+      iconHost?.classList?.remove('mqi-pending-icon-reference');
+      assignment.card.classList.remove('mqi-assignment-has-pending');
+      delete assignment.card.dataset.mqiPendingCount;
+      return null;
+    }
+
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'mqi-pending-badge';
+      badge.dataset.assignmentId = assignmentId;
+      badge.setAttribute('aria-hidden', 'true');
+    }
+    if (badge.parentElement !== badgeHost) badgeHost.appendChild(badge);
+
+    badge.className = `mqi-pending-badge mqi-pending-badge--${state}`;
+    if (state === 'pending') {
+      const label = count > 99 ? '99+' : String(count);
+      badge.textContent = label;
+      badge.title = `${count} ${count === 1 ? 'envio precisa' : 'envios precisam'} de avaliação em ${name}`;
+      assignment.card.classList.add('mqi-assignment-has-pending');
+      assignment.card.dataset.mqiPendingCount = String(count);
+    } else if (state === 'verify') {
+      badge.textContent = '?';
+      badge.title = message || `O resumo de ${name} informa zero pendências, mas exige conferência individual`;
+      assignment.card.classList.remove('mqi-assignment-has-pending');
+      delete assignment.card.dataset.mqiPendingCount;
+    } else if (state === 'error') {
+      badge.textContent = '!';
+      badge.title = message || `Não foi possível consultar ${name}`;
+      assignment.card.classList.remove('mqi-assignment-has-pending');
+      delete assignment.card.dataset.mqiPendingCount;
+    } else {
+      badge.textContent = '…';
+      badge.title = `Consultando correções pendentes de ${name}`;
+      assignment.card.classList.remove('mqi-assignment-has-pending');
+      delete assignment.card.dataset.mqiPendingCount;
+    }
+    return badge;
+  }
+
+  function ensureBulkImportLink(assignment) {
+    if (!(assignment.badgeHost instanceof Element)) return null;
+    let link = assignment.card.querySelector(`.mqi-assignment-import[data-assignment-id="${CSS.escape(assignment.assignmentId)}"]`);
+    if (!link) {
+      link = document.createElement('a');
+      link.className = 'mqi-assignment-import';
+      link.dataset.assignmentId = assignment.assignmentId;
+      link.textContent = 'Importar notas';
+      link.title = `Abrir correção rápida de ${assignment.name}`;
+      link.setAttribute('aria-label', link.title);
+      assignment.badgeHost.appendChild(link);
+    }
+    link.href = buildAssignmentImportUrl(assignment);
+    return link;
+  }
+
+  function isPendingEvaluationLabel(label) {
+    return PENDING_EVALUATION_LABELS.includes(label)
+      || /^(?:envios?|entregas?|submissoes?)?\s*(?:que\s+)?(?:precisa(?:m)?|necessita(?:m)?|requer(?:em)?)\s+(?:de\s+)?avaliacao$/.test(label);
+  }
+
+  function parsePendingEvaluationCount(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const rows = [...doc.querySelectorAll('.gradingsummarytable tr, .submissionstatustable tr, .grading-summary tr, [data-region="grading-summary"] tr, table.generaltable tr, dl > div')];
+
+    for (const row of rows) {
+      const cells = [...row.querySelectorAll(':scope > th, :scope > td, :scope > dt, :scope > dd')];
+      const heading = cells[0] || row.querySelector('th, td:first-child, dt');
+      const label = normalizeText(heading?.textContent || '');
+      if (!isPendingEvaluationLabel(label)) continue;
+
+      const valueCell = cells[1] || row.querySelector('td:last-child, dd:last-child');
+      const valueText = (valueCell?.textContent || '').replace(/\s+/g, ' ').trim();
+      const match = valueText.match(/\d{1,3}(?:[.\s]\d{3})*|\d+/);
+      if (!match) return null;
+      const value = Number.parseInt(match[0].replace(/[.\s]/g, ''), 10);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    return null;
+  }
+
+  async function fetchPendingEvaluationCount(assignment) {
+    const cached = readCourseBadgeCache(assignment.assignmentId);
+    if (cached !== null) return cached;
+
+    if (COURSE_BADGE_STATE.inFlight.has(assignment.assignmentId)) {
+      return COURSE_BADGE_STATE.inFlight.get(assignment.assignmentId);
+    }
+
+    const request = (async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(assignment.link.href, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+          redirect: 'follow',
+          signal: controller.signal,
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml',
+          },
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const finalUrl = new URL(response.url, window.location.href);
+        if (finalUrl.origin !== currentMoodleOrigin()) throw new Error('Redirecionamento para domínio não autorizado');
+
+        const html = await response.text();
+        if (/\/login\//.test(finalUrl.pathname) || (/name=["']username["']/i.test(html) && /name=["']password["']/i.test(html))) {
+          throw new Error('Sessão do Moodle expirada');
+        }
+
+        const count = parsePendingEvaluationCount(html);
+        if (count === null) throw new Error('Campo “Precisa de avaliação” não encontrado');
+
+        const result = { count, requiresVerification: count === 0 };
+        writeCourseBadgeCache(assignment.assignmentId, result);
+        return result;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    })();
+
+    COURSE_BADGE_STATE.inFlight.set(assignment.assignmentId, request);
+    try {
+      return await request;
+    } finally {
+      COURSE_BADGE_STATE.inFlight.delete(assignment.assignmentId);
+    }
+  }
+
+  function placePendingSummaryAtTop(main, summary) {
+    const marker = main.querySelector('#maincontent') || document.querySelector('#maincontent');
+    if (marker?.parentElement) {
+      marker.insertAdjacentElement('afterend', summary);
+      return;
+    }
+
+    const notifications = main.querySelector(':scope > .notifications, .notifications');
+    if (notifications?.parentElement) {
+      notifications.insertAdjacentElement('afterend', summary);
+      return;
+    }
+
+    main.prepend(summary);
+  }
+
+  function buildAssignmentImportUrl(assignment) {
+    const url = new URL(assignment.link.href, window.location.href);
+    url.search = '';
+    url.searchParams.set('id', assignment.assignmentId);
+    url.searchParams.set('action', 'grading');
+    return url.href;
+  }
+
+  function pendingSubmissionRows(doc) {
+    const rows = [...doc.querySelectorAll('table#submissions tbody tr, tr[id^="mod_assign_grading-"]')];
+    return rows.map((row) => {
+      const fileLinks = [...row.querySelectorAll('a[href*="assignsubmission_file"], a[href*="pluginfile.php"]')]
+        .filter((link) => {
+          try { return new URL(link.href, window.location.href).origin === currentMoodleOrigin(); } catch { return false; }
+        });
+      const nameCell = row.querySelector('td.username, td[class~="username"], .cell.username');
+      const name = sanitizeDownloadPathSegment(extractStudentName(nameCell), 'Aluno sem identificação');
+      const statusNodes = [...row.querySelectorAll('td.status, td[class~="status"], td.submissionstatus, td[class*="submissionstatus"], .cell.status, [data-region="submission-status"]')];
+      const status = normalizeText((statusNodes.length ? statusNodes : [row]).map((node) => node.textContent || '').join(' '));
+      const hasGrade = getGradeInputs(row).some((input) => {
+        const value = String(input.value || '').trim();
+        return value && value !== '-1' && value !== '-';
+      });
+      const hasFeedback = getFeedbackTextareas(row).some((field) => String(field.value || '').trim());
+      return {
+        name,
+        fileLinks,
+        pending: S.isPendingSubmission({ status, fileCount: fileLinks.length, hasGrade, hasFeedback }),
+      };
+    }).filter((row) => row.pending);
+  }
+
+  async function collectAssignmentPendingFiles(assignment, expectedPending) {
+    const students = [];
+    const seen = new Set();
+    const pageSize = 500;
+    const pages = Math.max(1, Math.ceil(expectedPending / pageSize));
+    let sawAnyGradingField = false;
+    for (let page = 0; page < pages; page += 1) {
+      const { doc } = await fetchHtmlDocument(buildAssignmentGradingUrl(assignment, page, pageSize), `Avaliação ${assignment.name}`);
+      if (!sawAnyGradingField) {
+        sawAnyGradingField = doc.querySelectorAll('input[id^="quickgrade_"], input[name^="quickgrade_"], textarea[id^="quickgrade_comments_"], textarea[name^="quickgrade_comments_"]').length > 0;
+      }
+      const rows = pendingSubmissionRows(doc);
+      rows.forEach((row, index) => {
+        const key = `${row.name}:${index}:${row.fileLinks.map((link) => link.href).join('|')}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          students.push(row);
+        }
+      });
+      if (rows.length < pageSize) break;
+    }
+    if (expectedPending > 0 && !sawAnyGradingField) {
+      throw new Error(`${assignment.name}: não foi possível habilitar a "Avaliação rápida" automaticamente ao consultar esta atividade, então a contagem de pendências não pôde ser confirmada com segurança. Abra a atividade, marque "Avaliação rápida" manualmente e tente novamente.`);
+    }
+    if (students.length !== expectedPending) {
+      throw new Error(`${assignment.name}: a tela de avaliação retornou ${students.length} pendência(s), mas o resumo informa ${expectedPending}. Atualize a análise e confira a atividade.`);
+    }
+    if (students.some((student) => !student.fileLinks.length)) {
+      throw new Error(`${assignment.name}: há entrega pendente sem arquivo para baixar. Abra a atividade para conferir.`);
+    }
+    return students.flatMap((student) => student.fileLinks.map((link, index) => ({
+      assignment: sanitizeDownloadPathSegment(assignment.name, `Atividade ${assignment.assignmentId}`),
+      student: student.name,
+      index,
+      link,
+    })));
+  }
+
+  const crcTable = (() => {
+    const table = new Uint32Array(256);
+    for (let index = 0; index < 256; index += 1) {
+      let value = index;
+      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+      table[index] = value >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    let value = 0xffffffff;
+    for (const byte of bytes) value = (value >>> 8) ^ crcTable[(value ^ byte) & 0xff];
+    return (value ^ 0xffffffff) >>> 0;
+  }
+
+  function writeUint16(target, offset, value) {
+    target[offset] = value & 0xff;
+    target[offset + 1] = (value >>> 8) & 0xff;
+  }
+
+  function writeUint32(target, offset, value) {
+    writeUint16(target, offset, value & 0xffff);
+    writeUint16(target, offset + 2, value >>> 16);
+  }
+
+  function zipDateTime(date = new Date()) {
+    const year = Math.max(1980, date.getFullYear());
+    return {
+      date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+      time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+    };
+  }
+
+  function makeZipParts(entries) {
+    const encoder = new TextEncoder();
+    const stamp = zipDateTime();
+    let offset = 0;
+    const local = [];
+    const central = [];
+    entries.forEach((entry) => {
+      const name = encoder.encode(entry.name);
+      const checksum = crc32(entry.bytes);
+      const header = new Uint8Array(30 + name.length);
+      writeUint32(header, 0, 0x04034b50);
+      writeUint16(header, 4, 20);
+      writeUint16(header, 6, 0x0800);
+      writeUint16(header, 8, 0);
+      writeUint16(header, 10, stamp.time);
+      writeUint16(header, 12, stamp.date);
+      writeUint32(header, 14, checksum);
+      writeUint32(header, 18, entry.bytes.length);
+      writeUint32(header, 22, entry.bytes.length);
+      writeUint16(header, 26, name.length);
+      header.set(name, 30);
+      local.push(header, entry.bytes);
+
+      const directory = new Uint8Array(46 + name.length);
+      writeUint32(directory, 0, 0x02014b50);
+      writeUint16(directory, 4, 20);
+      writeUint16(directory, 6, 20);
+      writeUint16(directory, 8, 0x0800);
+      writeUint16(directory, 10, 0);
+      writeUint16(directory, 12, stamp.time);
+      writeUint16(directory, 14, stamp.date);
+      writeUint32(directory, 16, checksum);
+      writeUint32(directory, 20, entry.bytes.length);
+      writeUint32(directory, 24, entry.bytes.length);
+      writeUint16(directory, 28, name.length);
+      writeUint32(directory, 42, offset);
+      directory.set(name, 46);
+      central.push(directory);
+      offset += header.length + entry.bytes.length;
+    });
+    const centralLength = central.reduce((sum, entry) => sum + entry.length, 0);
+    const end = new Uint8Array(22);
+    writeUint32(end, 0, 0x06054b50);
+    writeUint16(end, 8, entries.length);
+    writeUint16(end, 10, entries.length);
+    writeUint32(end, 12, centralLength);
+    writeUint32(end, 16, offset);
+    return [...local, ...central, end];
+  }
+
+  async function fetchPendingFileBytes(file) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 120000);
+    try {
+      const response = await fetch(file.link.href, {
+        credentials: 'include',
+        cache: 'no-store',
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Não foi possível baixar um arquivo de ${file.student} (HTTP ${response.status}).`);
+      const finalUrl = new URL(response.url, window.location.href);
+      if (finalUrl.origin !== currentMoodleOrigin() || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado ao baixar arquivos.');
+      return new Uint8Array(await response.arrayBuffer());
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error(`O download de um arquivo de ${file.student} excedeu 2 minutos.`);
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  async function downloadCoursePendingFiles() {
+    if (COURSE_BADGE_STATE.isDownloading) return;
+    const pendingAssignments = COURSE_BADGE_STATE.lastAssignments
+      .map((assignment) => ({ assignment, result: COURSE_BADGE_STATE.results.get(assignment.assignmentId) }))
+      .filter(({ result }) => Number.isFinite(result?.count) && result.count > 0);
+    if (!pendingAssignments.length) return;
+
+    COURSE_BADGE_STATE.isDownloading = true;
+    COURSE_BADGE_STATE.downloadError = '';
+    updateCoursePendingSummary(COURSE_BADGE_STATE.lastAssignments);
+    try {
+      const files = [];
+      for (const { assignment, result } of pendingAssignments) {
+        const found = await collectAssignmentPendingFiles(assignment, result.count);
+        files.push(...found);
+      }
+      if (files.length > MAX_BATCH_PENDING_FILES) throw new Error(`O pacote tem ${files.length} arquivos; o limite seguro é ${MAX_BATCH_PENDING_FILES}. Baixe por atividade.`);
+
+      let downloadedBytes = 0;
+      const entries = [];
+      const usedNames = new Set();
+      for (const file of files) {
+        const bytes = await fetchPendingFileBytes(file);
+        downloadedBytes += bytes.length;
+        if (downloadedBytes > MAX_BATCH_PENDING_BYTES) throw new Error('O pacote excede o limite seguro de 50 MB. Baixe por atividade.');
+        const originalName = sanitizeDownloadPathSegment(file.link.textContent || `arquivo-${file.index + 1}`, `arquivo-${file.index + 1}`);
+        let name = `${file.assignment}/${file.student}${file.index ? ` - ${file.index + 1}` : ''} - ${originalName}`;
+        let duplicate = 2;
+        while (usedNames.has(name)) name = `${file.assignment}/${file.student} - ${duplicate++} - ${originalName}`;
+        usedNames.add(name);
+        entries.push({ name, bytes });
+      }
+
+      const courseId = new URL(window.location.href).searchParams.get('id') || 'curso';
+      const objectUrl = URL.createObjectURL(new Blob(makeZipParts(entries), { type: 'application/zip' }));
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `atividades_pendentes_curso_${courseId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
+    } catch (error) {
+      COURSE_BADGE_STATE.downloadError = error?.message || 'Não foi possível preparar o pacote de atividades pendentes.';
+    } finally {
+      COURSE_BADGE_STATE.isDownloading = false;
+      updateCoursePendingSummary(COURSE_BADGE_STATE.lastAssignments);
+    }
+  }
+
+  function ensureCoursePendingSummary() {
+    let summary = document.getElementById('mqi-course-pending-summary');
+    if (summary) return summary;
+
+    const main = document.querySelector('[role="main"]') || document.querySelector('#region-main') || document.body;
+    summary = document.createElement('div');
+    summary.id = 'mqi-course-pending-summary';
+    summary.className = 'mqi-course-pending-summary is-loading';
+    summary.innerHTML = `
+      <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
+      <span class="mqi-course-pending-summary__text">Consultando atividades que precisam de avaliação…</span>
+        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__download" title="Baixar arquivos das pendências confirmadas" aria-label="Baixar arquivos das pendências confirmadas" disabled>Baixar atividades</button><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens">↻</button></span>
+    `;
+
+    placePendingSummaryAtTop(main, summary);
+
+    summary.querySelector('.mqi-course-pending-summary__refresh')?.addEventListener('click', () => {
+      clearCourseBadgeCache();
+      scanCoursePendingCorrections({ force: true });
+    });
+    summary.querySelector('.mqi-course-pending-summary__download')?.addEventListener('click', downloadCoursePendingFiles);
+    summary.querySelector('.mqi-course-pending-summary__import')?.addEventListener('click', () => {
+      if (!globalThis.MAT?.state?.snapshot) {
+        globalThis.MAT?.ui?.openPanel?.();
+        globalThis.MAT?.ui?.toast?.('Atualize a análise do curso antes de importar as notas.');
+        return;
+      }
+      if (typeof globalThis.MAT?.batchGrading?.openModal !== 'function') {
+        globalThis.MAT?.ui?.toast?.('O importador em lote ainda não está disponível. Recarregue a página e tente novamente.');
+        return;
+      }
+      globalThis.MAT.batchGrading.openModal();
+    });
+    return summary;
+  }
+
+  function updateCoursePendingSummary(assignments, errorCount = 0) {
+    const summary = ensureCoursePendingSummary();
+    const text = summary.querySelector('.mqi-course-pending-summary__text');
+    const downloadButton = summary.querySelector('.mqi-course-pending-summary__download');
+    const importButton = summary.querySelector('.mqi-course-pending-summary__import');
+    COURSE_BADGE_STATE.lastAssignments = assignments;
+    const results = assignments
+      .map(item => COURSE_BADGE_STATE.results.get(item.assignmentId))
+      .filter(result => Number.isFinite(result?.count));
+    const totalPending = results.reduce((sum, result) => sum + result.count, 0);
+    const activitiesPending = results.filter(result => result.count > 0).length;
+    const activitiesUnverified = results.filter(result => result.requiresVerification).length;
+    const stillLoading = assignments.some(item => {
+      const hasResult = Number.isFinite(COURSE_BADGE_STATE.results.get(item.assignmentId)?.count);
+      const hasLoadingBadge = Boolean(item.iconHost?.querySelector?.('.mqi-pending-badge--loading'));
+      return !hasResult && hasLoadingBadge;
+    }) || assignments.some(item => COURSE_BADGE_STATE.inFlight.has(item.assignmentId));
+
+    summary.classList.toggle('is-loading', stillLoading);
+    summary.classList.toggle('has-pending', totalPending > 0);
+    summary.classList.toggle('is-clear', !stillLoading && totalPending === 0 && errorCount === 0 && activitiesUnverified === 0);
+    summary.classList.toggle('has-error', errorCount > 0 || activitiesUnverified > 0 || Boolean(COURSE_BADGE_STATE.downloadError));
+    if (downloadButton) {
+      downloadButton.disabled = stillLoading || totalPending === 0 || COURSE_BADGE_STATE.isDownloading;
+      downloadButton.classList.toggle('is-busy', COURSE_BADGE_STATE.isDownloading);
+      downloadButton.textContent = COURSE_BADGE_STATE.isDownloading ? 'Preparando ZIP…' : 'Baixar atividades';
+      downloadButton.title = totalPending > 0
+        ? `Baixar os arquivos de ${totalPending} ${totalPending === 1 ? 'envio pendente confirmado' : 'envios pendentes confirmados'} em ZIP`
+        : 'Não há pendências confirmadas para baixar';
+      downloadButton.setAttribute('aria-label', downloadButton.title);
+    }
+    if (importButton) {
+      const importerAvailable = typeof globalThis.MAT?.batchGrading?.openModal === 'function';
+      importButton.disabled = !importerAvailable;
+      importButton.title = importerAvailable
+        ? 'Importar notas e feedbacks de um arquivo CSV revisado'
+        : 'O importador ainda está carregando';
+      importButton.setAttribute('aria-label', importButton.title);
+    }
+
+    if (stillLoading) {
+      text.textContent = 'Consultando atividades que precisam de avaliação…';
+      return;
+    }
+
+    if (COURSE_BADGE_STATE.downloadError) {
+      text.textContent = `Verificar: ${COURSE_BADGE_STATE.downloadError}`;
+      return;
+    }
+
+    if (totalPending > 0) {
+      text.innerHTML = `<strong>${totalPending}</strong> ${totalPending === 1 ? 'envio pendente' : 'envios pendentes'} em <strong>${activitiesPending}</strong> ${activitiesPending === 1 ? 'atividade' : 'atividades'}.`;
+    } else if (activitiesUnverified > 0) {
+      text.textContent = `Verificar: ${activitiesUnverified} ${activitiesUnverified === 1 ? 'atividade informa' : 'atividades informam'} zero pendências no resumo, mas a ausência de correções não foi confirmada individualmente.`;
+    } else if (errorCount > 0) {
+      text.textContent = `Nenhuma pendência identificada. ${errorCount} ${errorCount === 1 ? 'atividade não pôde' : 'atividades não puderam'} ser consultada${errorCount === 1 ? '' : 's'}.`;
+    } else {
+      text.textContent = 'Nenhuma atividade precisa de avaliação neste momento.';
+    }
+  }
+
+  async function runWithConcurrency(items, limit, worker) {
+    let index = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (index < items.length) {
+        const item = items[index++];
+        await worker(item);
+      }
+    });
+    await Promise.all(runners);
+  }
+
+  async function scanCoursePendingCorrections({ force = false } = {}) {
+    if (!isCourseViewPage()) return;
+
+    const assignments = collectCourseAssignments();
+    if (!assignments.length) return;
+
+    ensureCoursePendingSummary();
+    let errorCount = 0;
+
+    assignments.forEach(assignment => {
       ensureBulkImportLink(assignment);
       const known = force ? undefined : COURSE_BADGE_STATE.results.get(assignment.assignmentId);
       if (Number.isFinite(known?.count)) {
