@@ -1,5 +1,15 @@
 # Alterações
 
+## 3.6.3
+
+- remove o limite prático de 96 cursos na visão geral das turmas;
+- percorre automaticamente todas as páginas de Meus cursos;
+- elimina cursos repetidos pelo identificador do Moodle;
+- interrompe a paginação quando não houver próxima página ou novos cursos;
+- mantém um limite de segurança de 100 páginas e sinaliza inventário parcial se ele for atingido.
+- força uma nova leitura das pendências ao atualizar, sem reutilizar contagens antigas por 15 minutos;
+- verifica todas as atividades do curso, removendo o limite anterior de 30 atividades.
+
 ## 3.6.2
 
 - adiciona uma etapa obrigatória de conferência antes do salvamento em lote;
