@@ -3,7 +3,7 @@
 (() => {
   const root = globalThis;
   root.MAT = root.MAT || {};
-  root.MAT.VERSION = root.chrome?.runtime?.getManifest?.().version || '3.6.3';
+  root.MAT.VERSION = root.chrome?.runtime?.getManifest?.().version || '3.6.4';
   root.MAT.APP_NAME = 'Assistente EaD SENAI';
   root.MAT.dom = (() => {
     const HOST_ID = 'mat-assistant-host';

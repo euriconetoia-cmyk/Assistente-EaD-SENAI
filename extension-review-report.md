@@ -1,7 +1,7 @@
 # Relatório de revisão para Chrome Web Store
 
 **Extensão**: Assistente EaD SENAI  
-**Versão**: 3.6.3  
+**Versão**: 3.6.4  
 **Data da varredura**: 22/08/2026  
 **Veredito do código-fonte**: PROVÁVEL APROVAÇÃO
 

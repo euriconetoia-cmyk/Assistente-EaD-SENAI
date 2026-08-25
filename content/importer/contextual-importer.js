@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.6.3';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.6.4';
   const S = globalThis.MAT_SHARED;
 
   const STATE = {

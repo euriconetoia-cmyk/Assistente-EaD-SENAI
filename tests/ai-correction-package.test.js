@@ -15,9 +15,20 @@ test('lote para IA inclui contexto verificável de cada atividade', () => {
   assert.match(batchSource, /criterios_de_avaliacao\.txt/);
   assert.match(batchSource, /dados_da_atividade\.txt/);
   assert.match(batchSource, /envios_dos_alunos\.zip/);
-  assert.match(batchSource, /manifesto_atividades\.csv/);
+  assert.match(batchSource, /manifesto_atividade\.csv/);
   assert.match(batchSource, /Nota máxima não localizada/);
   assert.match(batchSource, /não invente essa informação/i);
+});
+
+test('lote para IA gera um pacote independente por atividade', () => {
+  assert.match(batchSource, /function buildAiActivityPackageEntries/);
+  assert.match(batchSource, /Este pacote corresponde a uma única atividade/);
+  assert.match(batchSource, /correcao_ia_\$\{courseSlug\}_\$\{assignment\.cmid\}_/);
+  assert.match(batchSource, /um para cada atividade/);
+  assert.match(batchSource, /permita vários downloads/);
+  assert.match(batchSource, /MAX_AI_SINGLE_ACTIVITY_BYTES = 500 \* 1024 \* 1024/);
+  assert.doesNotMatch(batchSource, /O pacote ultrapassou 100 MB\. Baixe as atividades em grupos menores/);
+  assert.doesNotMatch(batchSource, /MAX_AI_PACKAGE_BYTES/);
 });
 
 test('gerador compartilhado produz ZIP local com nomes UTF-8', async () => {
