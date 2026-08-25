@@ -657,10 +657,10 @@
       <div class="mat-card">
         <div class="mat-section-head"><div><h3>Correção em lote com IA</h3><p>Baixa de uma vez os envios de todas as atividades pendentes e, depois, lança o resultado da IA em todas elas automaticamente.</p></div></div>
         <div class="mat-form-actions">
-          <button class="mat-btn mat-btn-sm" data-action="batch-download-all" type="button">1. Baixar tudo para correção</button>
+          <button class="mat-btn mat-btn-sm" data-action="batch-download-all" type="button">1. Baixar pacote para correção com IA</button>
           <button class="mat-btn mat-btn-sm mat-btn-primary" data-action="batch-open-launch" type="button">2. Lançar tudo</button>
         </div>
-        <div class="mat-footer-note">O passo 1 baixa um ZIP por atividade pendente + o agente de correção (.md) + um manifesto com os nomes exatos das atividades. O passo 2 recebe o CSV único que a IA devolver (coluna atividade) e lança nota/feedback/situação automaticamente em cada atividade.</div>
+        <div class="mat-footer-note">O passo 1 gera um único ZIP com uma pasta por atividade, os envios dos alunos, enunciado, critérios disponíveis, nota máxima, manifesto e agente de correção. O passo 2 recebe o CSV único que a IA devolver e lança nota, feedback e situação em cada atividade.</div>
       </div>
       <div class="mat-card">
         <div class="mat-section-head"><div><h3>Composição da UC</h3><p>Quantidade de itens por tipo de recurso ou atividade.</p></div><span class="mat-badge mat-badge-neutral">${metrics.totalActivities}</span></div>
