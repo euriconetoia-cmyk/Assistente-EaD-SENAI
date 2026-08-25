@@ -1,5 +1,15 @@
 # Alterações
 
+## 3.6.1
+
+- novo pacote único para correção em lote com inteligência artificial;
+- uma pasta por atividade, com enunciado, critérios ou rubrica disponíveis, nota máxima, prazo, CMID e URL;
+- inclusão do ZIP original dos envios de cada atividade dentro do pacote consolidado;
+- manifesto CSV ampliado com a situação de localização do enunciado e dos critérios;
+- avisos explícitos quando o Moodle não fornecer enunciado, rubrica ou nota máxima;
+- arquivo LEIA-ME orientando a IA a não inventar dados ausentes;
+- limite de 100 MB e validação da assinatura dos ZIPs retornados pelo Moodle.
+
 ## 3.6.0
 
 - Central de Gestão Moodle redesenhada como página HTML independente;
