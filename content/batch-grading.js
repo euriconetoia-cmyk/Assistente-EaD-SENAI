@@ -9,7 +9,7 @@
   const MAX_BATCH_ACTIVITIES = 30;
   const MAX_BATCH_FILES = 30;
   const MAX_BATCH_TOTAL_BYTES = 20 * 1024 * 1024;
-  const DOWNLOAD_INTERVAL_MS = 900;
+  const MAX_AI_PACKAGE_BYTES = 100 * 1024 * 1024;
 
   const LOTE_SECTION = [
     '',
@@ -26,18 +26,6 @@
 
   const csvEscape = (value) => `"${S.neutralizeSpreadsheetFormula(value).replace(/"/g, '""')}"`;
   const slug = (value = '') => U.normalizeText(value).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80) || 'uc';
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const triggerDownload = (url) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.rel = 'noopener';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
-
   const buildDownloadAllUrl = (assignment) => {
     const base = assignment.gradingUrl || assignment.url;
     const url = new URL(base, location.origin);
@@ -45,6 +33,66 @@
     url.searchParams.set('action', 'downloadall');
     return url.href;
   };
+
+  const buildAssignmentViewUrl = (assignment) => {
+    const url = new URL(assignment.url || assignment.gradingUrl, location.origin);
+    url.pathname = '/mod/assign/view.php';
+    url.search = '';
+    url.searchParams.set('id', assignment.cmid);
+    return url.href;
+  };
+
+  const safeText = (node, limit = 50000) => U.cleanText(node?.textContent || '').slice(0, limit);
+  const labeledValue = (doc, labels) => {
+    const accepted = labels.map((label) => U.normalizeText(label));
+    for (const row of doc.querySelectorAll('tr, .row, [data-region="activity-dates"] > div')) {
+      const cells = [...row.querySelectorAll(':scope > th, :scope > td, :scope > div')];
+      if (cells.length < 2) continue;
+      if (accepted.some((label) => U.normalizeText(cells[0].textContent).includes(label))) return safeText(cells.slice(1).find(Boolean));
+    }
+    return '';
+  };
+
+  const extractAssignmentContext = (doc, assignment) => {
+    const descriptionNode = doc.querySelector('#intro .no-overflow, #intro, [data-region="activity-description"], .activity-description, .mod_introbox');
+    const criteriaNodes = [...doc.querySelectorAll('[data-region="gradingform_rubric"], .gradingform_rubric, .rubric_criteria, .criterion, .criteria')];
+    const body = safeText(doc.body, 100000);
+    const gradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
+      || body.match(/(?:nota m[aá]xima|maximum grade)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
+      || '';
+    const dueText = labeledValue(doc, ['data de entrega', 'data limite', 'prazo', 'due date']) || assignment.dueText || '';
+    const description = safeText(descriptionNode);
+    const criteria = [...new Set(criteriaNodes.map((node) => safeText(node)).filter((value) => value.length > 5))].join('\n\n').slice(0, 50000);
+    const warnings = [];
+    if (!description) warnings.push('Enunciado não localizado na página acessível da atividade.');
+    if (!criteria) warnings.push('Critérios ou rubrica não localizados na página acessível da atividade.');
+    if (!gradeText) warnings.push('Nota máxima não localizada na página acessível da atividade.');
+    return { description, criteria, gradeText, dueText, warnings };
+  };
+
+  async function fetchMoodleResource(url, label, binary = false) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    try {
+      if (!U.isAllowedMoodleUrl(url)) throw new Error(`${label}: endereço fora dos ambientes autorizados.`);
+      const response = await fetch(url, { credentials: 'include', cache: 'no-store', redirect: 'follow', signal: controller.signal });
+      if (!response.ok) throw new Error(`${label}: HTTP ${response.status}.`);
+      if (!U.isAllowedMoodleUrl(response.url) || /\/login\//i.test(new URL(response.url).pathname)) throw new Error(`${label}: sessão expirada ou redirecionamento não autorizado.`);
+      if (binary) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) throw new Error(`${label}: o Moodle não retornou um arquivo ZIP válido.`);
+        return bytes;
+      }
+      const html = await response.text();
+      if (/name=["']username["']/i.test(html) && /name=["']password["']/i.test(html)) throw new Error(`${label}: sessão do Moodle expirada.`);
+      return new DOMParser().parseFromString(html, 'text/html');
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error(`${label}: tempo limite de 2 minutos excedido.`);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   const pendingAssignments = (snapshot) => (snapshot?.activityPanorama?.assignments || [])
     .filter((assignment) => (assignment.metrics?.pending || 0) > 0 && assignment.cmid && (assignment.gradingUrl || assignment.url));
@@ -60,22 +108,55 @@
     }
 
     const courseSlug = slug(snapshot.course?.name);
+    const entries = [];
+    const manifestRows = [];
+    let totalBytes = 0;
+    MAT.ui.toast(`Preparando pacote completo de ${pending.length} atividade(s). Aguarde a coleta dos enunciados e envios.`);
 
-    const manifestRows = pending.map((assignment) => [assignment.cmid, assignment.name, assignment.dueText || '', assignment.gradingUrl || assignment.url]);
-    const manifestCsv = '\ufeff' + ['cmid;atividade;prazo;url_atividade', ...manifestRows.map((row) => row.map(csvEscape).join(';'))].join('\n');
-    U.downloadBlob(manifestCsv, `manifesto_atividades_${courseSlug}.csv`, 'text/csv;charset=utf-8');
+    try {
+      for (let index = 0; index < pending.length; index += 1) {
+        const assignment = pending[index];
+        MAT.ui.toast(`Preparando ${index + 1} de ${pending.length}: ${assignment.name}`);
+        const [doc, submissionsZip] = await Promise.all([
+          fetchMoodleResource(buildAssignmentViewUrl(assignment), `Enunciado de ${assignment.name}`),
+          fetchMoodleResource(buildDownloadAllUrl(assignment), `Entregas de ${assignment.name}`, true),
+        ]);
+        totalBytes += submissionsZip.length;
+        if (totalBytes > MAX_AI_PACKAGE_BYTES) throw new Error('O pacote ultrapassou 100 MB. Baixe as atividades em grupos menores.');
+        const context = extractAssignmentContext(doc, assignment);
+        const folder = `${String(index + 1).padStart(2, '0')}_${assignment.cmid}_${slug(assignment.name)}`;
+        const metadata = [
+          `Curso ou UC: ${snapshot.course?.name || 'Não identificado'}`,
+          `Atividade: ${assignment.name}`,
+          `CMID: ${assignment.cmid}`,
+          `Prazo: ${context.dueText || 'Não localizado'}`,
+          `Nota máxima: ${context.gradeText || 'Não localizada'}`,
+          `URL: ${buildAssignmentViewUrl(assignment)}`,
+          `Enunciado: ${context.description ? 'localizado' : 'não localizado'}`,
+          `Critérios ou rubrica: ${context.criteria ? 'localizados' : 'não localizados'}`,
+          '',
+          context.warnings.length ? `AVISOS:\n${context.warnings.map((warning) => `- ${warning}`).join('\n')}` : 'Nenhum aviso de contexto.',
+        ].join('\n');
+        entries.push(
+          { name: `${folder}/envios_dos_alunos.zip`, bytes: submissionsZip },
+          { name: `${folder}/enunciado_da_atividade.txt`, content: context.description || 'Enunciado não localizado automaticamente. Consulte o link informado em dados_da_atividade.txt antes de corrigir.' },
+          { name: `${folder}/criterios_de_avaliacao.txt`, content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
+          { name: `${folder}/dados_da_atividade.txt`, content: metadata },
+        );
+        manifestRows.push([assignment.cmid, assignment.name, context.dueText, context.gradeText, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)]);
+      }
 
-    const combinedAgent = `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}${LOTE_SECTION}\n`;
-    U.downloadBlob(combinedAgent, 'agente-corretor-moodle-universal-lote.md', 'text/markdown;charset=utf-8');
-
-    MAT.ui.toast(`Baixando os envios de ${pending.length} atividade(s). O navegador pode pedir permissão para múltiplos downloads — permita para continuar.`);
-
-    for (let i = 0; i < pending.length; i++) {
-      triggerDownload(buildDownloadAllUrl(pending[i]));
-      if (i < pending.length - 1) await delay(DOWNLOAD_INTERVAL_MS);
+      const manifestCsv = '\ufeff' + ['cmid;atividade;prazo;nota_maxima;enunciado;criterios;url_atividade', ...manifestRows.map((row) => row.map(csvEscape).join(';'))].join('\n');
+      entries.unshift(
+        { name: 'manifesto_atividades.csv', content: manifestCsv },
+        { name: 'agente-corretor-moodle-universal-lote.md', content: `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}${LOTE_SECTION}\n` },
+        { name: 'LEIA-ME.txt', content: 'Cada pasta contém o contexto da atividade e o ZIP original dos envios. Antes de corrigir, leia dados_da_atividade.txt, enunciado_da_atividade.txt e criterios_de_avaliacao.txt. Se houver aviso de dado não localizado, não invente essa informação e solicite conferência humana.' },
+      );
+      U.downloadBlob(U.makeZipBlob(entries), `pacote_correcao_ia_${courseSlug}_${new Date().toISOString().slice(0, 10)}.zip`, 'application/zip');
+      MAT.ui.toast(`Pacote completo preparado: ${pending.length} atividade(s), com enunciados, critérios disponíveis e envios.`);
+    } catch (error) {
+      MAT.ui.toast(error?.message || 'Não foi possível preparar o pacote completo para correção com IA.');
     }
-
-    MAT.ui.toast('Downloads disparados. Confira a pasta de downloads: um ZIP por atividade + manifesto + agente para a IA.');
   }
 
   // -----------------------------------------------------------------------------------
