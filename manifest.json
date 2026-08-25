@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Assistente EaD SENAI",
-  "version": "3.6.0",
+  "version": "3.6.1",
   "description": "Painel de tutoria Moodle para acompanhar alunos, atividades, notas, pendências e fechamento de UCs.",
   "minimum_chrome_version": "102",
   "permissions": [
