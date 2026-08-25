@@ -1,5 +1,14 @@
 # Alterações
 
+## 3.6.4
+
+- gera um ZIP independente para cada atividade pendente;
+- inclui em cada pacote o enunciado, os critérios, os dados da atividade e os envios dos alunos;
+- inclui instruções de correção e manifesto específicos da atividade;
+- elimina o limite combinado de 100 MB entre várias atividades;
+- mantém limite individual de segurança de 500 MB por atividade;
+- continua preparando as demais atividades quando uma delas falhar.
+
 ## 3.6.3
 
 - remove o limite prático de 96 cursos na visão geral das turmas;
