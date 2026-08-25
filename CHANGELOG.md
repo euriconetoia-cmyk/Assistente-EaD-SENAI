@@ -1,5 +1,13 @@
 # Alterações
 
+## 3.6.2
+
+- adiciona uma etapa obrigatória de conferência antes do salvamento em lote;
+- exibe, por atividade e aluno, a nota e o feedback provenientes do CSV;
+- mostra as regras de preservação ou sobrescrita dos valores existentes;
+- invalida a conferência quando arquivos, atividades ou opções de sobrescrita são alterados;
+- mantém a releitura pós-salvamento para confirmar o que foi efetivamente gravado no Moodle.
+
 ## 3.6.1
 
 - novo pacote único para correção em lote com inteligência artificial;

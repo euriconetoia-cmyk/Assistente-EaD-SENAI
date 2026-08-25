@@ -441,6 +441,12 @@
 #mat-batch-preview table.mat-table { margin-top: 8px; }
 .mat-batch-files-table { min-width: 640px; }
 .mat-batch-file-map { min-width: 260px; }
+.mat-batch-review-actions { justify-content: flex-start; margin-top: 10px; }
+.mat-batch-change-preview { margin-top: 14px; padding: 14px; border: 1px solid var(--mat-border); border-radius: 12px; background: var(--mat-white); }
+.mat-change-preview-table { min-width: 920px; }
+.mat-change-details { max-width: 320px; }
+.mat-change-details summary { color: var(--mat-blue-dark); cursor: pointer; font-weight: 750; }
+.mat-change-details p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mat-ink); }
 .mat-batch-verification { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--mat-border); }
 .mat-verification-summary { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border: 1px solid var(--mat-border); border-radius: 10px; background: var(--mat-blue-soft); color: var(--mat-ink); font-size: 12px; }
 .mat-verification-summary span { padding-left: 8px; border-left: 1px solid var(--mat-border); }

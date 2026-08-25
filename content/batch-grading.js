@@ -200,6 +200,8 @@
     groups: [],
     unmatched: [],
     pendingMappings: [],
+    previewAccepted: false,
+    previewSignature: '',
     batchId: null,
     running: false,
     results: [],
@@ -215,6 +217,26 @@
     || STATE.unmatched.length > 0
     || STATE.pendingMappings.length > 0
     || STATE.parsed?.errors?.length > 0;
+
+  function buildPreviewSignature() {
+    return JSON.stringify({
+      overwriteGrade: $id('mat-batch-overwrite-grade')?.checked ?? false,
+      overwriteFeedback: $id('mat-batch-overwrite-feedback')?.checked ?? false,
+      groups: STATE.groups.map((group) => ({
+        cmid: String(group.assignment.cmid),
+        records: group.records.map((record) => [record.studentId || '', record.nome, record.nota, record.feedback]),
+      })),
+    });
+  }
+
+  function invalidateChangePreview() {
+    STATE.previewAccepted = false;
+    STATE.previewSignature = '';
+    const panel = $id('mat-batch-change-preview');
+    if (panel) { panel.hidden = true; panel.innerHTML = ''; }
+    const confirmInput = $id('mat-batch-confirm');
+    if (confirmInput) { confirmInput.checked = false; confirmInput.disabled = true; }
+  }
 
   function rebuildBatchState(assignments = pendingAssignments(MAT.state.snapshot)) {
     const records = [];
@@ -327,14 +349,17 @@
 
   function updateBatchControls() {
     const blocked = isBatchBlocked();
+    const previewCurrent = STATE.previewAccepted && STATE.previewSignature === buildPreviewSignature();
+    const reviewBtn = $id('mat-batch-review-changes');
     const confirmInput = $id('mat-batch-confirm');
     const launchBtn = $id('mat-batch-launch');
+    if (reviewBtn) reviewBtn.disabled = blocked;
     if (confirmInput) {
-      confirmInput.disabled = blocked;
-      confirmInput.checked = false;
+      confirmInput.disabled = blocked || !previewCurrent;
+      if (confirmInput.disabled) confirmInput.checked = false;
     }
     if (launchBtn) {
-      launchBtn.disabled = true;
+      launchBtn.disabled = blocked || !previewCurrent || !confirmInput?.checked;
       launchBtn.textContent = 'Confirmar salvamento';
       delete launchBtn.dataset.action;
     }
@@ -344,7 +369,51 @@
       log.innerHTML = '<div class="mat-warning mat-error" role="alert"><strong>Revisão necessária:</strong> associe todos os arquivos às atividades e corrija os erros indicados.</div>';
       return;
     }
-    log.innerHTML = `<div class="mat-info" role="status"><strong>Arquivos validados:</strong> ${STATE.files.length} arquivo(s), ${STATE.groups.length} atividade(s) e ${STATE.parsed.records.length} registro(s), sem bloqueios.</div>`;
+    log.innerHTML = `<div class="mat-info" role="status"><strong>Arquivos validados:</strong> ${STATE.files.length} arquivo(s), ${STATE.groups.length} atividade(s) e ${STATE.parsed.records.length} registro(s), sem bloqueios. ${previewCurrent ? 'Alterações conferidas.' : 'Clique em Conferir alterações antes de autorizar o salvamento.'}</div>`;
+  }
+
+  function renderChangePreview() {
+    if (isBatchBlocked()) return MAT.ui.toast('Corrija os bloqueios antes de conferir as alterações.');
+    const overwriteGrade = $id('mat-batch-overwrite-grade')?.checked ?? false;
+    const overwriteFeedback = $id('mat-batch-overwrite-feedback')?.checked ?? false;
+    const records = STATE.groups.flatMap((group) => group.records.map((record) => ({ group, record })));
+    const gradeCount = records.filter(({ record }) => String(record.nota ?? '').trim() !== '').length;
+    const feedbackCount = records.filter(({ record }) => String(record.feedback ?? '').trim() !== '').length;
+    const rows = records.map(({ group, record }) => {
+      const hasGrade = String(record.nota ?? '').trim() !== '';
+      const hasFeedback = String(record.feedback ?? '').trim() !== '';
+      const grade = hasGrade ? U.escapeHtml(record.nota) : '<span class="mat-text-muted">Manter valor atual</span>';
+      const feedback = hasFeedback
+        ? `<details class="mat-change-details"><summary>Ver feedback</summary><p>${U.escapeHtml(record.feedback)}</p></details>`
+        : '<span class="mat-text-muted">Manter feedback atual</span>';
+      const actions = [
+        hasGrade ? (overwriteGrade ? 'Nota: preencher ou sobrescrever' : 'Nota: preencher se estiver vazia') : '',
+        hasFeedback ? (overwriteFeedback ? 'Feedback: preencher ou sobrescrever' : 'Feedback: preencher se estiver vazio') : '',
+      ].filter(Boolean).join('<br>') || 'Nenhuma alteração solicitada';
+      return `<tr>
+        <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
+        <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
+        <td>${grade}</td><td>${feedback}</td><td>${actions}</td>
+      </tr>`;
+    }).join('');
+    const panel = $id('mat-batch-change-preview');
+    panel.hidden = false;
+    panel.innerHTML = `
+      <div class="mat-section-head"><div><h3 id="mat-batch-change-preview-title">Alterações antes de salvar</h3><p>Confira os valores do CSV que serão enviados ao Moodle.</p></div></div>
+      <div class="mat-verification-summary" role="status"><strong>${records.length} aluno(s)</strong><span>${gradeCount} nota(s)</span><span>${feedbackCount} feedback(s)</span></div>
+      <div class="mat-info"><strong>Regra de proteção:</strong> ${overwriteGrade ? 'notas existentes poderão ser sobrescritas' : 'notas existentes serão preservadas'}; ${overwriteFeedback ? 'feedbacks existentes poderão ser sobrescritos' : 'feedbacks existentes serão preservados'}.</div>
+      <div class="mat-table-wrap"><table class="mat-table mat-change-preview-table">
+        <thead><tr><th>Atividade</th><th>Aluno</th><th>Nota do CSV</th><th>Feedback do CSV</th><th>Ação prevista</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    STATE.previewAccepted = true;
+    STATE.previewSignature = buildPreviewSignature();
+    const confirmInput = $id('mat-batch-confirm');
+    if (confirmInput) { confirmInput.disabled = false; confirmInput.checked = false; }
+    updateBatchControls();
+    const heading = $id('mat-batch-change-preview-title');
+    if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+    panel.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }
 
   async function handleBatchFiles(event) {
@@ -375,10 +444,12 @@
           return { name: file.name, size: file.size, parsed: null, embeddedActivity: false, selectedCmid: '', error: error.message };
         }
       }));
+      invalidateChangePreview();
       rebuildBatchState(assignments);
       renderPreview();
       updateBatchControls();
     } catch (error) {
+      invalidateChangePreview();
       STATE.parsed = null;
       STATE.files = [];
       STATE.groups = [];
@@ -398,6 +469,7 @@
     const item = STATE.files[Number(select.dataset.batchFileIndex)];
     if (!item || item.embeddedActivity) return;
     item.selectedCmid = select.value;
+    invalidateChangePreview();
     rebuildBatchState();
     renderPreview();
     updateBatchControls();
@@ -624,6 +696,9 @@
     if (isBatchBlocked()) {
       return MAT.ui.toast('O lote possui bloqueios e não pode ser salvo.');
     }
+    if (!STATE.previewAccepted || STATE.previewSignature !== buildPreviewSignature()) {
+      return MAT.ui.toast('Confira novamente as notas e os feedbacks antes de salvar.');
+    }
     const confirmed = $id('mat-batch-confirm')?.checked;
     if (!confirmed) return MAT.ui.toast('Confirme a revisão das alterações antes de salvar.');
 
@@ -685,6 +760,8 @@
     STATE.groups = [];
     STATE.unmatched = [];
     STATE.pendingMappings = [];
+    STATE.previewAccepted = false;
+    STATE.previewSignature = '';
     STATE.batchId = null;
     STATE.running = false;
     STATE.results = [];
@@ -720,7 +797,12 @@
           <div id="mat-batch-preview"><p class="mat-footer-note">Selecione um CSV combinado ou vários CSVs individuais para ver a prévia.</p></div>
           <div id="mat-batch-log" aria-live="polite" aria-atomic="true"></div>
 
-          <label class="mat-check mat-confirm-change"><input id="mat-batch-confirm" type="checkbox" disabled /> Revisei curso, atividades, estudantes e alterações apresentadas acima.</label>
+          <div class="mat-form-actions mat-batch-review-actions">
+            <button class="mat-btn mat-btn-primary" id="mat-batch-review-changes" type="button" disabled>Conferir alterações</button>
+          </div>
+          <section id="mat-batch-change-preview" class="mat-batch-change-preview" aria-labelledby="mat-batch-change-preview-title" hidden></section>
+
+          <label class="mat-check mat-confirm-change"><input id="mat-batch-confirm" type="checkbox" disabled /> Conferi as notas, os feedbacks e as regras de sobrescrita apresentadas acima.</label>
 
           <div class="mat-form-actions">
             <button class="mat-btn mat-btn-sm" id="mat-batch-cancel" type="button" hidden>Cancelar lote</button>
@@ -752,12 +834,17 @@
     $id('mat-batch-close').addEventListener('click', closeModal);
     $id('mat-batch-file').addEventListener('change', handleBatchFiles);
     $id('mat-batch-preview').addEventListener('change', handleFileMappingChange);
+    $id('mat-batch-review-changes').addEventListener('click', renderChangePreview);
+    for (const id of ['mat-batch-overwrite-grade', 'mat-batch-overwrite-feedback']) {
+      $id(id).addEventListener('change', () => { invalidateChangePreview(); updateBatchControls(); });
+    }
     $id('mat-batch-launch').addEventListener('click', handleBatchPrimaryAction);
     $id('mat-batch-cancel').addEventListener('click', cancelBatch);
     $id('mat-batch-report').addEventListener('click', downloadBatchReport);
     $id('mat-batch-confirm').addEventListener('change', (event) => {
       const blocked = isBatchBlocked();
-      $id('mat-batch-launch').disabled = blocked || !event.target.checked;
+      const previewCurrent = STATE.previewAccepted && STATE.previewSignature === buildPreviewSignature();
+      $id('mat-batch-launch').disabled = blocked || !previewCurrent || !event.target.checked;
     });
     $id('mat-batch-close').focus();
   }

@@ -24,6 +24,16 @@ test('importador em lote aceita vários CSVs e solicita associação quando nece
   assert.match(batchSource, /matchActivityFromFileName/);
 });
 
+test('importador exige conferência de notas e feedbacks antes de salvar', () => {
+  assert.match(batchSource, /id="mat-batch-review-changes"/);
+  assert.match(batchSource, /Alterações antes de salvar/);
+  assert.match(batchSource, /Nota do CSV/);
+  assert.match(batchSource, /Feedback do CSV/);
+  assert.match(batchSource, /buildPreviewSignature/);
+  assert.match(batchSource, /invalidateChangePreview/);
+  assert.match(batchSource, /Confira novamente as notas e os feedbacks antes de salvar/);
+});
+
 test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () => {
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 8\)/);
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 20\)/);

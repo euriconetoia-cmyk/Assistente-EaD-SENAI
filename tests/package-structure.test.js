@@ -9,8 +9,8 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.6.1', () => {
-  assert.equal(manifest.version, '3.6.1');
+test('manifesto usa metadados e permissões mínimas da versão 3.6.2', () => {
+  assert.equal(manifest.version, '3.6.2');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
