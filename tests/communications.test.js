@@ -41,3 +41,16 @@ test('mensagem usa a contagem quando os nomes das atividades não estão dispon�
   }, { course: { name: 'Curso' }, settings: {} });
   assert.match(message, /3 atividades ainda estão sem entrega/);
 });
+
+test('envio pelo Moodle preserva a mensagem editada pelo tutor', async () => {
+  const savedDrafts = [];
+  const actions = [];
+  MAT.state = { course: { id: 18, name: 'Curso' }, snapshot: { students: [{ key: 'ana', id: 42, name: 'Ana Souza' }] } };
+  MAT.storage = { saveMoodleMessageDraft: async (draft) => savedDrafts.push(draft), addAction: async (action) => actions.push(action), loadActions: async () => actions };
+  context.location = { hostname: 'ead.fieg.com.br', origin: 'https://ead.fieg.com.br' };
+  const opened = [];
+  await MAT.communications.openMoodleMessageForStudent('ana', { message: 'Texto ajustado pelo tutor.\nSegunda linha.', openUrl: (url) => opened.push(url) });
+  assert.equal(savedDrafts[0].message, 'Texto ajustado pelo tutor.\nSegunda linha.');
+  assert.equal(actions[0].note, 'Texto ajustado pelo tutor.\nSegunda linha.');
+  assert.equal(opened[0], 'https://ead.fieg.com.br/message/index.php?id=42');
+});

@@ -1,12 +1,12 @@
-# Validação da versão 3.6.4
+# Validação da versão 3.6.6
 
-Data: 22/08/2026
+Data: 28/08/2026
 
 ## Resultado
 
-- 38 testes automatizados aprovados.
+- 51 testes automatizados aprovados.
 - 0 testes reprovados.
-- 36 arquivos verificados pela auditoria estrutural.
+- 40 arquivos verificados pela auditoria estrutural.
 - 23 referências do manifesto confirmadas.
 - 0 falhas de sintaxe JavaScript.
 - 0 desequilíbrios de estrutura CSS.
@@ -63,6 +63,12 @@ Data: 22/08/2026
 - página separada do dashboard com filtros e dados agregados;
 - preservação de valores ausentes como “não coletado”;
 - exportação CSV e impressão otimizada para PDF.
+- edição da mensagem automática antes do envio pela mensageria do AVA;
+- ausência de botão e integração direta com o WhatsApp;
+- pacote ZIP de evidências com relatório HTML, histórico CSV e auditoria JSON;
+- escape de conteúdo acadêmico no relatório HTML;
+- retenção local de até 2.000 registros de ação por curso;
+- presença do arquivo `CREDITOS.md` no pacote distribuído.
 
 ## Comandos
 

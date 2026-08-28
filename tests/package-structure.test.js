@@ -9,11 +9,32 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.6.4', () => {
-  assert.equal(manifest.version, '3.6.4');
+test('manifesto usa metadados e permissões mínimas da versão 3.6.6', () => {
+  assert.equal(manifest.version, '3.6.6');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
+});
+
+test('mensagem do aluno é editável e enviada pelo AVA sem botão do WhatsApp', () => {
+  const ui = read('content/ui.js');
+  assert.match(ui, /Mensagem automática editável das pendências/);
+  assert.match(ui, />Enviar mensagem<\/button>/);
+  assert.doesNotMatch(ui, /data-action="student-whatsapp"/);
+  assert.doesNotMatch(ui, /Enviar pelo WhatsApp/);
+  assert.doesNotMatch(ui, /id="mat-student-message-preview"[^>]+readonly/);
+});
+
+test('histórico exporta pacote local com evidências em formatos complementares', () => {
+  const ui = read('content/ui.js');
+  const exporters = read('content/exporters.js');
+  const storage = read('content/storage.js');
+  assert.match(ui, /data-action="export-evidence-package"/);
+  assert.match(exporters, /const exportEvidencePackage/);
+  assert.match(exporters, /relatorio_evidencias\.html/);
+  assert.match(exporters, /historico_acoes\.csv/);
+  assert.match(exporters, /auditoria_completa\.json/);
+  assert.match(storage, /\.slice\(0, 2000\)/);
 });
 
 test('dashboard executivo usa arquivos locais e mantém a CSP', () => {

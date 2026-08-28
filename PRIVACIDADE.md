@@ -1,6 +1,6 @@
 # Privacidade e tratamento local de dados
 
-Versão: 3.6.4
+Versão: 3.6.6
 
 ## Finalidade
 
@@ -22,7 +22,7 @@ O Histórico local recebe somente um resumo quantitativo do lote, sem nomes, not
 
 ## Comunicação e domínios
 
-A extensão limita suas consultas automáticas a `ead.senai.br` e `ead.fieg.com.br` e não contém código remoto. Arquivos e prompts de correção são preparados localmente. Quando o tutor escolhe explicitamente abrir o WhatsApp, a extensão abre `wa.me` com o telefone e a mensagem preparados na URL; esses dados passam então a ser tratados pelo WhatsApp conforme os termos do serviço. Nenhuma mensagem é enviada sem essa ação do tutor.
+A extensão limita suas consultas automáticas a `ead.senai.br` e `ead.fieg.com.br` e não contém código remoto. Arquivos e prompts de correção são preparados localmente. Mensagens acadêmicas são encaminhadas somente à página de mensageria do próprio AVA após a ação explícita do tutor.
 
 ## Controles do usuário
 
