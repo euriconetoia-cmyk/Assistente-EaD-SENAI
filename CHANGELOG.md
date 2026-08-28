@@ -1,5 +1,13 @@
 # Alterações
 
+## 3.6.8
+
+- adiciona o botão “Editar” para cada aluno na conferência anterior ao salvamento;
+- permite revisar e alterar individualmente a nota e o feedback importados;
+- valida a nota editada e limita o tamanho do feedback;
+- invalida a confirmação anterior após uma edição e exige nova conferência;
+- mantém a comparação posterior com os valores efetivamente gravados no Moodle.
+
 ## 3.6.7
 
 - exibe “By Eurico Cirilo” no rodapé da própria aplicação;
