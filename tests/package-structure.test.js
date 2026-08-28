@@ -9,8 +9,8 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.6.6', () => {
-  assert.equal(manifest.version, '3.6.6');
+test('manifesto usa metadados e permissões mínimas da versão 3.6.7', () => {
+  assert.equal(manifest.version, '3.6.7');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
@@ -23,6 +23,13 @@ test('mensagem do aluno é editável e enviada pelo AVA sem botão do WhatsApp',
   assert.doesNotMatch(ui, /data-action="student-whatsapp"/);
   assert.doesNotMatch(ui, /Enviar pelo WhatsApp/);
   assert.doesNotMatch(ui, /id="mat-student-message-preview"[^>]+readonly/);
+});
+
+test('crédito de Eurico Cirilo aparece no rodapé da aplicação', () => {
+  const ui = read('content/ui.js');
+  assert.match(ui, /By Eurico Cirilo/);
+  assert.match(ui, /linkedin\.com\/in\/euricocirilo/);
+  assert.match(ui, /mat-extension-credit/);
 });
 
 test('histórico exporta pacote local com evidências em formatos complementares', () => {

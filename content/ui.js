@@ -184,7 +184,7 @@
         <section class="mat-view" id="mat-view-historico" data-view="historico" role="tabpanel" aria-labelledby="mat-tab-historico" aria-hidden="true"></section>
         <section class="mat-view" id="mat-view-diagnostico" data-view="diagnostico" role="tabpanel" aria-labelledby="mat-tab-diagnostico" aria-hidden="true"></section>
       </main>
-      <footer class="mat-extension-credit"><span>Dados locais</span><span id="mat-sync-status" role="status">Pronto</span><span>V${MAT.VERSION}</span></footer>
+      <footer class="mat-extension-credit"><span>Dados locais</span><span id="mat-sync-status" role="status">Pronto</span><a class="mat-credit-link" href="https://www.linkedin.com/in/euricocirilo/" target="_blank" rel="noopener noreferrer" aria-label="Créditos: By Eurico Cirilo">By Eurico Cirilo</a><span>V${MAT.VERSION}</span></footer>
       <div class="mat-detail-overlay" id="mat-detail-overlay" aria-hidden="true">
         <article class="mat-detail" id="mat-detail" role="dialog" aria-modal="true" aria-label="Detalhes" tabindex="-1"></article>
       </div>
@@ -1358,3 +1358,4 @@
 
   MAT.ui = { makeLauncher, makePanel, openPanel, closePanel, togglePanel, setLauncherPassive, syncPageLayout, removePanel, renderAll, renderView, updateHeader, updateLauncher, showProgress, hideProgress, setBusy, toast, setTab };
 })();
+
