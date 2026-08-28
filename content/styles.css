@@ -713,8 +713,6 @@
 }
 
 
-.mat-btn-whatsapp { background: #128c7e; color: #fff; border-color: #128c7e; }
-.mat-btn-whatsapp:hover { filter: brightness(.95); }
 
 .mat-extension-credit {
   flex: 0 0 auto;

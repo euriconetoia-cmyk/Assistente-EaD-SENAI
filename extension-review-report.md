@@ -1,8 +1,8 @@
 # Relatório de revisão para Chrome Web Store
 
 **Extensão**: Assistente EaD SENAI  
-**Versão**: 3.6.4  
-**Data da varredura**: 22/08/2026  
+**Versão**: 3.6.6  
+**Data da varredura**: 28/08/2026  
 **Veredito do código-fonte**: PROVÁVEL APROVAÇÃO
 
 ## Resumo
@@ -30,7 +30,7 @@
 - [x] Grey Silicon: nenhum código de mineração.
 - [x] Blue Zinc: downloads limitados a arquivos de atividades do Moodle na sessão do tutor, sem mídia pública ou burla de acesso.
 - [x] Yellow Nickel: nenhuma API de notificações ou padrão de spam.
-- [x] Purple Nickel: nenhuma coleta de histórico. Eventos de abas são usados somente nas abas de avaliação criadas pelo lote; WhatsApp é aberto apenas por ação explícita e está divulgado na política.
+- [x] Purple Nickel: nenhuma coleta externa de histórico. Eventos de abas são usados somente nas abas de avaliação criadas pelo lote; mensagens acadêmicas são encaminhadas apenas à mensageria do próprio AVA por ação explícita.
 - [x] Blue Copper: manipuladores de mensagens validam a identidade interna da extensão antes de processar comandos.
 
 ## Observações para publicação

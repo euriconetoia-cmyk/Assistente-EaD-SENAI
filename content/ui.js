@@ -853,6 +853,8 @@
     view.innerHTML = `
       <div class="mat-card">
         <div class="mat-section-head"><div><h3>Histórico local</h3><p>Registros feitos pelo tutor para o curso atual.</p></div><span class="mat-badge mat-badge-neutral">${actions.length}</span></div>
+        <div class="mat-form-actions" style="margin:12px 0"><button class="mat-btn mat-btn-primary" data-action="export-evidence-package" type="button" ${MAT.state.snapshot ? '' : 'disabled'}>Exportar evidências</button></div>
+        <div class="mat-footer-note">O pacote será salvo no computador pelo navegador e reunirá relatório HTML, histórico CSV e auditoria JSON com os dados disponíveis.</div>
         ${actions.length ? actions.map((action) => `
           <div class="mat-timeline-item">
             <div class="mat-timeline-title">${U.escapeHtml(action.title || action.type || 'Ação registrada')}</div>
@@ -932,7 +934,7 @@
           <button class="mat-btn mat-btn-danger" data-action="clear-course" type="button">Limpar dados locais</button>
         </div>
       </div>
-      <div class="mat-footer-note">Privacidade: a extensão não armazena senha nem token. As consultas automáticas ficam nos domínios autorizados. Retratos e registros permanecem no navegador pelo período configurado; mensagens não são guardadas por padrão. Ao escolher WhatsApp, telefone e texto são encaminhados ao serviço somente após sua ação.</div>
+      <div class="mat-footer-note">Privacidade: a extensão não armazena senha nem token. As consultas automáticas ficam nos domínios autorizados. Retratos e registros permanecem no navegador pelo período configurado; mensagens não são guardadas por padrão.</div>
     `;
   };
 
@@ -977,7 +979,7 @@
       <div class="mat-section-title">Motivos da classificação</div>
       ${student.riskReasons.length ? `<ul class="mat-reason-list">${student.riskReasons.map((reason) => `<li>${U.escapeHtml(reason.text)}</li>`).join('')}</ul>` : '<div class="mat-info">Nenhum fator de risco identificado.</div>'}
       <div class="mat-action-box"><strong>Ação recomendada:</strong><br>${U.escapeHtml(student.recommendedAction)}</div>
-      ${needsContact ? `<div class="mat-section-title">Mensagem automática das pendências</div><textarea class="mat-input mat-message-preview" id="mat-student-message-preview" rows="6" readonly aria-label="Mensagem automática das pendências">${U.escapeHtml(automaticMessage)}</textarea><div class="mat-form-actions" style="margin-top:8px"><button class="mat-btn mat-btn-sm" data-action="copy-student-message" data-student-key="${U.escapeHtml(student.key)}" type="button">Copiar mensagem</button></div>` : ''}
+      ${needsContact ? `<div class="mat-section-title">Mensagem automática das pendências</div><textarea class="mat-input mat-message-preview" id="mat-student-message-preview" rows="6" aria-label="Mensagem automática editável das pendências">${U.escapeHtml(automaticMessage)}</textarea><div class="mat-form-actions" style="margin-top:8px"><button class="mat-btn mat-btn-sm" data-action="copy-student-message" data-student-key="${U.escapeHtml(student.key)}" type="button">Copiar mensagem</button><button class="mat-btn mat-btn-sm mat-btn-primary" data-action="student-moodle-message" data-student-key="${U.escapeHtml(student.key)}" type="button">Enviar mensagem</button></div>` : ''}
       <div class="mat-section-title">Atividades do aluno</div>
       ${student.assignments.length ? `<div class="mat-table-wrap"><table class="mat-table"><thead><tr><th>Atividade</th><th>Entrega</th><th>Correção</th><th>Nota</th></tr></thead><tbody>${student.assignments.map((item) => `<tr><td><a href="${U.escapeHtml(U.isAllowedMoodleUrl(item.assignmentUrl) ? item.assignmentUrl : '#')}" target="_blank" rel="noopener">${U.escapeHtml(item.name)}</a></td><td>${item.missing ? 'Sem entrega' : item.submitted ? 'Entregue' : U.escapeHtml(item.statusText)}</td><td>${item.graded ? 'Corrigida' : item.submitted ? 'Pendente' : '-'}</td><td>${item.grade === null ? '-' : U.escapeHtml(item.grade)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="mat-info">A análise não encontrou linhas de avaliação para este aluno.</div>'}
       <div class="mat-section-title">Registrar acompanhamento</div>
@@ -987,10 +989,9 @@
       <div class="mat-form-actions" style="margin-top:9px">
         <button class="mat-btn mat-btn-primary" data-action="register-student" data-student-key="${U.escapeHtml(student.key)}" data-status="realizada" type="button">Ação realizada</button>
         <button class="mat-btn" data-action="register-student" data-student-key="${U.escapeHtml(student.key)}" data-status="aguardando_retorno" type="button">Aguardando retorno</button>
-        ${needsContact ? `<button class="mat-btn mat-btn-whatsapp" data-action="student-whatsapp" data-student-key="${U.escapeHtml(student.key)}" type="button">Enviar pelo WhatsApp</button><button class="mat-btn" data-action="student-moodle-message" data-student-key="${U.escapeHtml(student.key)}" type="button">Mensagem no Moodle</button>` : ''}
         ${student.profileUrl ? `<button class="mat-btn" data-action="open-url" data-url="${U.escapeHtml(student.profileUrl)}" type="button">Abrir perfil</button>` : ''}
       </div>
-      ${needsContact ? `<div class="mat-footer-note">A mensagem é preenchida automaticamente com o nome e as pendências reconhecidas. O envio permanece sob confirmação do tutor.</div>` : ''}`;
+      ${needsContact ? `<div class="mat-footer-note">A mensagem é preenchida automaticamente e pode ser editada. Ao clicar em Enviar mensagem, a conversa do aluno será aberta no AVA com o texto revisado para confirmação do tutor.</div>` : ''}`;
     showDetail(overlay, detail);
   };
 
@@ -1136,6 +1137,12 @@
     }
     if (action === 'save-checklist') return saveChecklist();
     if (action === 'add-general-action') return addGeneralAction();
+    if (action === 'export-evidence-package' && MAT.state.snapshot) {
+      const checklist = await MAT.storage.loadChecklist(MAT.state.course.id);
+      const result = MAT.exporters.exportEvidencePackage({ snapshot: MAT.state.snapshot, actions: MAT.state.actions, gradebook: MAT.state.gradebook, checklist });
+      if (result) return toast(`Pacote de evidências preparado com ${result.recordCount} registro(s).`);
+      return toast('Não foi possível preparar o pacote de evidências.');
+    }
     if (action === 'save-settings') return saveSettingsFromForm();
     if (action === 'load-demo') return loadDemo();
     if (action === 'export-json' && MAT.state.snapshot) return MAT.exporters.exportSnapshotJson(MAT.state.snapshot, MAT.state.actions);
@@ -1212,11 +1219,16 @@
     if (target.dataset.action === 'copy-student-message') {
       const student = MAT.state.snapshot?.students.find((item) => item.key === target.dataset.studentKey);
       if (!student) return toast('Aluno não encontrado.');
-      await copyText(MAT.communications?.buildStudentPendingMessage(student, MAT.state) || '');
-      return toast('Mensagem automática copiada.');
+      const message = document.getElementById('mat-student-message-preview')?.value.trim() || '';
+      if (!message) return toast('Escreva a mensagem antes de copiar.');
+      await copyText(message);
+      return toast('Mensagem copiada.');
     }
-    if (target.dataset.action === 'student-whatsapp') return MAT.communications?.openWhatsAppForStudent(target.dataset.studentKey, { toast, openUrl: openApprovedUrl, renderHistory: renderHistorico });
-    if (target.dataset.action === 'student-moodle-message') return MAT.communications?.openMoodleMessageForStudent(target.dataset.studentKey, { toast, openUrl: openApprovedUrl, renderHistory: renderHistorico });
+    if (target.dataset.action === 'student-moodle-message') {
+      const message = document.getElementById('mat-student-message-preview')?.value.trim() || '';
+      if (!message) return toast('Escreva a mensagem antes de enviar.');
+      return MAT.communications?.openMoodleMessageForStudent(target.dataset.studentKey, { toast, openUrl: openApprovedUrl, renderHistory: renderHistorico, message });
+    }
     if (target.dataset.action === 'register-student') {
       const student = MAT.state.snapshot.students.find((item) => item.key === target.dataset.studentKey);
       const note = document.getElementById('mat-student-note')?.value.trim();

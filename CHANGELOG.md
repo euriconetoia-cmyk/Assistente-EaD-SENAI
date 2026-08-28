@@ -1,5 +1,19 @@
 # Alterações
 
+## 3.6.6
+
+- adiciona a exportação local de evidências do histórico em um pacote ZIP;
+- inclui relatório HTML, histórico CSV, auditoria JSON e instruções de conferência;
+- amplia a retenção local para até 2.000 registros de ação por curso;
+- mantém o arquivo `CREDITOS.md` na raiz das versões e atualizações.
+
+## 3.6.5
+
+- remove o botão e a integração direta com o WhatsApp;
+- permite editar a mensagem automática antes do envio;
+- adiciona o botão “Enviar mensagem” ao lado de “Copiar mensagem”;
+- encaminha a mensagem revisada para a mensageria do próprio AVA.
+
 ## 3.6.4
 
 - gera um ZIP independente para cada atividade pendente;

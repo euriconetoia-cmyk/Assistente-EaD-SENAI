@@ -200,7 +200,7 @@
     const cutoff = Date.now() - (MAT.state.settings?.retentionDays || DEFAULT_SETTINGS.retentionDays) * 86400000;
     const retained = actions
       .filter((item) => !item.createdAt || Date.parse(item.createdAt) >= cutoff)
-      .slice(0, 200);
+      .slice(0, 2000);
     await set({ [key]: retained });
     return actions;
   };
