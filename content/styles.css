@@ -450,6 +450,10 @@
 .mat-change-details { max-width: 320px; }
 .mat-change-details summary { color: var(--mat-blue-dark); cursor: pointer; font-weight: 750; }
 .mat-change-details p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mat-ink); }
+.mat-change-edit-row td { background: var(--mat-blue-soft); vertical-align: top; }
+.mat-change-grade-input { min-width: 110px; }
+.mat-change-feedback-input { min-width: 280px; resize: vertical; }
+.mat-change-edit-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .mat-batch-verification { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--mat-border); }
 .mat-verification-summary { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border: 1px solid var(--mat-border); border-radius: 10px; background: var(--mat-blue-soft); color: var(--mat-ink); font-size: 12px; }
 .mat-verification-summary span { padding-left: 8px; border-left: 1px solid var(--mat-border); }

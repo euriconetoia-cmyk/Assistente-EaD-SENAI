@@ -10,7 +10,7 @@ const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 
 check(manifest.manifest_version === 3, 'manifest_version deve ser 3');
-check(manifest.version === '3.6.7', 'versão deve ser 3.6.7');
+check(manifest.version === '3.6.8', 'versão deve ser 3.6.8');
 check(manifest.name.length <= 45, 'nome excede 45 caracteres');
 check(manifest.description.length <= 132, 'descrição excede 132 caracteres');
 check(!manifest.permissions.includes('tabs'), 'permissão tabs é desnecessária');

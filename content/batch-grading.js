@@ -199,6 +199,7 @@
     pendingMappings: [],
     previewAccepted: false,
     previewSignature: '',
+    editingRecordKey: '',
     batchId: null,
     running: false,
     results: [],
@@ -373,12 +374,21 @@
     if (isBatchBlocked()) return MAT.ui.toast('Corrija os bloqueios antes de conferir as alterações.');
     const overwriteGrade = $id('mat-batch-overwrite-grade')?.checked ?? false;
     const overwriteFeedback = $id('mat-batch-overwrite-feedback')?.checked ?? false;
-    const records = STATE.groups.flatMap((group) => group.records.map((record) => ({ group, record })));
+    const records = STATE.groups.flatMap((group, groupIndex) => group.records.map((record, recordIndex) => ({ group, record, groupIndex, recordIndex })));
     const gradeCount = records.filter(({ record }) => String(record.nota ?? '').trim() !== '').length;
     const feedbackCount = records.filter(({ record }) => String(record.feedback ?? '').trim() !== '').length;
-    const rows = records.map(({ group, record }) => {
+    const rows = records.map(({ group, record, groupIndex, recordIndex }) => {
+      const recordKey = `${groupIndex}:${recordIndex}`;
+      const isEditing = STATE.editingRecordKey === recordKey;
       const hasGrade = String(record.nota ?? '').trim() !== '';
       const hasFeedback = String(record.feedback ?? '').trim() !== '';
+      if (isEditing) return `<tr class="mat-change-edit-row">
+        <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
+        <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
+        <td><label class="mat-sr-only" for="mat-edit-grade-${groupIndex}-${recordIndex}">Editar nota</label><input class="mat-input mat-change-grade-input" id="mat-edit-grade-${groupIndex}-${recordIndex}" data-edit-grade type="text" inputmode="decimal" value="${U.escapeHtml(record.nota || '')}" placeholder="Manter atual" /></td>
+        <td><label class="mat-sr-only" for="mat-edit-feedback-${groupIndex}-${recordIndex}">Editar feedback</label><textarea class="mat-input mat-change-feedback-input" id="mat-edit-feedback-${groupIndex}-${recordIndex}" data-edit-feedback rows="5" maxlength="${S.LIMITS.maxCellLength}" placeholder="Manter feedback atual">${U.escapeHtml(record.feedback || '')}</textarea></td>
+        <td><div class="mat-change-edit-actions"><button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-record="${recordKey}">Salvar edição</button><button class="mat-btn mat-btn-sm" type="button" data-cancel-record>Cancelar</button></div><div class="mat-footer-note" id="mat-edit-error-${groupIndex}-${recordIndex}" role="alert"></div></td>
+      </tr>`;
       const grade = hasGrade ? U.escapeHtml(record.nota) : '<span class="mat-text-muted">Manter valor atual</span>';
       const feedback = hasFeedback
         ? `<details class="mat-change-details"><summary>Ver feedback</summary><p>${U.escapeHtml(record.feedback)}</p></details>`
@@ -390,7 +400,7 @@
       return `<tr>
         <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
         <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
-        <td>${grade}</td><td>${feedback}</td><td>${actions}</td>
+        <td>${grade}</td><td>${feedback}</td><td>${actions}<div class="mat-change-edit-actions"><button class="mat-btn mat-btn-sm" type="button" data-edit-record="${recordKey}" aria-label="Editar nota e feedback de ${U.escapeHtml(record.nome || record.studentId || 'aluno')}">Editar</button></div></td>
       </tr>`;
     }).join('');
     const panel = $id('mat-batch-change-preview');
@@ -400,7 +410,7 @@
       <div class="mat-verification-summary" role="status"><strong>${records.length} aluno(s)</strong><span>${gradeCount} nota(s)</span><span>${feedbackCount} feedback(s)</span></div>
       <div class="mat-info"><strong>Regra de proteção:</strong> ${overwriteGrade ? 'notas existentes poderão ser sobrescritas' : 'notas existentes serão preservadas'}; ${overwriteFeedback ? 'feedbacks existentes poderão ser sobrescritos' : 'feedbacks existentes serão preservados'}.</div>
       <div class="mat-table-wrap"><table class="mat-table mat-change-preview-table">
-        <thead><tr><th>Atividade</th><th>Aluno</th><th>Nota do CSV</th><th>Feedback do CSV</th><th>Ação prevista</th></tr></thead>
+        <thead><tr><th>Atividade</th><th>Aluno</th><th>Nota</th><th>Feedback</th><th>Ação prevista</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
     STATE.previewAccepted = true;
@@ -408,9 +418,57 @@
     const confirmInput = $id('mat-batch-confirm');
     if (confirmInput) { confirmInput.disabled = false; confirmInput.checked = false; }
     updateBatchControls();
+    panel.onclick = handleChangePreviewAction;
     const heading = $id('mat-batch-change-preview-title');
     if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
     panel.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
+  function handleChangePreviewAction(event) {
+    const editButton = event.target.closest('[data-edit-record]');
+    if (editButton) {
+      STATE.editingRecordKey = editButton.dataset.editRecord;
+      renderChangePreview();
+      const [groupIndex, recordIndex] = STATE.editingRecordKey.split(':');
+      $id(`mat-edit-grade-${groupIndex}-${recordIndex}`)?.focus();
+      return;
+    }
+    if (event.target.closest('[data-cancel-record]')) {
+      STATE.editingRecordKey = '';
+      renderChangePreview();
+      return;
+    }
+    const saveButton = event.target.closest('[data-save-record]');
+    if (!saveButton) return;
+    const [groupIndexText, recordIndexText] = saveButton.dataset.saveRecord.split(':');
+    const groupIndex = Number(groupIndexText);
+    const recordIndex = Number(recordIndexText);
+    const record = STATE.groups[groupIndex]?.records?.[recordIndex];
+    if (!record) return MAT.ui.toast('Não foi possível localizar o registro para edição.', 'error');
+    const gradeInput = $id(`mat-edit-grade-${groupIndex}-${recordIndex}`);
+    const feedbackInput = $id(`mat-edit-feedback-${groupIndex}-${recordIndex}`);
+    const errorBox = $id(`mat-edit-error-${groupIndex}-${recordIndex}`);
+    const grade = String(gradeInput?.value || '').trim();
+    const feedback = String(feedbackInput?.value || '').trim();
+    const parsedGrade = S.parseGrade(grade);
+    if (!parsedGrade.valid) {
+      if (errorBox) errorBox.textContent = 'Informe uma nota numérica igual ou maior que zero, ou deixe o campo vazio.';
+      gradeInput?.focus();
+      return;
+    }
+    if (feedback.length > S.LIMITS.maxCellLength) {
+      if (errorBox) errorBox.textContent = `O feedback não pode exceder ${S.LIMITS.maxCellLength} caracteres.`;
+      feedbackInput?.focus();
+      return;
+    }
+    record.nota = grade;
+    record.notaNumero = parsedGrade.number;
+    record.feedback = feedback;
+    STATE.editingRecordKey = '';
+    invalidateChangePreview();
+    updateBatchControls();
+    MAT.ui.toast('Edição salva. Clique em Conferir alterações para revisar novamente antes do salvamento.');
+    $id('mat-batch-review-changes')?.focus();
   }
 
   async function handleBatchFiles(event) {
@@ -759,6 +817,7 @@
     STATE.pendingMappings = [];
     STATE.previewAccepted = false;
     STATE.previewSignature = '';
+    STATE.editingRecordKey = '';
     STATE.batchId = null;
     STATE.running = false;
     STATE.results = [];

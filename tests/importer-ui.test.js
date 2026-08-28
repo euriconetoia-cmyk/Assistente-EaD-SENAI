@@ -27,11 +27,22 @@ test('importador em lote aceita vários CSVs e solicita associação quando nece
 test('importador exige conferência de notas e feedbacks antes de salvar', () => {
   assert.match(batchSource, /id="mat-batch-review-changes"/);
   assert.match(batchSource, /Alterações antes de salvar/);
-  assert.match(batchSource, /Nota do CSV/);
-  assert.match(batchSource, /Feedback do CSV/);
+  assert.match(batchSource, /<th>Nota<\/th>/);
+  assert.match(batchSource, /<th>Feedback<\/th>/);
   assert.match(batchSource, /buildPreviewSignature/);
   assert.match(batchSource, /invalidateChangePreview/);
   assert.match(batchSource, /Confira novamente as notas e os feedbacks antes de salvar/);
+});
+
+test('conferência permite editar nota e feedback antes do salvamento', () => {
+  assert.match(batchSource, /data-edit-record/);
+  assert.match(batchSource, /data-save-record/);
+  assert.match(batchSource, /Editar nota e feedback/);
+  assert.match(batchSource, /S\.parseGrade\(grade\)/);
+  assert.match(batchSource, /record\.nota = grade/);
+  assert.match(batchSource, /record\.feedback = feedback/);
+  assert.match(batchSource, /Edição salva\. Clique em Conferir alterações/);
+  assert.match(batchSource, /invalidateChangePreview\(\)/);
 });
 
 test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () => {
