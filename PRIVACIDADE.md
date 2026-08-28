@@ -1,6 +1,6 @@
 # Privacidade e tratamento local de dados
 
-Versão: 3.6.6
+Versão: 3.6.7
 
 ## Finalidade
 

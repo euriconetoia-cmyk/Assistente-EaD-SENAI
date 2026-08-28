@@ -1,5 +1,11 @@
 # Alterações
 
+## 3.6.7
+
+- exibe “By Eurico Cirilo” no rodapé da própria aplicação;
+- posiciona o crédito ao lado de “Dados locais”, “Pronto” e da versão instalada;
+- mantém o crédito vinculado ao perfil profissional e preservado no arquivo `CREDITOS.md`.
+
 ## 3.6.6
 
 - adiciona a exportação local de evidências do histórico em um pacote ZIP;

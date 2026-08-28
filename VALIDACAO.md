@@ -1,10 +1,10 @@
-# Validação da versão 3.6.6
+# Validação da versão 3.6.7
 
 Data: 28/08/2026
 
 ## Resultado
 
-- 51 testes automatizados aprovados.
+- 52 testes automatizados aprovados.
 - 0 testes reprovados.
 - 40 arquivos verificados pela auditoria estrutural.
 - 23 referências do manifesto confirmadas.
@@ -69,6 +69,7 @@ Data: 28/08/2026
 - escape de conteúdo acadêmico no relatório HTML;
 - retenção local de até 2.000 registros de ação por curso;
 - presença do arquivo `CREDITOS.md` no pacote distribuído.
+- exibição acessível do crédito “By Eurico Cirilo” no rodapé da aplicação.
 
 ## Comandos
 

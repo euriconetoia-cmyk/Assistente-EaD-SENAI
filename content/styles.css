@@ -392,6 +392,9 @@
 .mat-timeline-note { font-size: 12px; margin-top: 4px; line-height: 1.45; }
 
 .mat-footer-note { margin-top: 12px; color: var(--mat-muted); font-size: 12px; line-height: 1.45; }
+.mat-credit-link { color: inherit; font-weight: 750; text-decoration: none; }
+.mat-credit-link:hover { text-decoration: underline; }
+.mat-credit-link:focus-visible { outline: 3px solid var(--mat-blue); outline-offset: 2px; border-radius: 3px; }
 
 .mat-badge-success { background: var(--mat-green-soft); color: var(--mat-green); }
 .mat-badge-warning { background: var(--mat-yellow-soft); color: var(--mat-yellow); }
