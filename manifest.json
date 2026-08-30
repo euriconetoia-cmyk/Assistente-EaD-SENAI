@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Assistente EaD SENAI",
-  "version": "3.6.8",
+  "version": "3.7.0",
   "description": "Painel de tutoria Moodle para acompanhar alunos, atividades, notas, pendências e fechamento de UCs.",
   "minimum_chrome_version": "102",
   "permissions": [
@@ -73,7 +73,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content/styles.css", "assets/icon32.png", "dashboard/index.html", "dashboard/dashboard.css", "dashboard/dashboard.js"],
+      "resources": ["content/styles.css", "assets/icon32.png", "dashboard/index.html", "dashboard/dashboard.css", "dashboard/directory-access.js", "dashboard/audit-export.js", "dashboard/dashboard.js"],
       "matches": ["https://ead.senai.br/*", "https://ead.fieg.com.br/*"]
     }
   ],

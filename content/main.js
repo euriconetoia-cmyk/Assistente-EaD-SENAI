@@ -140,6 +140,23 @@
       MAT.state.gradebook = snapshot.gradebook || MAT.state.gradebook;
       await MAT.storage.saveSnapshot(snapshot, collectedCourse.id);
       if (MAT.state.gradebook) await MAT.storage.saveGradebook(MAT.state.gradebook, collectedCourse.id);
+      await MAT.storage.addAuditEvent?.({
+        eventType: snapshot.meta?.warnings?.length ? 'analysis.partial' : 'analysis.completed',
+        courseId: collectedCourse.id,
+        courseName: collectedCourse.name,
+        result: snapshot.meta?.warnings?.length ? 'partial' : 'success',
+        source: 'course-analysis',
+        counts: {
+          assignments: snapshot.summary.assignments,
+          delivered: snapshot.summary.delivered,
+          corrected: snapshot.summary.corrected,
+          pending: snapshot.summary.pendingGrading,
+          unverified: snapshot.summary.activitiesUnverified
+        },
+        message: snapshot.meta?.warnings?.length
+          ? 'Análise concluída com informações que exigem conferência.'
+          : 'Análise do curso concluída.'
+      });
       MAT.state.actions = await MAT.storage.loadActions(collectedCourse.id);
       MAT.ui.renderAll();
       const gradingMessage = snapshot.summary.pendingGrading > 0
@@ -150,6 +167,14 @@
       MAT.ui.toast(`Análise concluída: ${snapshot.summary.assignments} atividade(s), ${snapshot.summary.delivered} entrega(s), ${snapshot.summary.corrected} corrigida(s) e ${gradingMessage}.`);
     } catch (error) {
       console.error('[Assistente EaD] Falha na análise', error);
+      await MAT.storage.addAuditEvent?.({
+        eventType: 'error.operational',
+        courseId: collectedCourse.id,
+        courseName: collectedCourse.name,
+        result: 'error',
+        source: 'course-analysis',
+        message: error?.message || 'Falha ao concluir a análise do curso.'
+      }).catch(() => {});
       MAT.ui.toast(`Não foi possível concluir a análise: ${error.message || error}`);
     } finally {
       MAT.ui.setBusy(false);

@@ -9,8 +9,8 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.6.8', () => {
-  assert.equal(manifest.version, '3.6.8');
+test('manifesto usa metadados e permissões mínimas da versão 3.7.0', () => {
+  assert.equal(manifest.version, '3.7.0');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
@@ -62,11 +62,24 @@ test('página inicial recebe a visão geral de cursos sem ampliar permissões', 
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
 });
 
-test('interface isolada e acessível contém cinco abas primárias', () => {
+test('interface isolada e acessível contém menu híbrido no painel', () => {
   const ui = read('content/ui.js');
-  assert.equal((ui.match(/class="mat-tab(?: mat-active)?"/g) || []).length, 5);
-  assert.match(ui, /mat-more/);
+  const css = read('content/styles.css');
+  assert.equal((ui.match(/class="mat-nav-item(?: mat-active)?"/g) || []).length, 8);
+  assert.match(ui, /id="mat-primary-nav"/);
+  assert.match(ui, /id="mat-nav-toggle"/);
+  assert.doesNotMatch(ui, /class="mat-tabs"/);
+  assert.match(ui, /Visão geral/);
+  assert.match(ui, /Auditoria/);
+  assert.match(ui, /Central operacional/);
+  assert.match(ui, /Prioridades de hoje/);
+  assert.match(ui, /Qualidade da leitura/);
+  assert.match(ui, /Dados indisponíveis/);
   assert.match(ui, /aria-live/);
+  assert.match(css, /\.mat-workspace/);
+  assert.match(css, /\.mat-side-nav/);
+  assert.match(css, /@container \(max-width: 430px\)/);
+  assert.match(css, /\.mat-notification/);
   assert.doesNotMatch(ui, /Somente leitura/);
   assert.match(read('content/namespace.js'), /attachShadow/);
 });

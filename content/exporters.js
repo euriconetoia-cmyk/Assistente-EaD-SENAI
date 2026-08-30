@@ -38,6 +38,16 @@
     const entries = [{ name: 'LEIA-ME.txt', content: readme }, { name: 'relatorio_evidencias.html', content: evidenceHtml({ snapshot, actions, gradebook, checklist, generatedAt }) }, { name: 'historico_acoes.csv', content: csv }, { name: 'auditoria_completa.json', content: JSON.stringify(payload, null, 2) }];
     const filename = `evidencias_assistente_ead_${slug(snapshot.course.name)}_${generatedAt.slice(0, 10)}.zip`;
     U.downloadBlob(U.makeZipBlob(entries), filename, 'application/zip');
+    MAT.storage?.addAuditEvent?.({
+      eventType: 'evidence.exported',
+      courseId: snapshot.course.id,
+      courseName: snapshot.course.name,
+      ucName: snapshot.course.activeUcName,
+      result: 'success',
+      source: 'course-evidence-export',
+      counts: { records: actions.length, files: entries.length },
+      message: 'Pacote de evidências do curso exportado por download.'
+    }).catch(() => {});
     return { filename, recordCount: actions.length };
   };
 

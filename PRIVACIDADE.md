@@ -1,6 +1,6 @@
 # Privacidade e tratamento local de dados
 
-Versão: 3.6.8
+Versão: 3.7.0
 
 ## Finalidade
 
@@ -19,6 +19,16 @@ O conteúdo de mensagens não é armazenado por padrão. Quando essa opção per
 O estado temporário de um lote, incluindo o plano de conferência, fica em `chrome.storage.session` somente para permitir retomada segura após suspensão do service worker e é removido ao concluir o processo. O resultado detalhado da conferência permanece no modal até seu fechamento e pode ser baixado pelo tutor, sem persistência automática adicional.
 
 O Histórico local recebe somente um resumo quantitativo do lote, sem nomes, notas ou feedbacks dos estudantes. Esse resumo segue o mesmo prazo de retenção configurado para os demais registros do curso.
+
+A Auditoria Local registra por padrão apenas tipo da ação, data, ambiente, curso, UC, atividade, resultado e contagens. Nomes de estudantes, notas e feedbacks completos não fazem parte do registro operacional padrão.
+
+## Pasta de evidências
+
+A versão 3.7.0 permite escolher uma pasta do computador pelo seletor nativo do Chrome. A extensão recebe acesso somente à pasta escolhida e apenas depois da autorização do usuário. A referência da pasta pode ser mantida no IndexedDB da extensão para facilitar exportações posteriores. O Chrome pode solicitar nova autorização e o usuário pode negar ou revogar o acesso.
+
+Se a autorização estiver ausente, negada ou indisponível, a extensão oferece download convencional em ZIP. Nenhum mecanismo tenta contornar a decisão do usuário.
+
+A exportação padrão contém metadados operacionais, relatório, histórico, manifesto e hashes de integridade. Dados acadêmicos individuais disponíveis no navegador somente são incluídos quando o usuário marca essa opção e confirma o aviso de privacidade.
 
 ## Comunicação e domínios
 

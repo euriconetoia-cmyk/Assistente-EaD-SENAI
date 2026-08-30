@@ -33,12 +33,24 @@
   const metricCard = (label, value, hint, tone = '') => `
     <div class="mat-card mat-kpi ${tone ? `mat-kpi-${tone}` : ''}">
       <div class="mat-kpi-label">${U.escapeHtml(label)}</div>
-      <div class="mat-kpi-value">${U.escapeHtml(value === null || value === undefined ? 'Verificar' : value)}</div>
+      <div class="mat-kpi-value">${U.escapeHtml(value === null || value === undefined ? 'Dados indisponíveis' : value)}</div>
       <div class="mat-kpi-hint">${U.escapeHtml(hint)}</div>
     </div>`;
 
-  const metricValue = (value) => Number.isFinite(value) ? String(value) : 'Verificar';
-  const rateValue = (value) => Number.isFinite(value) ? `${value}%` : 'Verificar';
+  const metricValue = (value) => Number.isFinite(value) ? String(value) : 'Dados indisponíveis';
+  const rateValue = (value) => Number.isFinite(value) ? `${value}%` : 'Dados indisponíveis';
+
+  const navIcon = (name) => ({
+    hoje: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.2 12 4l8 7.2V20h-5v-5H9v5H4z"/></svg>',
+    alunos: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM8 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 0c-1 0-2 .2-2.8.6 1.7 1.2 2.8 3.2 2.8 5.4v1h6v-1c0-3.3-2.7-6-6-6ZM8 15c-3.3 0-6 2.7-6 6h12c0-3.3-2.7-6-6-6Z"/></svg>',
+    correcoes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 5h10V6H7v2Zm0 5h4v-2H7v2Zm0 4h7v-2H7v2Zm9.7-5.7-3.2 3.2-1.2-1.2-1.4 1.4 2.6 2.6 4.6-4.6-1.4-1.4Z"/></svg>',
+    notas: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4V3Zm3 4v2h10V7H7Zm0 4v2h6v-2H7Zm0 4v2h4v-2H7Zm9.6-.9-2.1 2.1-1-1-1.4 1.4 2.4 2.4 3.5-3.5-1.4-1.4Z"/></svg>',
+    historico: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 1-8.5 6H1l3.5-4L8 9H5.6A7 7 0 1 0 12 5v4l4 2.4-1 1.7-5-3V3h2Z"/></svg>',
+    mais: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+    curso: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h8l2 2h8v12H3V5Zm2 4v8h14V9H5Z"/></svg>',
+    fechamento: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v16H4V5h3V3Zm2 2h6V4H9v1Zm-2 4v2h10V9H7Zm0 4v2h7v-2H7Z"/></svg>',
+    diagnostico: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v3.1a7 7 0 0 1 3 1.3l2.2-2.2 1.4 1.4-2.2 2.2a7 7 0 0 1 1.4 3H22v2h-3.2a7 7 0 0 1-1.4 3l2.2 2.2-1.4 1.4-2.2-2.2a7 7 0 0 1-3 1.4V22h-2v-3.2a7 7 0 0 1-3-1.4l-2.2 2.2-1.4-1.4 2.2-2.2a7 7 0 0 1-1.4-3H2v-2h3.2a7 7 0 0 1 1.4-3L4.4 5.6l1.4-1.4L8 6.4a7 7 0 0 1 3-1.3V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></svg>'
+  }[name] || '');
 
   const rateBar = (value, label) => `
     <div class="mat-rate">
@@ -77,14 +89,14 @@
   };
 
   const navigateTabsWithKeyboard = (event) => {
-    const tab = event.target?.closest?.('#mat-tabs [role="tab"]');
-    if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return false;
-    const tabs = [...document.querySelectorAll('#mat-tabs [role="tab"]')];
+    const tab = event.target?.closest?.('#mat-primary-nav [data-tab]');
+    if (!tab || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return false;
+    const tabs = [...document.querySelectorAll('#mat-primary-nav [data-tab]')].filter((item) => !item.hidden);
     const currentIndex = tabs.indexOf(tab);
     if (currentIndex < 0) return false;
     let targetIndex = currentIndex;
-    if (event.key === 'ArrowLeft') targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    if (event.key === 'ArrowRight') targetIndex = (currentIndex + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') targetIndex = (currentIndex + 1) % tabs.length;
     if (event.key === 'Home') targetIndex = 0;
     if (event.key === 'End') targetIndex = tabs.length - 1;
     event.preventDefault();
@@ -140,41 +152,48 @@
       <header class="mat-header">
         <div class="mat-header-top">
           <div class="mat-brand">
-            <div class="mat-brand-name">Assistente EaD SENAI V${MAT.VERSION}</div>
+            <div class="mat-brand-name">Assistente EaD SENAI</div>
             <h2 class="mat-course-name" id="mat-panel-title">Detectando curso atual</h2>
             <div class="mat-meta-line">
               <span class="mat-env-badge" id="mat-env-badge">Moodle</span>
-              <span class="mat-operation-badge" id="mat-operation-badge">Modo de consulta</span>
+              <span class="mat-operation-badge" id="mat-operation-badge">Pronto</span>
               <span id="mat-last-update">Sem análise salva</span>
             </div>
           </div>
           <button class="mat-close" id="mat-close" type="button" title="Fechar" aria-label="Fechar assistente">×</button>
         </div>
         <div class="mat-toolbar">
-          <button class="mat-btn mat-btn-primary" id="mat-refresh" type="button">Atualizar análise</button>
-          <select class="mat-mode-select" id="mat-analysis-mode" title="Modo de análise" aria-label="Modo de análise">
-            <option value="complete">Completa</option>
-            <option value="quick">Rápida</option>
-          </select>
-          <button class="mat-btn mat-btn-ghost" id="mat-open-course" type="button">Abrir curso</button>
+          <button class="mat-btn mat-btn-primary mat-refresh-button" id="mat-refresh" type="button">${navIcon('historico')}<span>Atualizar</span></button>
+          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-open-course" type="button" aria-label="Abrir curso" title="Abrir curso">${navIcon('curso')}<span class="mat-action-label">Abrir curso</span></button>
+          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('mais')}<span class="mat-sr-only">Opções de análise</span></button>
+          <div class="mat-header-menu" id="mat-header-menu" hidden>
+            <label for="mat-analysis-mode">Modo de análise</label>
+            <select class="mat-mode-select" id="mat-analysis-mode" aria-label="Modo de análise"><option value="complete">Completa</option><option value="quick">Rápida</option></select>
+            <button class="mat-menu-action" data-tab="diagnostico" type="button">Configurações e diagnóstico</button>
+          </div>
         </div>
         <div class="mat-progress-wrap" id="mat-progress-wrap">
           <div class="mat-progress-label" role="status" aria-live="polite" aria-atomic="true"><span id="mat-progress-message">Preparando</span><strong id="mat-progress-percent">0%</strong></div>
           <div class="mat-progress"><span id="mat-progress-bar"></span></div>
         </div>
       </header>
-      <nav class="mat-tabs" id="mat-tabs" role="tablist" aria-label="Seções do assistente">
-        <button class="mat-tab mat-active" id="mat-tab-hoje" data-tab="hoje" type="button" role="tab" aria-selected="true" aria-controls="mat-view-hoje">Hoje</button>
-        <button class="mat-tab" id="mat-tab-alunos" data-tab="alunos" type="button" role="tab" aria-selected="false" aria-controls="mat-view-alunos">Alunos</button>
-        <button class="mat-tab" id="mat-tab-correcoes" data-tab="correcoes" type="button" role="tab" aria-selected="false" aria-controls="mat-view-correcoes">Atividades</button>
-        <button class="mat-tab" id="mat-tab-notas" data-tab="notas" type="button" role="tab" aria-selected="false" aria-controls="mat-view-notas">Notas</button>
-        <button class="mat-tab" id="mat-tab-fechamento" data-tab="fechamento" type="button" role="tab" aria-selected="false" aria-controls="mat-view-fechamento">Fechamento</button>
-        <label class="mat-more-label" for="mat-more">Mais</label>
-        <select class="mat-more" id="mat-more" aria-label="Outras seções">
-          <option value="">Mais</option><option value="curso">Curso e UC</option><option value="historico">Histórico</option><option value="diagnostico">Diagnóstico</option>
-        </select>
+      <div class="mat-workspace">
+      <nav class="mat-side-nav" id="mat-primary-nav" aria-label="Seções do assistente">
+        <button class="mat-nav-toggle" id="mat-nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false">${navIcon('mais')}<span class="mat-nav-label">Recolher</span></button>
+        <div class="mat-nav-main">
+          <button class="mat-nav-item mat-active" id="mat-tab-hoje" data-tab="hoje" type="button" aria-current="page" aria-controls="mat-view-hoje" title="Visão geral">${navIcon('hoje')}<span class="mat-nav-label">Visão geral</span></button>
+          <button class="mat-nav-item" id="mat-tab-alunos" data-tab="alunos" type="button" aria-controls="mat-view-alunos" title="Alunos">${navIcon('alunos')}<span class="mat-nav-label">Alunos</span><span class="mat-nav-count" id="mat-nav-student-count" hidden>0</span></button>
+          <button class="mat-nav-item" id="mat-tab-correcoes" data-tab="correcoes" type="button" aria-controls="mat-view-correcoes" title="Correções">${navIcon('correcoes')}<span class="mat-nav-label">Correções</span><span class="mat-nav-count" id="mat-nav-correction-count" hidden>0</span></button>
+          <button class="mat-nav-item" id="mat-tab-notas" data-tab="notas" type="button" aria-controls="mat-view-notas" title="Notas">${navIcon('notas')}<span class="mat-nav-label">Notas</span></button>
+          <button class="mat-nav-item" id="mat-tab-historico" data-tab="historico" type="button" aria-controls="mat-view-historico" title="Auditoria">${navIcon('historico')}<span class="mat-nav-label">Auditoria</span></button>
+        </div>
+        <div class="mat-nav-secondary">
+          <button class="mat-nav-item" id="mat-tab-curso" data-tab="curso" type="button" aria-controls="mat-view-curso" title="Curso e UC">${navIcon('curso')}<span class="mat-nav-label">Curso e UC</span></button>
+          <button class="mat-nav-item" id="mat-tab-fechamento" data-tab="fechamento" type="button" aria-controls="mat-view-fechamento" title="Fechamento">${navIcon('fechamento')}<span class="mat-nav-label">Fechamento</span></button>
+          <button class="mat-nav-item" id="mat-tab-diagnostico" data-tab="diagnostico" type="button" aria-controls="mat-view-diagnostico" title="Diagnóstico">${navIcon('diagnostico')}<span class="mat-nav-label">Diagnóstico</span></button>
+        </div>
       </nav>
-      <main class="mat-content" id="mat-content">
+      <main class="mat-content" id="mat-content" tabindex="-1">
         <section class="mat-view mat-active" id="mat-view-hoje" data-view="hoje" role="tabpanel" aria-labelledby="mat-tab-hoje" aria-hidden="false"></section>
         <section class="mat-view" id="mat-view-curso" data-view="curso" role="tabpanel" aria-labelledby="mat-tab-curso" aria-hidden="true"></section>
         <section class="mat-view" id="mat-view-alunos" data-view="alunos" role="tabpanel" aria-labelledby="mat-tab-alunos" aria-hidden="true"></section>
@@ -183,20 +202,14 @@
         <section class="mat-view" id="mat-view-fechamento" data-view="fechamento" role="tabpanel" aria-labelledby="mat-tab-fechamento" aria-hidden="true"></section>
         <section class="mat-view" id="mat-view-historico" data-view="historico" role="tabpanel" aria-labelledby="mat-tab-historico" aria-hidden="true"></section>
         <section class="mat-view" id="mat-view-diagnostico" data-view="diagnostico" role="tabpanel" aria-labelledby="mat-tab-diagnostico" aria-hidden="true"></section>
-      </main>
+      </main></div>
       <footer class="mat-extension-credit"><span>Dados locais</span><span id="mat-sync-status" role="status">Pronto</span><a class="mat-credit-link" href="https://www.linkedin.com/in/euricocirilo/" target="_blank" rel="noopener noreferrer" aria-label="Créditos: By Eurico Cirilo">By Eurico Cirilo</a><span>V${MAT.VERSION}</span></footer>
+      <div class="mat-notification" id="mat-toast" role="status" aria-live="polite" aria-atomic="true" hidden><span id="mat-toast-message"></span><button id="mat-toast-close" type="button" aria-label="Fechar notificação">×</button></div>
       <div class="mat-detail-overlay" id="mat-detail-overlay" aria-hidden="true">
         <article class="mat-detail" id="mat-detail" role="dialog" aria-modal="true" aria-label="Detalhes" tabindex="-1"></article>
       </div>
     `;
     document.documentElement.appendChild(panel);
-
-    const toast = document.createElement('div');
-    toast.id = 'mat-toast';
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.setAttribute('aria-atomic', 'true');
-    document.documentElement.appendChild(toast);
 
     bindBaseEvents();
   };
@@ -217,13 +230,35 @@
       await MAT.storage.saveSettings(MAT.state.settings);
       toast(`Modo ${event.target.value === 'complete' ? 'completo' : 'rápido'} selecionado.`);
     }));
-    document.getElementById('mat-tabs')?.addEventListener('click', (event) => {
+    document.getElementById('mat-primary-nav')?.addEventListener('click', (event) => {
       const tab = event.target.closest('[data-tab]');
       if (tab) setTab(tab.dataset.tab);
     });
-    document.getElementById('mat-more')?.addEventListener('change', (event) => {
-      if (event.target.value) setTab(event.target.value);
+    document.getElementById('mat-nav-toggle')?.addEventListener('click', safely(async () => {
+      const panel = document.getElementById('mat-panel');
+      const expanded = !panel?.classList.contains('mat-nav-expanded');
+      panel?.classList.toggle('mat-nav-expanded', expanded);
+      const toggle = document.getElementById('mat-nav-toggle');
+      toggle?.setAttribute('aria-expanded', String(expanded));
+      toggle?.setAttribute('aria-label', expanded ? 'Recolher menu' : 'Expandir menu');
+      MAT.state.settings.navigationExpanded = expanded;
+      await MAT.storage.saveSettings(MAT.state.settings);
+    }));
+    document.getElementById('mat-header-options')?.addEventListener('click', () => {
+      const menu = document.getElementById('mat-header-menu');
+      const button = document.getElementById('mat-header-options');
+      const open = Boolean(menu?.hidden);
+      if (menu) menu.hidden = !open;
+      button?.setAttribute('aria-expanded', String(open));
     });
+    document.getElementById('mat-header-menu')?.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-tab]');
+      if (!target) return;
+      setTab(target.dataset.tab);
+      document.getElementById('mat-header-menu').hidden = true;
+      document.getElementById('mat-header-options')?.setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('mat-toast-close')?.addEventListener('click', () => hideToast());
     document.getElementById('mat-content')?.addEventListener('click', safely(handleContentClick));
     document.getElementById('mat-content')?.addEventListener('input', handleContentInput);
     document.getElementById('mat-content')?.addEventListener('change', safely(handleContentChange));
@@ -236,20 +271,19 @@
 
   const setTab = (tabName) => {
     MAT.state.activeTab = tabName;
-    document.querySelectorAll('#mat-tabs .mat-tab').forEach((tab) => {
+    document.querySelectorAll('#mat-primary-nav [data-tab]').forEach((tab) => {
       const active = tab.dataset.tab === tabName;
       tab.classList.toggle('mat-active', active);
-      tab.setAttribute('aria-selected', String(active));
-      tab.tabIndex = active ? 0 : -1;
+      if (active) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
     });
     document.querySelectorAll('#mat-content .mat-view').forEach((view) => {
       const active = view.dataset.view === tabName;
       view.classList.toggle('mat-active', active);
       view.setAttribute('aria-hidden', String(!active));
     });
-    const more = document.getElementById('mat-more');
-    if (more) more.value = ['curso', 'historico', 'diagnostico'].includes(tabName) ? tabName : '';
     renderView(tabName);
+    document.getElementById('mat-content')?.scrollTo?.({ top: 0, behavior: 'auto' });
   };
 
   const setPagePushState = (isOpen) => {
@@ -263,7 +297,6 @@
   const removePanel = () => {
     MAT.state.isOpen = false;
     document.getElementById('mat-panel')?.remove();
-    document.getElementById('mat-toast')?.remove();
     setPagePushState(false);
   };
 
@@ -319,6 +352,7 @@
     const openCourse = document.getElementById('mat-open-course');
     const refresh = document.getElementById('mat-refresh');
     const operation = document.getElementById('mat-operation-badge');
+    const panel = document.getElementById('mat-panel');
     if (courseName) courseName.textContent = course?.id ? course.name : 'Página inicial do Moodle';
     if (env) env.textContent = course?.environment || MAT.state.adapter?.environment || 'Moodle';
     if (update) update.textContent = snapshot?.meta?.collectedAt ? `Atualizado em ${U.formatDate(snapshot.meta.collectedAt, true)}` : 'Sem análise detalhada salva';
@@ -329,10 +363,18 @@
       refresh.textContent = course?.id ? 'Atualizar análise' : 'Abra um curso';
     }
     if (operation) {
-      const labels = { consulta: 'Modo de consulta', preparacao: 'Preparando alterações', salvamento: 'Salvando alterações', concluido: 'Alterações concluídas' };
-      operation.textContent = labels[MAT.state.operationMode] || 'Modo de consulta';
+      const labels = { consulta: 'Pronto', preparacao: 'Preparando', salvamento: 'Salvando', concluido: 'Concluído' };
+      operation.textContent = labels[MAT.state.operationMode] || 'Pronto';
       operation.dataset.mode = MAT.state.operationMode;
     }
+    panel?.classList.toggle('mat-nav-expanded', Boolean(settings?.navigationExpanded));
+    document.getElementById('mat-nav-toggle')?.setAttribute('aria-expanded', String(Boolean(settings?.navigationExpanded)));
+    const correctionCount = Number(snapshot?.summary?.activitiesWithPending || 0);
+    const attentionCount = Number(snapshot?.summary?.riskImmediate || 0) + Number(snapshot?.summary?.riskHigh || 0);
+    const correctionBadge = document.getElementById('mat-nav-correction-count');
+    const studentBadge = document.getElementById('mat-nav-student-count');
+    if (correctionBadge) { correctionBadge.textContent = correctionCount > 99 ? '99+' : String(correctionCount); correctionBadge.hidden = correctionCount <= 0; }
+    if (studentBadge) { studentBadge.textContent = attentionCount > 99 ? '99+' : String(attentionCount); studentBadge.hidden = attentionCount <= 0; }
     const host = MAT.dom.ensureHost().host;
     if (host && settings) host.dataset.theme = settings.theme || 'system';
   };
@@ -359,15 +401,31 @@
     }
   };
 
+  const friendlyMessage = (message) => {
+    const text = String(message || 'A operação não pôde ser concluída.');
+    if (/failed to fetch|networkerror|load failed/i.test(text)) return 'Não foi possível consultar uma das páginas do Moodle. Os dados podem estar incompletos.';
+    return text;
+  };
+
+  const hideToast = () => {
+    const node = document.getElementById('mat-toast');
+    if (!node) return;
+    node.classList.remove('mat-visible');
+    window.setTimeout(() => { if (!node.classList.contains('mat-visible')) node.hidden = true; }, 180);
+  };
+
   const toast = (message, tone = '') => {
     const node = document.getElementById('mat-toast');
     if (!node) return;
-    node.textContent = message;
-    const inferredTone = tone || (/erro|falha|não foi|bloquead/i.test(message) ? 'error' : 'info');
+    const safeMessage = friendlyMessage(message);
+    const messageNode = document.getElementById('mat-toast-message');
+    if (messageNode) messageNode.textContent = safeMessage;
+    const inferredTone = tone || (/erro|falha|não foi|bloquead|incomplet/i.test(safeMessage) ? 'error' : 'info');
     node.dataset.tone = inferredTone;
+    node.hidden = false;
     node.classList.add('mat-visible');
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => node.classList.remove('mat-visible'), inferredTone === 'error' ? 7000 : 4000);
+    if (inferredTone !== 'error') toast.timer = setTimeout(hideToast, 4500);
   };
 
   const emptyHtml = (title, text, buttonText = 'Atualizar análise') => {
@@ -383,7 +441,23 @@
   const warningsHtml = (snapshot) => {
     const warnings = snapshot?.meta?.warnings || [];
     if (!warnings.length) return '';
-    return `<div class="mat-warning"><strong>Atenção:</strong> ${warnings.map(U.escapeHtml).join(' ')}</div>`;
+    const friendly = warnings.map(friendlyMessage);
+    return `<details class="mat-data-quality mat-quality-warning"><summary><span><strong>Qualidade da leitura: parcial</strong><small>${friendly.length} ocorrência(s) podem afetar os resultados</small></span><span class="mat-quality-action">Ver detalhes</span></summary><div class="mat-quality-details">${friendly.map((warning) => `<p>${U.escapeHtml(warning)}</p>`).join('')}<div class="mat-form-actions"><button class="mat-btn mat-btn-sm mat-btn-primary" data-action="refresh" type="button">Tentar novamente</button><button class="mat-btn mat-btn-sm" data-action="tab" data-tab="diagnostico" type="button">Detalhes técnicos</button></div></div></details>`;
+  };
+
+  const dataState = (value, partial = false) => {
+    if (partial) return { label: 'Leitura parcial', className: 'mat-risk-atencao' };
+    if (Number.isFinite(value)) return { label: 'Confirmado', className: 'mat-risk-regular' };
+    return { label: 'Dados indisponíveis', className: 'mat-badge-neutral' };
+  };
+
+  const operationalTimelineHtml = (snapshot) => {
+    const events = [];
+    if (snapshot?.meta?.collectedAt) events.push({ title: 'Análise atualizada', date: snapshot.meta.collectedAt, note: `${snapshot.summary?.assignments || 0} atividade(s) analisada(s)` });
+    (MAT.state.actions || []).slice(0, 3).forEach((action) => events.push({ title: action.title || 'Ação registrada', date: action.createdAt, note: action.note || action.type || '' }));
+    events.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+    if (!events.length) return '<div class="mat-info">Nenhuma atividade recente registrada.</div>';
+    return events.slice(0, 4).map((event) => `<div class="mat-activity-event"><span class="mat-event-dot" aria-hidden="true"></span><div><strong>${U.escapeHtml(event.title)}</strong><p>${U.escapeHtml(event.note)}</p></div><time>${U.escapeHtml(U.formatDate(event.date, true))}</time></div>`).join('');
   };
 
   const formatGrade = (value) => {
@@ -414,46 +488,48 @@
     const panorama = s.activityPanorama;
     const metrics = panorama.metrics;
     const tasks = s.tasks || [];
+    const dataPartial = Boolean(metrics.activitiesUnverified || s.meta?.warnings?.length || panorama.dataMode !== 'detalhado');
+    const correctionValue = metrics.pendingGradingMinimum > 0 ? `≥${metrics.pendingGradingMinimum}` : metrics.activitiesUnverified ? null : metrics.pendingGrading;
+    const correctionState = dataState(correctionValue, Boolean(metrics.activitiesUnverified));
+    const attentionStudents = Number(summary.riskImmediate || 0) + Number(summary.riskHigh || 0);
+    const nextTask = tasks[0];
     view.innerHTML = `
       ${warningsHtml(s)}
-      ${metrics.activitiesUnverified ? `<div class="mat-warning"><strong>Correções não confirmadas:</strong> ${metrics.activitiesUnverified} atividade(s) não tiveram evidência suficiente para afirmar que estão sem pendências. Abra a tela de avaliação dessas atividades e atualize a análise.</div>` : ''}
-      ${panorama.scope.warning ? `<div class="mat-warning"><strong>Escopo da UC:</strong> ${U.escapeHtml(panorama.scope.warning)}</div>` : ''}
-      <div class="mat-card mat-panorama-card">
+      <section class="mat-priority-hero" aria-labelledby="mat-priority-title">
+        <div class="mat-section-head"><div><span class="mat-eyebrow">Central operacional</span><h3 id="mat-priority-title">Prioridades de hoje</h3><p>O que exige atenção primeiro nesta UC.</p></div><span class="mat-badge ${dataPartial ? 'mat-risk-atencao' : 'mat-risk-regular'}">${dataPartial ? 'Leitura parcial' : 'Dados confirmados'}</span></div>
+        ${nextTask ? `<article class="mat-next-action"><div><span class="mat-next-label">Próxima ação recomendada</span><h4>${U.escapeHtml(nextTask.title)}</h4><p>${U.escapeHtml(nextTask.description || nextTask.action || '')}</p></div><div class="mat-task-actions">${nextTask.url ? `<button class="mat-btn mat-btn-sm" data-action="open-url" data-url="${U.escapeHtml(nextTask.url)}" type="button">Abrir origem</button>` : ''}${nextTask.studentKey ? `<button class="mat-btn mat-btn-sm" data-action="student-detail" data-student-key="${U.escapeHtml(nextTask.studentKey)}" type="button">Ver aluno</button>` : ''}<button class="mat-btn mat-btn-sm mat-btn-primary" data-action="register-task" data-task-id="${U.escapeHtml(nextTask.id)}" type="button">Registrar ação</button></div></article>` : '<div class="mat-info">Nenhuma ação prioritária foi identificada com os dados disponíveis.</div>'}
+        <div class="mat-quick-actions" aria-label="Ações rápidas">
+          <button data-action="refresh" type="button">Atualizar</button>
+          <button data-action="tab" data-tab="correcoes" type="button">Correções</button>
+          <button data-action="tab" data-tab="notas" type="button">Importar notas</button>
+          <button data-action="export-evidence-package" type="button">Exportar evidências</button>
+        </div>
+      </section>
+      <div class="mat-grid mat-overview-grid">
+        ${metricCard('Atividades avaliativas', metrics.evaluativeActivities, 'Tarefas acompanhadas nesta UC')}
+        ${metricCard('Entregas realizadas', metrics.delivered, Number.isFinite(metrics.deliveryRate) ? `${metrics.deliveryRate}% do esperado` : 'Total ainda não confirmado', 'blue')}
+        <div class="mat-card mat-kpi ${metrics.activitiesUnverified ? 'mat-kpi-orange' : correctionValue > 0 ? 'mat-kpi-orange' : 'mat-kpi-green'}"><div class="mat-kpi-top"><div class="mat-kpi-label">Correções pendentes</div><span class="mat-badge ${correctionState.className}">${correctionState.label}</span></div><div class="mat-kpi-value">${correctionValue === null ? 'Dados indisponíveis' : U.escapeHtml(correctionValue)}</div><div class="mat-kpi-hint">${metrics.activitiesUnverified ? `${metrics.activitiesUnverified} atividade(s) precisam de conferência` : `${metrics.activitiesWithPending} atividade(s) com pendência`}</div></div>
+        ${metricCard('Alunos em atenção', attentionStudents, `${summary.riskImmediate || 0} com ação imediata`, attentionStudents > 0 ? 'orange' : 'green')}
+      </div>
+      <details class="mat-card mat-situation-card" open>
+        <summary><div><span class="mat-eyebrow">Situação da UC</span><strong>${U.escapeHtml(panorama.scope.label)}</strong></div><span class="mat-badge ${panorama.dataMode === 'detalhado' ? 'mat-risk-regular' : 'mat-risk-atencao'}">${panorama.dataMode === 'detalhado' ? 'Leitura detalhada' : 'Leitura estimada'}</span></summary>
+        ${panorama.scope.warning ? `<div class="mat-warning"><strong>Escopo:</strong> ${U.escapeHtml(panorama.scope.warning)}</div>` : ''}
+        <div class="mat-situation-numbers">
+          <div><span>Atividades</span><strong>${metricValue(metrics.totalActivities)}</strong></div>
+          <div><span>Esperadas</span><strong>${metricValue(metrics.expectedDeliveries)}</strong></div>
+          <div><span>Realizadas</span><strong>${metricValue(metrics.delivered)}</strong></div>
+          <div><span>Corrigidas</span><strong>${U.escapeHtml(metrics.correctedDisplay === 'Verificar' ? 'Dados indisponíveis' : metrics.correctedDisplay)}</strong></div>
+        </div>
+        <div class="mat-grid mat-grid-2 mat-rate-grid">${rateBar(metrics.deliveryRate, 'Progresso das entregas')}${rateBar(metrics.correctionRate, 'Progresso das correções')}</div>
+      </details>
+      <div class="mat-card mat-recent-card">
         <div class="mat-section-head">
-          <div><h3>Panorama geral da UC</h3><p>${U.escapeHtml(panorama.scope.label)}. Entregas e correções são somadas em todas as tarefas avaliativas reconhecidas.</p></div>
-          <span class="mat-badge ${panorama.dataMode === 'detalhado' ? 'mat-risk-regular' : 'mat-risk-atencao'}">${panorama.dataMode === 'detalhado' ? 'Leitura detalhada' : 'Leitura estimada'}</span>
+          <div><h3>Atividade recente</h3><p>Registros locais vinculados à auditoria.</p></div>
+          <button class="mat-btn mat-btn-sm" data-action="tab" data-tab="historico" type="button">Ver auditoria</button>
         </div>
-        <div class="mat-grid mat-grid-3">
-          ${metricCard('Atividades na UC', metrics.totalActivities, 'Todos os itens reconhecidos na seção')}
-          ${metricCard('Atividades avaliativas', metrics.evaluativeActivities, 'Tarefas com acompanhamento de entrega')}
-          ${metricCard('Entregas esperadas', metrics.expectedDeliveries, 'Alunos previstos em todas as tarefas')}
-          ${metricCard('Entregas realizadas', metrics.delivered, `${rateValue(metrics.deliveryRate)} do total esperado`, 'blue')}
-          ${metricCard('Entregas corrigidas', metrics.correctedDisplay, metrics.correctedCountsVerified ? `${rateValue(metrics.correctionRate)} das entregas reconhecidas` : `Contagem parcial. Taxa mínima reconhecida: ${rateValue(metrics.correctionRate)}`, metrics.correctedCountsVerified ? 'green' : 'orange')}
-          ${metricCard('Faltam corrigir', metrics.pendingGradingMinimum > 0 ? `≥${metrics.pendingGradingMinimum}` : metrics.activitiesUnverified ? 'Verificar' : metrics.pendingGrading, metrics.activitiesUnverified ? `${metrics.activitiesUnverified} atividade(s) sem confirmação` : `${metrics.activitiesWithPending} atividade(s) com pendência`, metrics.pendingGradingMinimum || metrics.activitiesUnverified ? 'orange' : 'green')}
-        </div>
-        <div class="mat-grid mat-grid-2 mat-rate-grid">
-          ${rateBar(metrics.deliveryRate, 'Progresso das entregas')}
-          ${rateBar(metrics.correctionRate, 'Progresso das correções')}
-        </div>
-        <div class="mat-pills" style="margin-top:10px">
-          <span class="mat-pill">${metricValue(metrics.missingDeliveries)} entrega(s) não realizada(s)</span>
-          <span class="mat-pill">${metrics.activitiesComplete} atividade(s) integralmente concluída(s)</span>
-          <span class="mat-pill">${metrics.activitiesFullyCorrected} atividade(s) com ausência de pendência confirmada</span>
-          <span class="mat-pill">${metrics.activitiesUnverified} atividade(s) aguardando conferência</span>
-        </div>
+        <div class="mat-activity-timeline">${operationalTimelineHtml(s)}</div>
       </div>
-      <div class="mat-grid mat-grid-4">
-        <div class="mat-card mat-kpi"><div class="mat-kpi-label">Alunos acompanhados</div><div class="mat-kpi-value">${summary.students}</div><div class="mat-kpi-hint">Dados reconhecidos na UC</div></div>
-        <div class="mat-card mat-kpi"><div class="mat-kpi-label">Ação imediata</div><div class="mat-kpi-value">${summary.riskImmediate}</div><div class="mat-kpi-hint">Alunos com maior urgência</div></div>
-        <div class="mat-card mat-kpi"><div class="mat-kpi-label">Alunos sem entrega</div><div class="mat-kpi-value">${summary.missingStudents}</div><div class="mat-kpi-hint">Pelo menos uma pendência</div></div>
-        <div class="mat-card mat-kpi"><div class="mat-kpi-label">Correções para tratar ou conferir</div><div class="mat-kpi-value">${summary.activitiesWithPending + summary.activitiesUnverified}</div><div class="mat-kpi-hint">${summary.activitiesWithPending} pendente(s) e ${summary.activitiesUnverified} não confirmada(s)</div></div>
-      </div>
-      <div class="mat-card">
-        <div class="mat-section-head"><div><h3>Minha fila de trabalho</h3><p>Ordenada por risco, prazo e pendência.</p></div><span class="mat-badge mat-badge-neutral">${tasks.length} ação(ões)</span></div>
-        <div class="mat-task-list">
-          ${tasks.length ? tasks.slice(0, 30).map(taskHtml).join('') : '<div class="mat-info">Nenhuma ação prioritária foi identificada com os dados disponíveis.</div>'}
-        </div>
-      </div>
+      ${tasks.length > 1 ? `<details class="mat-card mat-work-queue"><summary><span><strong>Fila completa de trabalho</strong><small>${tasks.length} ações ordenadas por risco e prazo</small></span><span class="mat-quality-action">Expandir</span></summary><div class="mat-task-list">${tasks.slice(1, 30).map(taskHtml).join('')}</div></details>` : ''}
     `;
   };
 
@@ -640,7 +716,7 @@
           ${metricCard('Entregas esperadas', metrics.expectedDeliveries, 'Soma dos alunos previstos por tarefa')}
           ${metricCard('Entregues', metrics.delivered, `${rateValue(metrics.deliveryRate)} das entregas esperadas`, 'blue')}
           ${metricCard('Corrigidas', metrics.correctedDisplay, metrics.correctedCountsVerified ? `${rateValue(metrics.correctionRate)} do que foi entregue` : `Contagem parcial. Taxa mínima reconhecida: ${rateValue(metrics.correctionRate)}`, metrics.correctedCountsVerified ? 'green' : 'orange')}
-          ${metricCard('Falta corrigir', metrics.pendingGradingMinimum > 0 ? `≥${metrics.pendingGradingMinimum}` : metrics.activitiesUnverified ? 'Verificar' : metrics.pendingGrading, metrics.activitiesUnverified ? `${metrics.activitiesUnverified} tarefa(s) sem confirmação` : `${metrics.activitiesWithPending} tarefa(s) afetada(s)`, metrics.pendingGradingMinimum || metrics.activitiesUnverified ? 'orange' : 'green')}
+          ${metricCard('Falta corrigir', metrics.pendingGradingMinimum > 0 ? `≥${metrics.pendingGradingMinimum}` : metrics.activitiesUnverified ? 'Dados indisponíveis' : metrics.pendingGrading, metrics.activitiesUnverified ? `${metrics.activitiesUnverified} tarefa(s) sem confirmação` : `${metrics.activitiesWithPending} tarefa(s) afetada(s)`, metrics.pendingGradingMinimum || metrics.activitiesUnverified ? 'orange' : 'green')}
         </div>
         <div class="mat-grid mat-grid-2 mat-rate-grid">
           ${rateBar(metrics.deliveryRate, 'Entrega geral da UC')}
@@ -700,7 +776,7 @@
             }).join('') : '<tr><td colspan="11">Nenhuma atividade corresponde ao filtro selecionado.</td></tr>'}</tbody>
           </table>
         </div>
-        <div class="mat-footer-note">O valor zero em “Falta corrigir” só é exibido como concluído quando a ausência de pendências foi confirmada. Quando a tabela está incompleta, dinâmica, filtrada por grupo ou não reconhecida, o resultado aparece como “Verificar”.</div>
+        <div class="mat-footer-note">O valor zero em “Falta corrigir” só é exibido como concluído quando a ausência de pendências foi confirmada. Quando a tabela está incompleta, dinâmica, filtrada por grupo ou não reconhecida, o resultado aparece como “Dados indisponíveis”.</div>
       </div>
     `;
   };
@@ -852,7 +928,7 @@
     const actions = MAT.state.actions || [];
     view.innerHTML = `
       <div class="mat-card">
-        <div class="mat-section-head"><div><h3>Histórico local</h3><p>Registros feitos pelo tutor para o curso atual.</p></div><span class="mat-badge mat-badge-neutral">${actions.length}</span></div>
+        <div class="mat-section-head"><div><h3>Auditoria local</h3><p>Linha do tempo das ações e evidências do curso atual.</p></div><span class="mat-badge mat-badge-neutral">${actions.length}</span></div>
         <div class="mat-form-actions" style="margin:12px 0"><button class="mat-btn mat-btn-primary" data-action="export-evidence-package" type="button" ${MAT.state.snapshot ? '' : 'disabled'}>Exportar evidências</button></div>
         <div class="mat-footer-note">O pacote será salvo no computador pelo navegador e reunirá relatório HTML, histórico CSV e auditoria JSON com os dados disponíveis.</div>
         ${actions.length ? actions.map((action) => `
@@ -952,7 +1028,7 @@
   const renderAll = () => {
     updateHeader();
     updateLauncher();
-    ['hoje', 'curso', 'alunos', 'correcoes', 'notas', 'fechamento', 'historico', 'diagnostico'].forEach(renderView);
+    renderView(MAT.state.activeTab || 'hoje');
   };
 
   const showDetail = (overlay, detail) => {
@@ -1358,4 +1434,3 @@
 
   MAT.ui = { makeLauncher, makePanel, openPanel, closePanel, togglePanel, setLauncherPassive, syncPageLayout, removePanel, renderAll, renderView, updateHeader, updateLauncher, showProgress, hideProgress, setBusy, toast, setTab };
 })();
-
