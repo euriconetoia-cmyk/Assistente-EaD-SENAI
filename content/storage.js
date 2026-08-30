@@ -24,12 +24,16 @@
     showFloatingButton: true,
     theme: 'system',
     panelBehavior: 'overlay',
+    navigationExpanded: false,
     retentionDays: 90,
     storeMessageContent: false,
     enableAutomaticCourseScan: false,
     enableAutomaticCategoryScan: false,
     forcePortuguese: false
   };
+
+  const AUDIT_KEY = 'mat_audit_log_v1';
+  const AUDIT_SCHEMA_VERSION = 1;
 
   // Chrome can briefly omit storage APIs while an extension is reloaded or a page is navigating.
   // Keep the current tab usable and use the browser storage again as soon as it becomes available.
@@ -111,6 +115,7 @@
       showFloatingButton: settings.showFloatingButton !== false,
       theme: ['system', 'light', 'dark'].includes(settings.theme) ? settings.theme : DEFAULT_SETTINGS.theme,
       panelBehavior: ['overlay', 'push'].includes(settings.panelBehavior) ? settings.panelBehavior : DEFAULT_SETTINGS.panelBehavior,
+      navigationExpanded: Boolean(settings.navigationExpanded),
       retentionDays: Math.round(boundedNumber(settings.retentionDays, DEFAULT_SETTINGS.retentionDays, 7, 365)),
       storeMessageContent: Boolean(settings.storeMessageContent),
       enableAutomaticCourseScan: Boolean(settings.enableAutomaticCourseScan),
@@ -195,6 +200,50 @@
     return Array.isArray(data[key]) ? data[key] : [];
   };
 
+  const sanitizeAuditText = (value, maximum = 300) => String(value ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maximum);
+
+  const loadAuditEvents = async () => {
+    const data = await get([AUDIT_KEY]);
+    return Array.isArray(data[AUDIT_KEY]) ? data[AUDIT_KEY] : [];
+  };
+
+  const addAuditEvent = async (event = {}) => {
+    const events = await loadAuditEvents();
+    const now = new Date().toISOString();
+    const course = MAT.state.course || {};
+    const retentionDays = MAT.state.settings?.retentionDays || DEFAULT_SETTINGS.retentionDays;
+    const cutoff = Date.now() - retentionDays * 86400000;
+    const counts = Object.fromEntries(Object.entries(event.counts || {})
+      .filter(([, value]) => Number.isFinite(Number(value)))
+      .map(([key, value]) => [sanitizeAuditText(key, 40), Number(value)]));
+    const item = {
+      schemaVersion: AUDIT_SCHEMA_VERSION,
+      eventId: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      eventType: sanitizeAuditText(event.eventType || 'action.recorded', 80),
+      createdAt: now,
+      extensionVersion: MAT.VERSION,
+      environment: sanitizeAuditText(event.environment || course.environment || location.hostname, 120),
+      courseId: sanitizeAuditText(event.courseId || course.id || '', 80),
+      courseName: sanitizeAuditText(event.courseName || course.name || '', 180),
+      ucName: sanitizeAuditText(event.ucName || MAT.state.settings?.activeUcName || MAT.state.snapshot?.course?.activeUcName || '', 180),
+      activityId: sanitizeAuditText(event.activityId || '', 80),
+      activityName: sanitizeAuditText(event.activityName || '', 180),
+      result: ['success', 'partial', 'error', 'info'].includes(event.result) ? event.result : 'info',
+      counts,
+      source: sanitizeAuditText(event.source || 'content', 80),
+      message: sanitizeAuditText(event.message || '', 300)
+    };
+    const retained = [item, ...events]
+      .filter((record) => !record.createdAt || Date.parse(record.createdAt) >= cutoff)
+      .slice(0, 2000);
+    await set({ [AUDIT_KEY]: retained });
+    return item;
+  };
+
   const saveActions = async (actions, courseId) => {
     const key = contextKey('actions', courseId);
     const cutoff = Date.now() - (MAT.state.settings?.retentionDays || DEFAULT_SETTINGS.retentionDays) * 86400000;
@@ -218,6 +267,18 @@
     };
     actions.unshift(item);
     await saveActions(actions, courseId);
+    const eventType = action?.type === 'conferencia_lote'
+      ? 'grade.verify.completed'
+      : action?.type === 'comunicacao'
+        ? 'message.opened'
+        : 'action.recorded';
+    await addAuditEvent({
+      eventType,
+      courseId,
+      result: action?.status === 'erro' ? 'error' : 'success',
+      source: action?.type || 'history',
+      message: action?.title || 'Ação registrada no histórico.'
+    });
     return item;
   };
 
@@ -355,6 +416,7 @@
 
   MAT.storage = {
     DEFAULT_SETTINGS,
+    AUDIT_KEY,
     normalizeSettings,
     loadSettings,
     saveSettings,
@@ -367,6 +429,8 @@
     loadActions,
     saveActions,
     addAction,
+    loadAuditEvents,
+    addAuditEvent,
     updateAction,
     loadChecklist,
     saveChecklist,

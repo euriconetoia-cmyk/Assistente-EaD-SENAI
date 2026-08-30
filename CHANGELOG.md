@@ -1,5 +1,26 @@
 # Alterações
 
+## 3.7.0
+
+- adota menu híbrido compacto, expansível e responsivo no painel do Moodle e na Central de Gestão;
+- unifica cores, tipografia, foco, tabelas e tema escuro entre dashboard, painel e importador;
+- remove as abas horizontais do painel e reorganiza a visão geral em quatro indicadores essenciais;
+- cria a Central operacional com prioridades, próxima ação, comandos rápidos e cartão consolidado da UC;
+- integra atividade recente à Auditoria Local;
+- substitui “Verificar” por estados explícitos de disponibilidade e confiabilidade;
+- traduz falhas de rede para mensagens compreensíveis e mantém detalhes técnicos no Diagnóstico;
+- corrige notificações sobrepostas e estabelece uma única rolagem principal;
+- renderiza somente a área ativa do painel para reduzir trabalho desnecessário;
+- cria a Auditoria Local em linha do tempo com filtros por período, resultado, tipo e pesquisa;
+- registra eventos minimizados de análise, importação, conferência, mensagens, relatórios e exportações;
+- permite escolher uma pasta do computador pelo seletor seguro do Chrome;
+- mantém a referência da pasta no IndexedDB e verifica a autorização antes de cada gravação;
+- preserva o download em ZIP quando o acesso direto à pasta estiver indisponível ou negado;
+- exporta relatório HTML, histórico CSV, auditoria JSON, manifesto e hashes SHA-256;
+- exige confirmação específica para incluir dados acadêmicos individuais na exportação;
+- migra registros do histórico anterior sem apagar os dados da versão 3.6.8;
+- mantém permissões mínimas, processamento local, CSP e créditos do projeto.
+
 ## 3.6.8
 
 - adiciona o botão “Editar” para cada aluno na conferência anterior ao salvamento;

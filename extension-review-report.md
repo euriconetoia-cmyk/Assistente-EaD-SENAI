@@ -1,8 +1,8 @@
 # Relatório de revisão para Chrome Web Store
 
 **Extensão**: Assistente EaD SENAI  
-**Versão**: 3.6.8  
-**Data da varredura**: 28/08/2026  
+**Versão**: 3.7.0  
+**Data da varredura**: 30/08/2026  
 **Veredito do código-fonte**: PROVÁVEL APROVAÇÃO
 
 ## Resumo
@@ -12,7 +12,7 @@
 | Crítica | 0 |
 | Alta | 0 |
 | Média | 0 |
-| Verificações aprovadas | 16 |
+| Verificações aprovadas | 20 |
 
 ## Verificações aprovadas
 
@@ -32,6 +32,10 @@
 - [x] Yellow Nickel: nenhuma API de notificações ou padrão de spam.
 - [x] Purple Nickel: nenhuma coleta externa de histórico. Eventos de abas são usados somente nas abas de avaliação criadas pelo lote; mensagens acadêmicas são encaminhadas apenas à mensageria do próprio AVA por ação explícita.
 - [x] Blue Copper: manipuladores de mensagens validam a identidade interna da extensão antes de processar comandos.
+- [x] File System Access: escolha da pasta iniciada pelo usuário, sem nova permissão de manifesto e com fallback em ZIP.
+- [x] Auditoria Local: eventos cotidianos minimizados, sem persistência padrão de nomes, notas ou feedbacks.
+- [x] Integridade: relatório de evidências acompanhado por manifesto e hashes SHA-256.
+- [x] IndexedDB: armazena somente a referência da pasta autorizada pelo usuário.
 
 ## Observações para publicação
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light" data-nav="compact">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,34 +8,48 @@
 </head>
 <body>
   <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
-  <header class="page-head">
-    <div><p class="eyebrow">Assistente EaD SENAI</p><h1>Central de Gestão Moodle</h1><p id="generated-at" role="status">Carregando dados agregados…</p></div>
-    <div class="actions"><button id="refresh-source" type="button">Atualizar no Moodle</button><button id="theme-toggle" type="button" aria-label="Alternar tema">Tema</button></div>
-  </header>
   <div class="app-shell">
-    <nav class="side-nav" aria-label="Seções da Central">
-      <button class="nav-item is-active" data-view="overview" aria-current="page">Visão geral</button>
-      <button class="nav-item" data-view="courses">Turmas e UCs</button>
-      <button class="nav-item" data-view="risk">Alunos em risco</button>
-      <button class="nav-item" data-view="performance">Notas e desempenho</button>
-      <button class="nav-item" data-view="tutors">Tutores e monitores</button>
-      <button class="nav-item" data-view="calendar">Calendário</button>
-      <button class="nav-item" data-view="queue">Fila de trabalho</button>
-      <button class="nav-item" data-view="environments">Ambientes</button>
-      <button class="nav-item" data-view="history">Histórico</button>
-      <button class="nav-item" data-view="reports">Relatórios</button>
-    </nav>
-    <main id="workspace">
-      <section class="filters" aria-label="Filtros globais">
-        <label>Ambiente<select id="filter-environment"><option value="">Todos</option></select></label>
-        <label>Vigência<select id="filter-vigency"><option value="">Todas</option><option value="current">UC atual</option><option value="overlap">Vigente em sobreposição</option><option value="future">Ainda não iniciada</option><option value="ended">Encerrada</option><option value="unknown">Período não identificado</option></select></label>
-        <label>Situação<select id="filter-status"><option value="">Todas</option><option value="pending">Com pendências</option><option value="clear">Sem pendências</option><option value="review">Leitura incompleta</option></select></label>
-        <label>Pesquisar<input id="filter-search" type="search" placeholder="Turma, UC ou ID"></label>
-      </section>
-      <p id="partial-warning" class="warning" hidden>O Moodle não forneceu uma relação integral dos cursos. Os indicadores representam apenas o inventário identificado.</p>
-      <div id="view-root" tabindex="-1"></div>
-    </main>
+    <aside class="side-nav" aria-label="Navegação da Central">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">EA</div><div class="nav-copy"><strong>Assistente EaD</strong><span>SENAI Tutor Hub</span></div></div>
+      <button id="nav-toggle" class="nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false"><span aria-hidden="true">›</span><span class="nav-copy">Expandir menu</span></button>
+      <p class="nav-group nav-copy">Trabalho</p>
+      <nav class="nav-list">
+        <button class="nav-item is-active" data-view="overview" aria-current="page" aria-label="Visão geral" data-tooltip="Visão geral"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-copy">Visão geral</span></button>
+        <button class="nav-item" data-view="courses" aria-label="Turmas e UCs" data-tooltip="Turmas e UCs"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-copy">Turmas e UCs</span></button>
+        <button class="nav-item" data-view="queue" aria-label="Fila de trabalho" data-tooltip="Fila de trabalho"><span class="nav-icon" aria-hidden="true">✓</span><span class="nav-copy">Fila de trabalho</span><span id="nav-pending-count" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="risk" aria-label="Alunos em risco" data-tooltip="Alunos em risco"><span class="nav-icon" aria-hidden="true">♙</span><span class="nav-copy">Alunos em risco</span></button>
+        <button class="nav-item" data-view="performance" aria-label="Notas e desempenho" data-tooltip="Notas e desempenho"><span class="nav-icon" aria-hidden="true">↗</span><span class="nav-copy">Notas e desempenho</span></button>
+      </nav>
+      <p class="nav-group nav-copy">Gestão</p>
+      <nav class="nav-list">
+        <button class="nav-item" data-view="calendar" aria-label="Calendário" data-tooltip="Calendário"><span class="nav-icon" aria-hidden="true">□</span><span class="nav-copy">Calendário</span></button>
+        <button class="nav-item" data-view="environments" aria-label="Ambientes" data-tooltip="Ambientes"><span class="nav-icon" aria-hidden="true">◎</span><span class="nav-copy">Ambientes</span></button>
+        <button class="nav-item" data-view="history" aria-label="Auditoria local" data-tooltip="Auditoria local"><span class="nav-icon" aria-hidden="true">◷</span><span class="nav-copy">Auditoria local</span></button>
+        <button class="nav-item" data-view="reports" aria-label="Relatórios" data-tooltip="Relatórios"><span class="nav-icon" aria-hidden="true">⇩</span><span class="nav-copy">Relatórios</span></button>
+        <button class="nav-item" data-view="tutors" aria-label="Tutores e monitores" data-tooltip="Tutores e monitores"><span class="nav-icon" aria-hidden="true">♧</span><span class="nav-copy">Tutores e monitores</span></button>
+      </nav>
+      <footer class="nav-footer"><span class="status-dot" aria-hidden="true"></span><span class="nav-copy">Dados locais protegidos<br><small>By Eurico Cirilo · V3.7.0</small></span></footer>
+    </aside>
+    <div class="workspace-shell">
+      <header class="page-head">
+        <div class="page-identity"><p class="eyebrow">Assistente EaD SENAI</p><h1>Central de Gestão Moodle</h1><p id="generated-at" role="status">Carregando dados agregados...</p></div>
+        <div class="actions"><span class="connection"><i aria-hidden="true"></i>Moodle conectado</span><button id="refresh-source" class="button secondary" type="button">Atualizar no Moodle</button><button id="theme-toggle" class="icon-button" type="button" aria-label="Alterar tema" title="Alterar tema">◐</button></div>
+      </header>
+      <main id="workspace" tabindex="-1">
+        <section class="filters" aria-label="Filtros globais">
+          <label>Ambiente<select id="filter-environment"><option value="">Todos</option></select></label>
+          <label>Vigência<select id="filter-vigency"><option value="">Todas</option><option value="current">UC atual</option><option value="overlap">Vigente em sobreposição</option><option value="future">Ainda não iniciada</option><option value="ended">Encerrada</option><option value="unknown">Período não identificado</option></select></label>
+          <label>Situação<select id="filter-status"><option value="">Todas</option><option value="pending">Com pendências</option><option value="clear">Sem pendências</option><option value="review">Leitura incompleta</option></select></label>
+          <label class="search-label">Pesquisar<input id="filter-search" type="search" placeholder="Turma, UC ou ID"></label>
+        </section>
+        <p id="partial-warning" class="notice warning" role="status" hidden>O Moodle não forneceu uma relação integral dos cursos. Os indicadores representam apenas o inventário identificado.</p>
+        <div id="view-root" aria-live="polite"></div>
+      </main>
+    </div>
   </div>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="directory-access.js"></script>
+  <script src="audit-export.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

@@ -1,8 +1,12 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.6.8';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.0';
   const S = globalThis.MAT_SHARED;
+  const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
+    source: 'grade-importer',
+    ...event
+  }).catch(() => {});
 
   const STATE = {
     records: [],
@@ -912,6 +916,12 @@
       STATE.validationWarnings = [...parsed.warnings, ...parsed.errors.map(message => `Bloqueio: ${message}`)];
       STATE.validationErrors = parsed.errors;
       STATE.lastReport = null;
+      auditEvent({
+        eventType: 'import.loaded',
+        result: parsed.errors.length ? 'partial' : 'success',
+        counts: { records: parsed.records.length, warnings: parsed.warnings.length, errors: parsed.errors.length },
+        message: parsed.errors.length ? 'Arquivo de importação carregado com bloqueios.' : 'Arquivo de importação carregado e analisado.'
+      });
 
       const applyButton = document.getElementById('mqi-apply-import');
       if (applyButton) applyButton.disabled = STATE.records.length === 0 || STATE.validationErrors.length > 0;
@@ -1538,6 +1548,12 @@
     if (report.error) return log(`<strong>Não foi possível preencher.</strong> ${escapeHtml(report.error)}`, 'error');
     STATE.lastReport = report;
     renderReport(report);
+    auditEvent({
+      eventType: 'review.completed',
+      result: 'success',
+      counts: { records: report.found?.length || 0, missing: report.missing?.length || 0 },
+      message: 'Conferência anterior concluída e campos preenchidos para revisão humana.'
+    });
   }
 
   function buildBulkPayload() {

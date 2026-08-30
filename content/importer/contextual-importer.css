@@ -1108,3 +1108,70 @@ li.mqi-assignment-has-pending > .activity-item {
   .mqi-input, .mqi-textarea, .mqi-select-trigger { background: #1f2937; color: #eef2f7; border-color: #4b5563; }
   .mqi-help-text, .mqi-panel-intro, .mqi-credit { color: #b8c2d1; }
 }
+
+/* Sistema visual unificado da versão 3.7.0 */
+#mqi-modal,
+.mqi-my-courses-dashboard {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #162238;
+}
+
+#mqi-modal button,
+.mqi-my-courses-dashboard button,
+.mqi-course-pending-summary__download,
+.mqi-course-pending-summary__import {
+  min-height: 40px;
+  border-radius: 9px;
+}
+
+#mqi-modal button:focus-visible,
+#mqi-modal input:focus-visible,
+#mqi-modal select:focus-visible,
+#mqi-modal textarea:focus-visible,
+.mqi-my-courses-dashboard button:focus-visible {
+  outline: 3px solid #f6b900;
+  outline-offset: 2px;
+}
+
+.mqi-my-courses-table-wrap {
+  border-color: #d8e1ec;
+  border-radius: 12px;
+}
+
+.mqi-my-courses-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+}
+
+.mqi-my-courses-table th:first-child,
+.mqi-my-courses-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+}
+
+.mqi-my-courses-table th:first-child {
+  z-index: 3;
+  background: #f8fafc;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mqi-my-courses-dashboard { color: #edf5fc; }
+  .mqi-my-courses-head h2 { color: #47a8ec; }
+  .mqi-my-courses-head p,
+  .mqi-my-courses-table td div { color: #a9b8c9; }
+  .mqi-my-courses-metrics span { background: #153651; color: #78bdf1; }
+  .mqi-my-courses-metrics span.is-danger { background: #441e20; color: #ff8d84; }
+  .mqi-my-courses-table-wrap { border-color: #2a3b4e; }
+  .mqi-my-courses-table th,
+  .mqi-my-courses-table th:first-child { background: #172536; color: #a9b8c9; }
+  .mqi-my-courses-table td,
+  .mqi-my-courses-table td:first-child { background: #121e2c; color: #edf5fc; border-color: #2a3b4e; }
+  .mqi-my-courses-table tr.has-pending td { background: #441e20; }
+  .mqi-my-courses-table tr.needs-review td { background: #412f10; }
+  .mqi-my-courses-actions button { background: #121e2c; color: #78bdf1; border-color: #47a8ec; }
+  .mqi-my-courses-actions button:last-child { background: #2488d4; color: #fff; }
+}
