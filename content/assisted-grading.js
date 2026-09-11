@@ -145,6 +145,15 @@ Quando o arquivo está vazio, corrompido, ilegível, incompatível ou inacessív
 \`Sem conteúdo relevante\`
 Quando existe uma entrega acessível, mas seu conteúdo não responde de maneira relevante ao que foi solicitado.
 
+\`Atividade incorreta\`
+Quando o arquivo pertence a outra atividade. Gere feedback explicativo e deixe a nota vazia.
+
+\`SENAI Play validado\`
+Quando a evidência de conclusão do SENAI Play foi confirmada. Se a atividade for pontuada e a nota máxima estiver confirmada, use exatamente a nota máxima.
+
+\`SENAI Play não comprovado\`
+Quando a evidência apresentada não comprova a conclusão. Gere feedback e deixe a nota vazia.
+
 \`Revisão necessária\`
 Quando existe conteúdo avaliável, porém há problemas importantes que justificam revisão ou intervenção do professor.
 
@@ -155,6 +164,8 @@ Quando não existe uma entrega adequada para avaliação.
 Quando a atividade é um fórum e o aluno não realizou a postagem ou resposta exigida pela consigna.
 
 Não crie novas tags sem solicitação explícita do professor.
+
+Uma nota calculada igual a zero nunca deve ser lançada automaticamente: gere o feedback correspondente e deixe o campo nota vazio. Preserve no CSV as colunas ambiente, curso_id, curso, cmid, atividade e nota_maxima fornecidas no manifesto, para que o destino e o limite sejam validados antes da importação.
 
 ### 5. Gerar feedback
 

@@ -91,3 +91,21 @@ test('conferência distingue divergência de campo não verificável', () => {
   );
   assert.equal(unavailable.status, 'not_verifiable');
 });
+
+test('CSV preserva destino acadêmico e transforma nota zero em feedback sem nota', () => {
+  const parsed = S.parseBatchCsv('ambiente;curso_id;curso;cmid;nome;nota;feedback;situacao\nead.senai.br;77;UC Ética;301;Ana;0;Envie a atividade correta;Atividade incorreta');
+  assert.equal(parsed.records[0].cursoId, '77');
+  assert.equal(parsed.records[0].atividadeId, '301');
+  assert.equal(parsed.records[0].nota, '');
+  assert.match(parsed.warnings.join(' '), /nota zero removida/i);
+});
+
+test('política acadêmica bloqueia nota para atividade incorreta e automatiza SENAI Play pontuado', () => {
+  const wrong = S.applyAcademicGradePolicy({ nota: '5', feedback: 'Arquivo de outra atividade.', situacaoRaw: 'Atividade incorreta' }, { name: 'SAP 01', maxGrade: 10 });
+  assert.equal(wrong.record.nota, '');
+  assert.equal(wrong.errors.length, 0);
+
+  const play = S.applyAcademicGradePolicy({ nota: '3', feedback: 'Certificado validado.', situacaoRaw: 'SENAI Play validado', notaMaxima: '10' }, { name: 'Curso SENAI Play' });
+  assert.equal(play.record.nota, '10');
+  assert.equal(play.errors.length, 0);
+});

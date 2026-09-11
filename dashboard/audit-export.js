@@ -44,7 +44,7 @@
 
   const makeHtml = ({ events, generatedAt, filters, includeAcademic }) => {
     const rows = events.length ? events.map((event) => `<tr><td>${htmlEscape(dateTime(event.createdAt))}</td><td>${htmlEscape(eventLabel(event.eventType))}</td><td>${htmlEscape(event.courseName || event.courseId || '')}</td><td>${htmlEscape(event.ucName || '')}</td><td>${htmlEscape(event.result || 'info')}</td><td>${htmlEscape(event.message || '')}</td></tr>`).join('') : '<tr><td colspan="6">Nenhum evento corresponde ao período selecionado.</td></tr>';
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de evidências</title><style>body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#162238;margin:32px}h1{color:#0b5cad;margin-bottom:4px}.meta{display:grid;grid-template-columns:180px 1fr;gap:8px 14px;padding:16px;border-radius:10px;background:#f3f6fa}.meta strong{color:#073b70}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border:1px solid #cbd5e1;text-align:left;vertical-align:top}th{background:#073b70;color:#fff}tbody tr:nth-child(even){background:#f8fafc}.note{margin-top:20px;color:#5b6880}@media print{body{margin:10mm}thead{display:table-header-group}}</style></head><body><h1>Auditoria Local do Assistente EaD SENAI</h1><p>Evidências operacionais geradas e armazenadas localmente.</p><section class="meta"><strong>Gerado em</strong><span>${htmlEscape(dateTime(generatedAt))}</span><strong>Versão</strong><span>3.7.0</span><strong>Eventos</strong><span>${events.length}</span><strong>Período</strong><span>${htmlEscape(filters.period || 'Todos os registros')}</span><strong>Dados individuais</strong><span>${includeAcademic ? 'Incluídos mediante confirmação' : 'Não incluídos'}</span></section><table><thead><tr><th>Data e hora</th><th>Ação</th><th>Curso</th><th>UC</th><th>Resultado</th><th>Evidência</th></tr></thead><tbody>${rows}</tbody></table><p class="note">Este relatório reproduz os registros disponíveis no navegador no momento da exportação. Use a impressão do navegador para gerar uma cópia em PDF.</p></body></html>`;
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de evidências</title><style>body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#162238;margin:32px}h1{color:#0b5cad;margin-bottom:4px}.meta{display:grid;grid-template-columns:180px 1fr;gap:8px 14px;padding:16px;border-radius:10px;background:#f3f6fa}.meta strong{color:#073b70}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border:1px solid #cbd5e1;text-align:left;vertical-align:top}th{background:#073b70;color:#fff}tbody tr:nth-child(even){background:#f8fafc}.note{margin-top:20px;color:#5b6880}@media print{body{margin:10mm}thead{display:table-header-group}}</style></head><body><h1>Auditoria Local do Assistente EaD SENAI</h1><p>Evidências operacionais geradas e armazenadas localmente.</p><section class="meta"><strong>Gerado em</strong><span>${htmlEscape(dateTime(generatedAt))}</span><strong>Versão</strong><span>3.7.1</span><strong>Eventos</strong><span>${events.length}</span><strong>Período</strong><span>${htmlEscape(filters.period || 'Todos os registros')}</span><strong>Dados individuais</strong><span>${includeAcademic ? 'Incluídos mediante confirmação' : 'Não incluídos'}</span></section><table><thead><tr><th>Data e hora</th><th>Ação</th><th>Curso</th><th>UC</th><th>Resultado</th><th>Evidência</th></tr></thead><tbody>${rows}</tbody></table><p class="note">Este relatório reproduz os registros disponíveis no navegador no momento da exportação. Use a impressão do navegador para gerar uma cópia em PDF.</p></body></html>`;
   };
 
   const createFile = (name, content, type) => ({ name, type, blob: content instanceof Blob ? content : new Blob([content], { type }) });
@@ -53,7 +53,7 @@
     const generatedAt = new Date().toISOString();
     const safePayload = {
       schemaVersion: 1,
-      extensionVersion: '3.7.0',
+      extensionVersion: '3.7.1',
       generatedAt,
       filters,
       privacy: { includesIndividualAcademicData: includeAcademic },
@@ -65,7 +65,7 @@
         pendingCount: (payload?.courses || []).reduce((total, course) => total + (Number(course.totalPending) || 0), 0)
       }
     };
-    const readme = ['PACOTE DE EVIDÊNCIAS DO ASSISTENTE EAD SENAI', '', `Gerado em: ${generatedAt}`, 'Versão: 3.7.0', `Eventos: ${events.length}`, `Dados acadêmicos individuais: ${includeAcademic ? 'incluídos mediante confirmação' : 'não incluídos'}`, '', 'Arquivos:', '- relatorio_evidencias.html: relatório visual e imprimível.', '- historico_acoes.csv: eventos em formato tabular.', '- auditoria_completa.json: estrutura técnica versionada.', '- manifesto_arquivos.json: descrição e hashes dos arquivos.', '- CHECKSUMS.sha256: verificação de integridade.', '', 'Todos os arquivos foram gerados localmente. Nenhum dado foi enviado para servidor externo.'].join('\n');
+    const readme = ['PACOTE DE EVIDÊNCIAS DO ASSISTENTE EAD SENAI', '', `Gerado em: ${generatedAt}`, 'Versão: 3.7.1', `Eventos: ${events.length}`, `Dados acadêmicos individuais: ${includeAcademic ? 'incluídos mediante confirmação' : 'não incluídos'}`, '', 'Arquivos:', '- relatorio_evidencias.html: relatório visual e imprimível.', '- historico_acoes.csv: eventos em formato tabular.', '- auditoria_completa.json: estrutura técnica versionada.', '- manifesto_arquivos.json: descrição e hashes dos arquivos.', '- CHECKSUMS.sha256: verificação de integridade.', '', 'Todos os arquivos foram gerados localmente. Nenhum dado foi enviado para servidor externo.'].join('\n');
     const files = [
       createFile('LEIA-ME.txt', readme, 'text/plain;charset=utf-8'),
       createFile('relatorio_evidencias.html', makeHtml({ events, generatedAt, filters, includeAcademic }), 'text/html;charset=utf-8'),
@@ -74,7 +74,7 @@
     ];
     const items = [];
     for (const file of files) items.push({ name: file.name, type: file.type, size: file.blob.size, sha256: await sha256(file.blob) });
-    const manifest = { schemaVersion: 1, generatedAt, extensionVersion: '3.7.0', complete: true, files: items };
+    const manifest = { schemaVersion: 1, generatedAt, extensionVersion: '3.7.1', complete: true, files: items };
     const manifestFile = createFile('manifesto_arquivos.json', JSON.stringify(manifest, null, 2), 'application/json;charset=utf-8');
     files.push(manifestFile);
     const checksums = [...items, { name: manifestFile.name, sha256: await sha256(manifestFile.blob) }].map((item) => `${item.sha256}  ${item.name}`).join('\n') + '\n';

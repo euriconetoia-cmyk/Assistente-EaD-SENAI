@@ -178,7 +178,7 @@ function csvCell(value) { const raw = text(value); const safe = /^[\s]*[=+\-@]/.
 function download(content, type, name) { const url = URL.createObjectURL(new Blob([content], { type })); const link = document.createElement('a'); link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
 async function appendAuditEvent(event) {
-  const item = { schemaVersion: 1, eventId: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date().toISOString(), extensionVersion: '3.7.0', environment: '', courseId: '', courseName: '', ucName: '', activityId: '', activityName: '', result: 'info', counts: {}, source: 'dashboard', message: '', ...event };
+  const item = { schemaVersion: 1, eventId: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date().toISOString(), extensionVersion: '3.7.1', environment: '', courseId: '', courseName: '', ucName: '', activityId: '', activityName: '', result: 'info', counts: {}, source: 'dashboard', message: '', ...event };
   state.auditEvents = [item, ...state.auditEvents].slice(0, 2000);
   state.filteredAudit = [...state.auditEvents];
   await chrome.storage.local.set({ [AUDIT_KEY]: state.auditEvents });

@@ -79,6 +79,9 @@
   };
 
   const HEADER_ALIASES = Object.freeze({
+    ambiente: ['ambiente', 'host', 'moodle', 'dominio', 'domínio'],
+    cursoId: ['curso_id', 'course_id', 'id curso', 'id do curso'],
+    curso: ['curso', 'nome do curso', 'course', 'uc', 'uc ou curso'],
     atividadeId: ['cmid', 'atividade_id', 'id atividade', 'id da atividade'],
     atividade: ['atividade', 'tarefa', 'activity', 'nome da atividade'],
     studentId: ['student_id', 'student id', 'id do aluno', 'id aluno', 'id do estudante'],
@@ -86,6 +89,8 @@
     nota: ['nota', 'grade', 'pontuacao', 'pontuação', 'score'],
     feedback: ['feedback', 'comentario', 'comentário', 'comentarios', 'comentários', 'observacao', 'observação', 'retorno', 'devolutiva'],
     situacao: ['situacao', 'situação', 'status', 'tag', 'classificacao', 'classificação'],
+    notaMaxima: ['nota_maxima', 'nota máxima', 'valor da atividade', 'valor_atividade', 'max_grade', 'maximum grade'],
+    tipoAtividade: ['tipo_atividade', 'tipo da atividade', 'activity_type'],
   });
 
   const findHeaderIndex = (headers, aliases) => {
@@ -186,6 +191,9 @@
       const read = (key) => indexes[key] === -1 ? '' : String(row[indexes[key]] ?? '').trim();
       const record = {
         rowNumber,
+        ambiente: read('ambiente'),
+        cursoId: read('cursoId'),
+        curso: read('curso'),
         atividadeId: read('atividadeId') || defaultActivityId,
         atividade: read('atividade') || defaultActivityName,
         studentId: read('studentId'),
@@ -193,6 +201,8 @@
         nota: read('nota'),
         feedback: read('feedback'),
         situacaoRaw: read('situacao'),
+        notaMaxima: read('notaMaxima'),
+        tipoAtividade: read('tipoAtividade'),
       };
       if (!record.atividadeId && !record.atividade && !allowMissingActivity) {
         errors.push(`Linha ${rowNumber}: informe cmid ou atividade.`);
@@ -219,7 +229,15 @@
         return;
       }
       identifiers.set(identifier, rowNumber);
-      records.push({ ...record, notaNumero: grade.number });
+      if (grade.number === 0) {
+        if (!record.feedback) {
+          errors.push(`Linha ${rowNumber}: nota zero exige feedback e deve permanecer em branco.`);
+          return;
+        }
+        record.nota = '';
+        warnings.push(`Linha ${rowNumber}: nota zero removida; somente o feedback será enviado.`);
+      }
+      records.push({ ...record, notaNumero: record.nota ? grade.number : null });
     });
 
     if (!records.length) throw new Error('Nenhum registro válido encontrado no arquivo.');
@@ -280,6 +298,49 @@
       : { status: 'unmatched', assignment: null, method: 'arquivo', confidence: 0 };
   };
 
+  const FEEDBACK_ONLY_SITUATIONS = new Set([
+    'atividade_incorreta', 'erro_arquivo', 'sem_conteudo_relevante',
+    'sem_envio_valido', 'sem_participacao_forum', 'senai_play_nao_comprovado',
+  ]);
+
+  const normalizeSituationCode = (value = '') => normalizeText(value).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  const applyAcademicGradePolicy = (record, assignment = {}) => {
+    const next = { ...record };
+    const warnings = [];
+    const errors = [];
+    const situation = normalizeSituationCode(next.situacaoRaw || next.situacao || '');
+    const activityText = normalizeText(`${assignment.name || next.atividade || ''} ${next.tipoAtividade || ''}`);
+    const isSenaiPlay = /senai\s*play/.test(activityText);
+    const parsedMax = parseGrade(next.notaMaxima || assignment.maxGrade || assignment.gradeMax || '');
+    const maxGrade = parsedMax.valid && parsedMax.number > 0 ? parsedMax.number : null;
+
+    if (FEEDBACK_ONLY_SITUATIONS.has(situation) || situation.includes('atividade_incorreta')) {
+      if (String(next.nota || '').trim()) warnings.push('A situação exige somente feedback; a nota foi deixada em branco.');
+      next.nota = '';
+      next.notaNumero = null;
+      if (!String(next.feedback || '').trim()) errors.push('A situação exige um feedback explicativo.');
+    }
+
+    if (isSenaiPlay) {
+      const validated = situation === 'senai_play_validado' || situation === 'validado' || situation === 'corrigido';
+      if (!validated) {
+        next.nota = '';
+        next.notaNumero = null;
+        errors.push('SENAI Play exige a situação "SENAI Play validado" antes do lançamento.');
+      } else if (maxGrade !== null) {
+        next.nota = String(maxGrade);
+        next.notaNumero = maxGrade;
+        warnings.push(`SENAI Play validado: aplicada a nota máxima confirmada (${maxGrade}).`);
+      } else {
+        next.nota = '';
+        next.notaNumero = null;
+        warnings.push('SENAI Play sem pontuação confirmada: somente a validação e o feedback serão enviados.');
+      }
+    }
+    return { record: next, warnings, errors, isSenaiPlay, maxGrade };
+  };
+
   const neutralizeSpreadsheetFormula = (value) => {
     const text = String(value ?? '');
     return /^[\t\r\n ]*[=+\-@]/.test(text) ? `'${text}` : text;
@@ -307,6 +368,8 @@
     parseBatchCsv,
     matchActivity,
     matchActivityFromFileName,
+    applyAcademicGradePolicy,
+    normalizeSituationCode,
     scoreActivity,
     neutralizeSpreadsheetFormula,
     isPendingSubmission,
