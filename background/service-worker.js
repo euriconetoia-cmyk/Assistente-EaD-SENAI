@@ -46,7 +46,7 @@ const buildAutomationUrl = (gradingUrl, cmid) => {
   // sobrescrita continuam protegendo notas e feedbacks existentes.
   url.searchParams.set('status', 'all');
   url.searchParams.set('page', '0');
-  url.searchParams.set('perpage', '500');
+  url.searchParams.set('perpage', '100');
   return url.href;
 };
 
@@ -56,7 +56,7 @@ const buildVerificationUrl = (gradingUrl, cmid) => {
   url.searchParams.set('action', 'grading');
   url.searchParams.set('quickgrading', '1');
   url.searchParams.set('status', 'all');
-  url.searchParams.set('perpage', '500');
+  url.searchParams.set('perpage', '100');
   url.searchParams.set('page', '0');
   return url.href;
 };
@@ -75,7 +75,7 @@ const validateJobs = (jobs) => {
     const records = job.records.map((record, index) => {
       const studentId = String(record?.studentId || '').trim();
       const nome = String(record?.nome || '').trim().slice(0, 300);
-      const nota = String(record?.nota ?? '').trim();
+      let nota = String(record?.nota ?? '').trim();
       const feedback = String(record?.feedback || '').slice(0, 20000);
       const situacaoRaw = String(record?.situacaoRaw || '').slice(0, 200);
       if (!studentId && !nome) throw new Error(`Registro ${index + 1} da atividade ${cmid} não identifica o estudante.`);
@@ -83,6 +83,10 @@ const validateJobs = (jobs) => {
       if (nota) {
         const normalized = nota.replace(/\s/g, '').replace(',', '.');
         if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalized) || Number(normalized) < 0) throw new Error(`Registro ${index + 1} da atividade ${cmid} contém nota inválida.`);
+        if (Number(normalized) === 0) {
+          if (!feedback) throw new Error(`Registro ${index + 1} da atividade ${cmid}: nota zero exige feedback e nota em branco.`);
+          nota = '';
+        }
       }
       const key = studentId ? `id:${studentId}` : `nome:${nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}`;
       if (students.has(key)) throw new Error(`A atividade ${cmid} contém estudante duplicado.`);

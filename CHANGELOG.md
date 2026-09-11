@@ -1,5 +1,14 @@
 # Alterações
 
+## 3.7.1
+
+- valida ambiente, curso ID, curso, CMID e atividade informados nos CSVs;
+- registra fonte, confiança e conflitos da nota máxima nos pacotes para IA;
+- mantém a nota em branco quando o resultado for zero ou a entrega pertencer a outra atividade;
+- valida atividades SENAI Play e aplica a nota máxima somente quando houver pontuação confirmada;
+- reconhece variações da tabela do Moodle na conferência pós-salvamento;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
 ## 3.7.0
 
 - adota menu híbrido compacto, expansível e responsivo no painel do Moodle e na Central de Gestão;

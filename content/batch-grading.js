@@ -44,17 +44,32 @@
     const descriptionNode = doc.querySelector('#intro .no-overflow, #intro, [data-region="activity-description"], .activity-description, .mod_introbox');
     const criteriaNodes = [...doc.querySelectorAll('[data-region="gradingform_rubric"], .gradingform_rubric, .rubric_criteria, .criterion, .criteria')];
     const body = safeText(doc.body, 100000);
-    const gradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
+    const pageGradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
       || body.match(/(?:nota m[aá]xima|maximum grade)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
       || '';
+    const inputGradeText = [...doc.querySelectorAll('input[max]')]
+      .map((input) => String(input.getAttribute('max') || '').trim())
+      .find((value) => /^\d+(?:[.,]\d+)?$/.test(value) && Number(value.replace(',', '.')) > 0) || '';
+    const snapshotGradeText = String(assignment.maxGrade ?? assignment.gradeMax ?? assignment.metrics?.maxGrade ?? '').trim();
+    const gradeSources = [
+      ['página da atividade', pageGradeText],
+      ['campo de nota do Moodle', inputGradeText],
+      ['análise local', snapshotGradeText],
+    ].filter(([, value]) => value && S.parseGrade(value).valid && S.parseGrade(value).number > 0);
+    const distinctGrades = [...new Set(gradeSources.map(([, value]) => S.parseGrade(value).number))];
+    const gradeConflict = distinctGrades.length > 1;
+    const gradeText = gradeConflict ? '' : (gradeSources[0]?.[1] || '');
+    const gradeSource = gradeConflict ? 'fontes divergentes' : (gradeSources[0]?.[0] || 'não localizada');
+    const gradeConfidence = gradeConflict ? 'conflito' : gradeSources.length >= 2 ? 'alta' : gradeSources.length === 1 ? 'média' : 'insuficiente';
     const dueText = labeledValue(doc, ['data de entrega', 'data limite', 'prazo', 'due date']) || assignment.dueText || '';
     const description = safeText(descriptionNode);
     const criteria = [...new Set(criteriaNodes.map((node) => safeText(node)).filter((value) => value.length > 5))].join('\n\n').slice(0, 50000);
     const warnings = [];
     if (!description) warnings.push('Enunciado não localizado na página acessível da atividade.');
     if (!criteria) warnings.push('Critérios ou rubrica não localizados na página acessível da atividade.');
-    if (!gradeText) warnings.push('Nota máxima não localizada na página acessível da atividade.');
-    return { description, criteria, gradeText, dueText, warnings };
+    if (gradeConflict) warnings.push(`Conflito na nota máxima: ${gradeSources.map(([source, value]) => `${source}=${value}`).join(', ')}.`);
+    else if (!gradeText) warnings.push('Nota máxima não localizada na página acessível da atividade.');
+    return { description, criteria, gradeText, gradeSource, gradeConfidence, gradeConflict, dueText, warnings };
   };
 
   async function fetchMoodleResource(url, label, binary = false) {
@@ -85,11 +100,11 @@
     .filter((assignment) => (assignment.metrics?.pending || 0) > 0 && assignment.cmid && (assignment.gradingUrl || assignment.url));
 
   function buildAiActivityPackageEntries(activityEntries, manifestRow) {
-    const manifestCsv = '\ufeff' + ['cmid;atividade;prazo;nota_maxima;enunciado;criterios;url_atividade', manifestRow.map(csvEscape).join(';')].join('\n');
+    const manifestCsv = '\ufeff' + ['ambiente;curso_id;curso;cmid;atividade;tipo_atividade;prazo;nota_maxima;nota_maxima_status;nota_maxima_fonte;enunciado;criterios;url_atividade', manifestRow.map(csvEscape).join(';')].join('\n');
     return [
       { name: 'manifesto_atividade.csv', content: manifestCsv },
       { name: 'agente-corretor-moodle-universal.md', content: `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}\n` },
-      { name: 'LEIA-ME.txt', content: 'Este pacote corresponde a uma única atividade. Antes de corrigir, leia dados_da_atividade.txt, enunciado_da_atividade.txt e criterios_de_avaliacao.txt. O arquivo envios_dos_alunos.zip contém as entregas desta atividade. Se houver aviso de dado não localizado, não invente essa informação e solicite conferência humana.' },
+      { name: 'LEIA-ME.txt', content: 'Este pacote corresponde a uma única atividade e a um único curso. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno. Se a entrega for de outra atividade ou a nota calculada for zero, deixe nota em branco e gere somente feedback. Em SENAI Play, valide a evidência; quando a atividade for pontuada e a nota máxima estiver confirmada, use a nota máxima. Se houver conflito ou dado não localizado, não invente essa informação e solicite conferência humana.' },
       ...activityEntries,
     ];
   }
@@ -121,12 +136,16 @@
           throw new Error(`${assignment.name}: os envios desta atividade ultrapassam o limite individual de 500 MB.`);
         }
         const context = extractAssignmentContext(doc, assignment);
+        const activityType = /senai\s*play/i.test(`${assignment.name} ${context.description}`) ? 'senai_play' : 'atividade_regular';
         const metadata = [
           `Curso ou UC: ${snapshot.course?.name || 'Não identificado'}`,
           `Atividade: ${assignment.name}`,
           `CMID: ${assignment.cmid}`,
           `Prazo: ${context.dueText || 'Não localizado'}`,
           `Nota máxima: ${context.gradeText || 'Não localizada'}`,
+          `Status da nota máxima: ${context.gradeConfidence}`,
+          `Fonte da nota máxima: ${context.gradeSource}`,
+          `Tipo da atividade: ${activityType}`,
           `URL: ${buildAssignmentViewUrl(assignment)}`,
           `Enunciado: ${context.description ? 'localizado' : 'não localizado'}`,
           `Critérios ou rubrica: ${context.criteria ? 'localizados' : 'não localizados'}`,
@@ -139,7 +158,7 @@
           { name: 'criterios_de_avaliacao.txt', content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
           { name: 'dados_da_atividade.txt', content: metadata },
         ];
-        const manifestRow = [assignment.cmid, assignment.name, context.dueText, context.gradeText, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
+        const manifestRow = [location.hostname, snapshot.course?.id || '', snapshot.course?.name || '', assignment.cmid, assignment.name, activityType, context.dueText, context.gradeText, context.gradeConfidence, context.gradeSource, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
         const filename = `correcao_ia_${courseSlug}_${assignment.cmid}_${slug(assignment.name)}_${new Date().toISOString().slice(0, 10)}.zip`;
         U.downloadBlob(U.makeZipBlob(buildAiActivityPackageEntries(activityEntries, manifestRow)), filename, 'application/zip');
         downloadedCount += 1;
@@ -168,23 +187,28 @@
   function groupRecordsByActivity(records, assignments) {
     const groups = new Map(); // cmid -> { assignment, records: [] }
     const unmatched = [];
+    const errors = [];
+    const warnings = [];
 
     for (const record of records) {
       const match = S.matchActivity(record, assignments);
       const assignment = match.status === 'exact' ? match.assignment : null;
       if (!assignment) { unmatched.push({ ...record, match }); continue; }
       if (!groups.has(assignment.cmid)) groups.set(assignment.cmid, { assignment, records: [] });
+      const policy = S.applyAcademicGradePolicy(record, assignment);
+      errors.push(...policy.errors.map((message) => `Linha ${record.rowNumber}: ${message}`));
+      warnings.push(...policy.warnings.map((message) => `Linha ${record.rowNumber}: ${message}`));
       groups.get(assignment.cmid).records.push({
         studentId: record.studentId,
         nome: record.nome,
-        nota: record.nota,
-        feedback: record.feedback,
-        situacaoRaw: record.situacaoRaw,
+        nota: policy.record.nota,
+        feedback: policy.record.feedback,
+        situacaoRaw: policy.record.situacaoRaw,
         sourceRow: record.rowNumber,
       });
     }
 
-    return { groups: [...groups.values()], unmatched };
+    return { groups: [...groups.values()], unmatched, errors, warnings };
   }
 
   // -----------------------------------------------------------------------------------
@@ -251,6 +275,14 @@
       errors.push(...(item.parsed.errors || []).map((error) => `${item.name}: ${error}`));
       warnings.push(...(item.parsed.warnings || []).map((warning) => `${item.name}: ${warning}`));
 
+      const currentCourseId = String(MAT.state.course?.id || MAT.state.snapshot?.course?.id || '');
+      const currentCourseName = U.normalizeText(MAT.state.snapshot?.course?.name || MAT.state.course?.name || '');
+      for (const record of item.parsed.records || []) {
+        if (record.cursoId && String(record.cursoId) !== currentCourseId) errors.push(`${item.name}, linha ${record.rowNumber}: curso_id ${record.cursoId} não corresponde ao curso aberto (${currentCourseId}).`);
+        else if (!record.cursoId && record.curso && currentCourseName && U.normalizeText(record.curso) !== currentCourseName) errors.push(`${item.name}, linha ${record.rowNumber}: curso "${record.curso}" não corresponde ao curso aberto.`);
+        if (record.ambiente && /\./.test(record.ambiente) && U.normalizeText(record.ambiente) !== U.normalizeText(location.hostname)) errors.push(`${item.name}, linha ${record.rowNumber}: ambiente ${record.ambiente} não corresponde a ${location.hostname}.`);
+      }
+
       const selectedAssignment = item.selectedCmid
         ? assignments.find((assignment) => String(assignment.cmid) === String(item.selectedCmid))
         : null;
@@ -276,10 +308,12 @@
       }
     }
 
-    const { groups, unmatched } = groupRecordsByActivity(records, assignments);
+    const grouped = groupRecordsByActivity(records, assignments);
+    errors.push(...grouped.errors);
+    warnings.push(...grouped.warnings);
     STATE.parsed = { records, errors, warnings };
-    STATE.groups = groups;
-    STATE.unmatched = unmatched;
+    STATE.groups = grouped.groups;
+    STATE.unmatched = grouped.unmatched;
     STATE.pendingMappings = pendingMappings;
   }
 
@@ -456,13 +490,18 @@
       gradeInput?.focus();
       return;
     }
+    if (parsedGrade.number === 0 && !feedback) {
+      if (errorBox) errorBox.textContent = 'Nota zero não é lançada automaticamente. Escreva o feedback e deixe a nota em branco.';
+      feedbackInput?.focus();
+      return;
+    }
     if (feedback.length > S.LIMITS.maxCellLength) {
       if (errorBox) errorBox.textContent = `O feedback não pode exceder ${S.LIMITS.maxCellLength} caracteres.`;
       feedbackInput?.focus();
       return;
     }
-    record.nota = grade;
-    record.notaNumero = parsedGrade.number;
+    record.nota = parsedGrade.number === 0 ? '' : grade;
+    record.notaNumero = parsedGrade.number === 0 ? null : parsedGrade.number;
     record.feedback = feedback;
     STATE.editingRecordKey = '';
     invalidateChangePreview();

@@ -39,7 +39,7 @@ test('conferência permite editar nota e feedback antes do salvamento', () => {
   assert.match(batchSource, /data-save-record/);
   assert.match(batchSource, /Editar nota e feedback/);
   assert.match(batchSource, /S\.parseGrade\(grade\)/);
-  assert.match(batchSource, /record\.nota = grade/);
+  assert.match(batchSource, /record\.nota = parsedGrade\.number === 0 \? '' : grade/);
   assert.match(batchSource, /record\.feedback = feedback/);
   assert.match(batchSource, /Edição salva\. Clique em Conferir alterações/);
   assert.match(batchSource, /invalidateChangePreview\(\)/);

@@ -1,4 +1,4 @@
-# Validação da versão 3.7.0
+# Validação da versão 3.7.1
 
 Data: 30/08/2026
 
@@ -12,7 +12,7 @@ Data: 30/08/2026
 - 0 desequilíbrios de estrutura CSS.
 - 0 violações críticas, altas ou médias identificadas na varredura local.
 
-## Novas verificações da versão 3.7.0
+## Novas verificações da versão 3.7.1
 
 1. Menu lateral compacto, expansão e estado ativo.
 2. Preferência do menu armazenada localmente.
@@ -72,7 +72,7 @@ Data: 30/08/2026
 
 ## Auditoria visual
 
-O relatório [AUDITORIA_VISUAL_V3.7.0.md](AUDITORIA_VISUAL_V3.7.0.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
+O relatório [AUDITORIA_VISUAL_V3.7.1.md](AUDITORIA_VISUAL_V3.7.1.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
 
 ## Comandos executados
 

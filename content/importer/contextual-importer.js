@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.0';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.1';
   const S = globalThis.MAT_SHARED;
   const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
     source: 'grade-importer',
@@ -86,6 +86,9 @@
     { value: 'revisao_necessaria', label: 'Revisão necessária', tone: 'review', alert: true },
     { value: 'sem_envio_valido', label: 'Sem envio válido', tone: 'muted', alert: true },
     { value: 'sem_participacao_forum', label: 'Sem participação no fórum', tone: 'warning', alert: true }
+    ,{ value: 'atividade_incorreta', label: 'Atividade incorreta', tone: 'danger', alert: true }
+    ,{ value: 'senai_play_validado', label: 'SENAI Play validado', tone: 'success', alert: false }
+    ,{ value: 'senai_play_nao_comprovado', label: 'SENAI Play não comprovado', tone: 'warning', alert: true }
   ];
 
   const SITUATION_SYNONYMS = {
@@ -95,6 +98,9 @@
     revisao_necessaria: ['revisao necessaria', 'revisão necessária', 'precisa revisar', 'requer revisao', 'requer revisão', 'pendente'],
     sem_envio_valido: ['sem envio valido', 'sem envio válido', 'sem entrega', 'nao enviado', 'não enviado'],
     sem_participacao_forum: ['sem participacao no forum', 'sem participação no fórum', 'sem participacao forum', 'nao participou do forum', 'não participou do fórum', 'sem postagem no forum', 'sem postagem no fórum']
+    ,atividade_incorreta: ['atividade incorreta', 'atividade errada', 'envio incorreto', 'trabalho errado']
+    ,senai_play_validado: ['senai play validado', 'play validado', 'certificado validado']
+    ,senai_play_nao_comprovado: ['senai play nao comprovado', 'senai play não comprovado', 'certificado nao comprovado', 'certificado não comprovado']
   };
 
   const TEMPLATE_CSV = [
@@ -121,6 +127,9 @@
     '- Revisão necessária',
     '- Sem envio válido',
     '- Sem participação no fórum',
+    '- Atividade incorreta',
+    '- SENAI Play validado',
+    '- SENAI Play não comprovado',
     '',
     'Regras gerais:',
     '- Preserve o nome do aluno exatamente como aparece na listagem do Moodle.',
@@ -128,6 +137,8 @@
     '- Avalie somente com base nas evidências presentes na entrega do aluno e nas orientações fornecidas.',
     '- Quando não houver conteúdo suficiente para avaliação, sinalize isso em situacao.',
     '- Use nota numérica quando houver avaliação. Se não for adequado lançar nota, a coluna nota pode ficar vazia.',
+    '- Se o resultado calculado for zero ou o aluno enviar a atividade errada, gere somente feedback e deixe a nota vazia.',
+    '- Em SENAI Play, valide a evidência. Se a atividade for pontuada e a nota máxima estiver confirmada, atribua exatamente a nota máxima; caso contrário, deixe a nota vazia.',
     '- O feedback deve ser curto, claro, acolhedor e individualizado.',
     '- Não use ponto e vírgula dentro do feedback.',
     '- Não use quebras de linha dentro do feedback.',
@@ -285,6 +296,15 @@
     '`Sem conteúdo relevante`',
     'Quando existe uma entrega acessível, mas seu conteúdo não responde de maneira relevante ao que foi solicitado.',
     '',
+    '`Atividade incorreta`',
+    'Quando o arquivo pertence a outra atividade. Gere feedback explicativo e deixe a nota vazia.',
+    '',
+    '`SENAI Play validado`',
+    'Quando a evidência de conclusão foi confirmada. Se a atividade for pontuada e a nota máxima estiver confirmada, use exatamente a nota máxima.',
+    '',
+    '`SENAI Play não comprovado`',
+    'Quando a evidência não comprova a conclusão. Gere feedback e deixe a nota vazia.',
+    '',
     '`Revisão necessária`',
     'Quando existe conteúdo avaliável, porém há problemas importantes que justificam revisão ou intervenção do professor.',
     '',
@@ -295,6 +315,8 @@
     'Quando a atividade é um fórum e o aluno não realizou a postagem ou resposta exigida pela consigna.',
     '',
     'Não crie novas tags sem solicitação explícita do professor.',
+    '',
+    'Uma nota calculada igual a zero nunca deve ser lançada automaticamente: gere feedback e deixe a nota vazia. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno para validação do destino.',
     '',
     '### 5. Gerar feedback',
     '',
@@ -449,8 +471,15 @@
     if (raw.includes('conteudo') || raw.includes('conteúdo')) return 'sem_conteudo_relevante';
     if (raw.includes('revisao') || raw.includes('revisão') || raw.includes('pendente')) return 'revisao_necessaria';
     if (raw.includes('sem envio') || raw.includes('sem entrega')) return 'sem_envio_valido';
+    if (raw.includes('atividade') && (raw.includes('incorreta') || raw.includes('errada'))) return 'atividade_incorreta';
+    if (raw.includes('senai play') && (raw.includes('validado') || raw.includes('concluido'))) return 'senai_play_validado';
     if (raw.includes('corrig')) return 'corrigido';
     return '';
+  }
+
+  function findGradingTable(root = document) {
+    const candidates = [...root.querySelectorAll('table#submissions, .gradingtable table, [data-region="gradingtable"] table, table.generaltable')];
+    return candidates.find((table) => getGradeInputs(table).length || getFeedbackTextareas(table).length) || null;
   }
 
   function detectPageDecimalSeparator() {
@@ -559,7 +588,7 @@
 
   function getPageReadiness() {
     const url = new URL(window.location.href);
-    const table = document.querySelector('table#submissions');
+    const table = findGradingTable();
     const root = table || document;
     const gradeFields = getGradeInputs(root);
     const feedbackFields = getFeedbackTextareas(root);
@@ -996,7 +1025,7 @@
       const rowNumber = index + 2;
       const studentId = indexes.studentId !== -1 ? String(row[indexes.studentId] ?? '').trim() : '';
       const nome = String(row[indexes.nome] ?? '').trim();
-      const nota = indexes.nota !== -1 ? String(row[indexes.nota] ?? '').trim() : '';
+      let nota = indexes.nota !== -1 ? String(row[indexes.nota] ?? '').trim() : '';
       const feedback = indexes.feedback !== -1 ? String(row[indexes.feedback] ?? '').trim() : '';
       const situacaoRaw = indexes.situacao !== -1 ? String(row[indexes.situacao] ?? '').trim() : '';
       const situacao = normalizeSituation(situacaoRaw);
@@ -1014,6 +1043,16 @@
       if (nota && !isValidImportedGrade(nota)) {
         errors.push(`Linha ${rowNumber}: nota inválida "${nota}".`);
         return;
+      }
+      const parsedGrade = S.parseGrade(nota);
+      const feedbackOnly = ['atividade_incorreta', 'erro_arquivo', 'sem_conteudo_relevante', 'sem_envio_valido', 'sem_participacao_forum', 'senai_play_nao_comprovado'].includes(situacao);
+      if ((parsedGrade.valid && parsedGrade.number === 0) || feedbackOnly) {
+        if (!feedback) {
+          errors.push(`Linha ${rowNumber}: nota zero ou situação sem avaliação exige feedback e nota em branco.`);
+          return;
+        }
+        if (nota) warnings.push(`Linha ${rowNumber}: a nota foi removida; somente o feedback será preenchido.`);
+        nota = '';
       }
       if (situacaoRaw && !situacao) {
         warnings.push(`Linha ${rowNumber}: situacao "${situacaoRaw}" não reconhecida. A tag foi ignorada.`);
@@ -1079,7 +1118,7 @@
   }
 
   function getMoodleRows() {
-    const table = document.querySelector('table#submissions');
+    const table = findGradingTable();
     const rows = table
       ? [...table.querySelectorAll('tbody tr')]
       : [...document.querySelectorAll('table.generaltable tbody tr, tr')];
@@ -3573,6 +3612,17 @@
       return { status: 'redirecting', reason: 'Restaurando a tela de avaliação rápida.' };
     }
 
+    if (transactionState === 'verificar') {
+      if (!readiness.hasTable || (!readiness.gradeCount && !readiness.feedbackCount)) {
+        return { status: 'error', reason: formatPageReadinessError(readiness) };
+      }
+      const verification = buildBatchVerification(verificationPlan);
+      if (!verification.summary.total) {
+        return { status: 'error', reason: 'O plano de conferência ficou vazio e os valores salvos não puderam ser reconciliados.' };
+      }
+      return { status: 'verified', verification };
+    }
+
     if (readiness.hasQuickGradingOption && !readiness.quickGradingEnabled) {
       const enabled = ensureQuickGradingEnabled();
       if (!enabled.ok) return { status: 'error', reason: 'Não foi possível habilitar automaticamente a opção Avaliação rápida.' };
@@ -3581,14 +3631,6 @@
 
     if (!readiness.isSupported) {
       return { status: 'error', reason: formatPageReadinessError(readiness) };
-    }
-
-    if (transactionState === 'verificar') {
-      const verification = buildBatchVerification(verificationPlan);
-      if (!verification.summary.total) {
-        return { status: 'error', reason: 'O plano de conferência ficou vazio e os valores salvos não puderam ser reconciliados.' };
-      }
-      return { status: 'verified', verification };
     }
 
     STATE.records = Array.isArray(records) ? records.map((record) => ({
