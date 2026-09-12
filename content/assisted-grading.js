@@ -195,9 +195,11 @@ A saída deve incluir pelo menos uma das seguintes colunas:
 \`feedback\`
 \`situacao\`
 
-Formato preferencial:
+Formato obrigatório quando o manifesto da atividade estiver disponível:
 
-\`nome;nota;feedback;situacao\`
+\`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao\`
+
+Repita os metadados do manifesto em todas as linhas dos alunos, sem alterar seus valores.
 
 Quando a nota não for necessária:
 
@@ -274,10 +276,8 @@ Quando houver materiais suficientes para executar uma correção, responda exclu
 
 Exemplo estrutural:
 
-nome;nota;feedback;situacao
-Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido
-Aluno Exemplo 2;;O arquivo enviado não apresenta conteúdo que permita realizar a avaliação;Erro no arquivo
-Aluno Exemplo 3;;Não foi localizada postagem do aluno no fórum solicitado pela atividade;Sem participação no fórum
+ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao
+ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido
 
 O exemplo acima serve apenas para demonstrar a estrutura. Nunca reutilize nomes, notas ou feedbacks do exemplo em uma correção real.
 

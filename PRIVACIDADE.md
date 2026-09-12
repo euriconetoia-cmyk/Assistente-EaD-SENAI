@@ -1,6 +1,6 @@
 # Privacidade e tratamento local de dados
 
-Versão: 3.7.1
+Versão: 3.7.4
 
 ## Finalidade
 
@@ -24,7 +24,7 @@ A Auditoria Local registra por padrão apenas tipo da ação, data, ambiente, cu
 
 ## Pasta de evidências
 
-A versão 3.7.1 permite escolher uma pasta do computador pelo seletor nativo do Chrome. A extensão recebe acesso somente à pasta escolhida e apenas depois da autorização do usuário. A referência da pasta pode ser mantida no IndexedDB da extensão para facilitar exportações posteriores. O Chrome pode solicitar nova autorização e o usuário pode negar ou revogar o acesso.
+A versão 3.7.4 permite escolher uma pasta do computador pelo seletor nativo do Chrome. A extensão recebe acesso somente à pasta escolhida e apenas depois da autorização do usuário. A referência da pasta pode ser mantida no IndexedDB da extensão para facilitar exportações posteriores. O Chrome pode solicitar nova autorização e o usuário pode negar ou revogar o acesso.
 
 Se a autorização estiver ausente, negada ou indisponível, a extensão oferece download convencional em ZIP. Nenhum mecanismo tenta contornar a decisão do usuário.
 

@@ -1,4 +1,4 @@
-# Assistente EaD SENAI 3.7.1
+# Assistente EaD SENAI 3.7.4
 
 Extensão Chrome Manifest V3 para acompanhamento da tutoria nos ambientes Moodle autorizados do SENAI e da FIEG.
 
@@ -29,7 +29,7 @@ O desenvolvimento, a especificação, a integração e as colaborações técnic
 2. Ative o modo do desenvolvedor.
 3. Clique em **Carregar sem compactação**.
 4. Selecione esta pasta.
-5. Confira se a versão exibida é `3.7.1`.
+5. Confira se a versão exibida é `3.7.4`.
 6. Valide primeiro em curso de homologação, com uma atividade e um aluno de teste.
 
 ## Operações que alteram o Moodle

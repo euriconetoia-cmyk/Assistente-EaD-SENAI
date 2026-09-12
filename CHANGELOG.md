@@ -1,5 +1,30 @@
 # Alterações
 
+## 3.7.4
+
+- consulta a nota máxima na página da atividade e na tela de avaliação do Moodle;
+- registra fonte e nível de confiança da escala encontrada;
+- inclui `criterios_de_pontuacao.txt` em cada pasta do pacote para orientar a IA;
+- exige que o CSV de retorno preserve a nota máxima e seus metadados;
+- bloqueia notas quando a escala do CSV diverge da escala atual do Moodle;
+- preserva as regras especiais de nota zero, atividade incorreta e SENAI Play;
+- mantém os créditos de Eurico Cirilo na aplicação e na documentação.
+
+## 3.7.3
+
+- reúne todas as atividades em um único pacote mestre para correção com IA;
+- mantém cada atividade em uma pasta própria, sem misturar enunciados, critérios e envios;
+- inclui manifesto geral na raiz do ZIP e manifesto individual em cada pasta;
+- divide automaticamente o pacote acima de 450 MB, sem separar uma atividade entre partes;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
+## 3.7.2
+
+- corrige o falso erro de aluno não encontrado em turmas com mais de 100 participantes;
+- carrega até 500 estudantes na tela de avaliação rápida e na conferência pós-salvamento;
+- mantém o filtro de todos os participantes e as proteções acadêmicas da versão 3.7.1;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
 ## 3.7.1
 
 - valida ambiente, curso ID, curso, CMID e atividade informados nos CSVs;
