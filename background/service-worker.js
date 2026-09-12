@@ -46,7 +46,9 @@ const buildAutomationUrl = (gradingUrl, cmid) => {
   // sobrescrita continuam protegendo notas e feedbacks existentes.
   url.searchParams.set('status', 'all');
   url.searchParams.set('page', '0');
-  url.searchParams.set('perpage', '100');
+  // Mantém todos os alunos de turmas regulares na mesma página. A redução para
+  // 100 fazia estudantes da segunda página aparecerem como "não encontrados".
+  url.searchParams.set('perpage', '500');
   return url.href;
 };
 
@@ -56,7 +58,7 @@ const buildVerificationUrl = (gradingUrl, cmid) => {
   url.searchParams.set('action', 'grading');
   url.searchParams.set('quickgrading', '1');
   url.searchParams.set('status', 'all');
-  url.searchParams.set('perpage', '100');
+  url.searchParams.set('perpage', '500');
   url.searchParams.set('page', '0');
   return url.href;
 };
@@ -78,6 +80,10 @@ const validateJobs = (jobs) => {
       let nota = String(record?.nota ?? '').trim();
       const feedback = String(record?.feedback || '').slice(0, 20000);
       const situacaoRaw = String(record?.situacaoRaw || '').slice(0, 200);
+      const notaMaxima = String(record?.notaMaxima || '').trim().slice(0, 40);
+      const notaMaximaStatus = String(record?.notaMaximaStatus || '').trim().slice(0, 80);
+      const notaMaximaFonte = String(record?.notaMaximaFonte || '').trim().slice(0, 200);
+      const tipoAtividade = String(record?.tipoAtividade || '').trim().slice(0, 80);
       if (!studentId && !nome) throw new Error(`Registro ${index + 1} da atividade ${cmid} não identifica o estudante.`);
       if (!nota && !feedback && !situacaoRaw) throw new Error(`Registro ${index + 1} da atividade ${cmid} não contém alteração.`);
       if (nota) {
@@ -91,7 +97,7 @@ const validateJobs = (jobs) => {
       const key = studentId ? `id:${studentId}` : `nome:${nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}`;
       if (students.has(key)) throw new Error(`A atividade ${cmid} contém estudante duplicado.`);
       students.add(key);
-      return { studentId, nome, nota, feedback, situacaoRaw, sourceRow: record?.sourceRow || index + 1 };
+      return { studentId, nome, nota, feedback, situacaoRaw, notaMaxima, notaMaximaStatus, notaMaximaFonte, tipoAtividade, sourceRow: record?.sourceRow || index + 1 };
     });
     return {
       cmid,

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.1';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.4';
   const S = globalThis.MAT_SHARED;
   const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
     source: 'grade-importer',
@@ -346,9 +346,11 @@
     '`feedback`',
     '`situacao`',
     '',
-    'Formato preferencial:',
+    'Formato obrigatório quando o manifesto estiver disponível:',
     '',
-    '`nome;nota;feedback;situacao`',
+    '`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao`',
+    '',
+    'Repita os metadados do manifesto em todas as linhas dos alunos, sem alterar seus valores.',
     '',
     'Quando a nota não for necessária:',
     '',
@@ -425,10 +427,8 @@
     '',
     'Exemplo estrutural:',
     '',
-    'nome;nota;feedback;situacao',
-    'Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido',
-    'Aluno Exemplo 2;;O arquivo enviado não apresenta conteúdo que permita realizar a avaliação;Erro no arquivo',
-    'Aluno Exemplo 3;;Não foi localizada postagem do aluno no fórum solicitado pela atividade;Sem participação no fórum',
+    'ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao',
+    'ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido',
     '',
     'O exemplo acima serve apenas para demonstrar a estrutura. Nunca reutilize nomes, notas ou feedbacks do exemplo em uma correção real.',
     '',
@@ -1392,6 +1392,19 @@
       situationCounts: {},
       verificationPlan: []
     };
+
+    const recordsWithGrade = STATE.records.filter(record => String(record.nota ?? '').trim() !== '');
+    const declaredMaxGrades = [...new Set(recordsWithGrade
+      .map(record => S.parseGrade(record.notaMaxima || '').number)
+      .filter(value => Number.isFinite(value) && value > 0))];
+    const unsafeMaxStatus = recordsWithGrade.find(record => /conflito|insuficiente|nao localizada|não localizada/i.test(record.notaMaximaStatus || ''));
+    if (declaredMaxGrades.length > 1) report.blocking.push('O CSV contém mais de uma nota máxima para a mesma atividade.');
+    if (recordsWithGrade.length && !declaredMaxGrades.length) report.blocking.push('O CSV contém notas, mas não informa uma nota máxima válida para conferência.');
+    if (recordsWithGrade.length && maxGrade === null) report.blocking.push('A nota máxima atual não pôde ser confirmada na página do Moodle.');
+    if (declaredMaxGrades.length === 1 && maxGrade !== null && !S.gradesEquivalent(declaredMaxGrades[0], maxGrade)) {
+      report.blocking.push(`A nota máxima do CSV (${declaredMaxGrades[0]}) difere da atividade no Moodle (${maxGrade}).`);
+    }
+    if (unsafeMaxStatus) report.blocking.push(`A nota máxima do CSV está marcada como ${unsafeMaxStatus.notaMaximaStatus}; confirme a atividade antes de lançar notas.`);
 
     if (!readiness.gradeCount && STATE.records.some(record => record.nota)) {
       report.blocking.push('A atividade não possui campo de nota para um ou mais registros.');

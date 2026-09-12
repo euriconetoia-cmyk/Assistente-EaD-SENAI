@@ -90,6 +90,8 @@
     feedback: ['feedback', 'comentario', 'comentário', 'comentarios', 'comentários', 'observacao', 'observação', 'retorno', 'devolutiva'],
     situacao: ['situacao', 'situação', 'status', 'tag', 'classificacao', 'classificação'],
     notaMaxima: ['nota_maxima', 'nota máxima', 'valor da atividade', 'valor_atividade', 'max_grade', 'maximum grade'],
+    notaMaximaStatus: ['nota_maxima_status', 'status da nota maxima', 'status da nota máxima', 'max_grade_status'],
+    notaMaximaFonte: ['nota_maxima_fonte', 'fonte da nota maxima', 'fonte da nota máxima', 'max_grade_source'],
     tipoAtividade: ['tipo_atividade', 'tipo da atividade', 'activity_type'],
   });
 
@@ -202,6 +204,8 @@
         feedback: read('feedback'),
         situacaoRaw: read('situacao'),
         notaMaxima: read('notaMaxima'),
+        notaMaximaStatus: read('notaMaximaStatus'),
+        notaMaximaFonte: read('notaMaximaFonte'),
         tipoAtividade: read('tipoAtividade'),
       };
       if (!record.atividadeId && !record.atividade && !allowMissingActivity) {

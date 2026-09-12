@@ -73,9 +73,11 @@ test('URL de avaliação é normalizada com parâmetros seguros', () => {
   assert.equal(url.searchParams.get('quickgrading'), '1');
   assert.equal(url.searchParams.get('status'), 'all');
   assert.equal(url.searchParams.get('page'), '0');
+  assert.equal(url.searchParams.get('perpage'), '500');
   const verificationUrl = new URL(SW.buildVerificationUrl(url.href, 12));
   assert.equal(verificationUrl.searchParams.get('status'), 'all');
   assert.equal(verificationUrl.searchParams.get('page'), '0');
+  assert.equal(verificationUrl.searchParams.get('perpage'), '500');
 });
 
 test('lote inválido ou excessivo é recusado antes de abrir abas', () => {

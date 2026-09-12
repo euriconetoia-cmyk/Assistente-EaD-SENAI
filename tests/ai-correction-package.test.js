@@ -14,18 +14,22 @@ test('lote para IA inclui contexto verificável de cada atividade', () => {
   assert.match(batchSource, /enunciado_da_atividade\.txt/);
   assert.match(batchSource, /criterios_de_avaliacao\.txt/);
   assert.match(batchSource, /dados_da_atividade\.txt/);
+  assert.match(batchSource, /criterios_de_pontuacao\.txt/);
   assert.match(batchSource, /envios_dos_alunos\.zip/);
   assert.match(batchSource, /manifesto_atividade\.csv/);
   assert.match(batchSource, /Nota máxima não localizada/);
+  assert.match(batchSource, /buildAssignmentGradingUrl/);
   assert.match(batchSource, /não invente essa informação/i);
 });
 
-test('lote para IA gera um pacote independente por atividade', () => {
+test('lote para IA gera pacote mestre com pastas independentes por atividade', () => {
   assert.match(batchSource, /function buildAiActivityPackageEntries/);
+  assert.match(batchSource, /function buildMasterPackageEntries/);
+  assert.match(batchSource, /function splitActivityBundles/);
   assert.match(batchSource, /Este pacote corresponde a uma única atividade/);
-  assert.match(batchSource, /correcao_ia_\$\{courseSlug\}_\$\{assignment\.cmid\}_/);
-  assert.match(batchSource, /um para cada atividade/);
-  assert.match(batchSource, /permita vários downloads/);
+  assert.match(batchSource, /pacote_mestre_correcao_ia_\$\{courseSlug\}/);
+  assert.match(batchSource, /manifesto_geral\.csv/);
+  assert.match(batchSource, /MAX_AI_MASTER_PACKAGE_BYTES = 450 \* 1024 \* 1024/);
   assert.match(batchSource, /MAX_AI_SINGLE_ACTIVITY_BYTES = 500 \* 1024 \* 1024/);
   assert.doesNotMatch(batchSource, /O pacote ultrapassou 100 MB\. Baixe as atividades em grupos menores/);
   assert.doesNotMatch(batchSource, /MAX_AI_PACKAGE_BYTES/);

@@ -100,6 +100,13 @@ test('CSV preserva destino acadêmico e transforma nota zero em feedback sem not
   assert.match(parsed.warnings.join(' '), /nota zero removida/i);
 });
 
+test('CSV preserva a origem e a confiança da nota máxima', () => {
+  const parsed = S.parseBatchCsv('cmid;nome;nota;feedback;nota_maxima;nota_maxima_status;nota_maxima_fonte\n301;Ana;40;Bom trabalho;50;alta;campo de nota do Moodle');
+  assert.equal(parsed.records[0].notaMaxima, '50');
+  assert.equal(parsed.records[0].notaMaximaStatus, 'alta');
+  assert.equal(parsed.records[0].notaMaximaFonte, 'campo de nota do Moodle');
+});
+
 test('política acadêmica bloqueia nota para atividade incorreta e automatiza SENAI Play pontuado', () => {
   const wrong = S.applyAcademicGradePolicy({ nota: '5', feedback: 'Arquivo de outra atividade.', situacaoRaw: 'Atividade incorreta' }, { name: 'SAP 01', maxGrade: 10 });
   assert.equal(wrong.record.nota, '');

@@ -10,6 +10,7 @@
   const MAX_BATCH_FILES = 30;
   const MAX_BATCH_TOTAL_BYTES = 20 * 1024 * 1024;
   const MAX_AI_SINGLE_ACTIVITY_BYTES = 500 * 1024 * 1024;
+  const MAX_AI_MASTER_PACKAGE_BYTES = 450 * 1024 * 1024;
 
   const csvEscape = (value) => `"${S.neutralizeSpreadsheetFormula(value).replace(/"/g, '""')}"`;
   const slug = (value = '') => U.normalizeText(value).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80) || 'uc';
@@ -29,6 +30,18 @@
     return url.href;
   };
 
+  const buildAssignmentGradingUrl = (assignment) => {
+    const url = new URL(assignment.gradingUrl || assignment.url, location.origin);
+    url.pathname = '/mod/assign/view.php';
+    url.search = '';
+    url.searchParams.set('id', assignment.cmid);
+    url.searchParams.set('action', 'grading');
+    url.searchParams.set('quickgrading', '1');
+    url.searchParams.set('status', 'all');
+    url.searchParams.set('perpage', '20');
+    return url.href;
+  };
+
   const safeText = (node, limit = 50000) => U.cleanText(node?.textContent || '').slice(0, limit);
   const labeledValue = (doc, labels) => {
     const accepted = labels.map((label) => U.normalizeText(label));
@@ -40,14 +53,14 @@
     return '';
   };
 
-  const extractAssignmentContext = (doc, assignment) => {
+  const extractAssignmentContext = (doc, assignment, gradingDoc = null) => {
     const descriptionNode = doc.querySelector('#intro .no-overflow, #intro, [data-region="activity-description"], .activity-description, .mod_introbox');
     const criteriaNodes = [...doc.querySelectorAll('[data-region="gradingform_rubric"], .gradingform_rubric, .rubric_criteria, .criterion, .criteria')];
     const body = safeText(doc.body, 100000);
     const pageGradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
       || body.match(/(?:nota m[aá]xima|maximum grade)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
       || '';
-    const inputGradeText = [...doc.querySelectorAll('input[max]')]
+    const inputGradeText = [...(gradingDoc || doc).querySelectorAll('input[max]')]
       .map((input) => String(input.getAttribute('max') || '').trim())
       .find((value) => /^\d+(?:[.,]\d+)?$/.test(value) && Number(value.replace(',', '.')) > 0) || '';
     const snapshotGradeText = String(assignment.maxGrade ?? assignment.gradeMax ?? assignment.metrics?.maxGrade ?? '').trim();
@@ -109,6 +122,42 @@
     ];
   }
 
+  const entryByteLength = (entry) => entry.bytes?.byteLength ?? new TextEncoder().encode(String(entry.content ?? '')).byteLength;
+
+  function splitActivityBundles(bundles, maxBytes = MAX_AI_MASTER_PACKAGE_BYTES) {
+    const parts = [];
+    let current = { bundles: [], bytes: 0 };
+    for (const bundle of bundles) {
+      if (current.bundles.length && current.bytes + bundle.bytes > maxBytes) {
+        parts.push(current);
+        current = { bundles: [], bytes: 0 };
+      }
+      current.bundles.push(bundle);
+      current.bytes += bundle.bytes;
+    }
+    if (current.bundles.length) parts.push(current);
+    return parts;
+  }
+
+  function buildMasterPackageEntries(part, partIndex, partCount) {
+    const header = 'ambiente;curso_id;curso;cmid;atividade;tipo_atividade;prazo;nota_maxima;nota_maxima_status;nota_maxima_fonte;enunciado;criterios;url_atividade';
+    const manifest = `\ufeff${[header, ...part.bundles.map((bundle) => bundle.manifestRow.map(csvEscape).join(';'))].join('\n')}`;
+    const readme = [
+      'PACOTE MESTRE PARA CORREÇÃO COM IA',
+      '',
+      `Parte ${partIndex + 1} de ${partCount}.`,
+      `Atividades nesta parte: ${part.bundles.length}.`,
+      '',
+      'Cada pasta corresponde a uma única atividade e contém os envios, o enunciado, os critérios, os dados e as instruções próprias.',
+      'Não misture resultados entre pastas. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno.',
+    ].join('\n');
+    return [
+      { name: 'LEIA-ME-PACOTE-MESTRE.txt', content: readme },
+      { name: 'manifesto_geral.csv', content: manifest },
+      ...part.bundles.flatMap((bundle) => bundle.entries.map((entry) => ({ ...entry, name: `${bundle.folder}/${entry.name}` }))),
+    ];
+  }
+
   async function downloadAllForCorrection() {
     const snapshot = MAT.state.snapshot;
     if (!snapshot) return MAT.ui.toast('Execute a análise completa antes de baixar tudo.');
@@ -120,22 +169,23 @@
     }
 
     const courseSlug = slug(snapshot.course?.name);
-    let downloadedCount = 0;
+    const bundles = [];
     const failures = [];
-    MAT.ui.toast(`Preparando ${pending.length} pacote(s), um para cada atividade. Aguarde a coleta dos enunciados e envios.`);
+    MAT.ui.toast(`Preparando um pacote mestre com ${pending.length} atividade(s). Aguarde a coleta dos enunciados e envios.`);
 
     for (let index = 0; index < pending.length; index += 1) {
       const assignment = pending[index];
       try {
         MAT.ui.toast(`Preparando ${index + 1} de ${pending.length}: ${assignment.name}`);
-        const [doc, submissionsZip] = await Promise.all([
+        const [doc, gradingDoc, submissionsZip] = await Promise.all([
           fetchMoodleResource(buildAssignmentViewUrl(assignment), `Enunciado de ${assignment.name}`),
+          fetchMoodleResource(buildAssignmentGradingUrl(assignment), `Escala de nota de ${assignment.name}`),
           fetchMoodleResource(buildDownloadAllUrl(assignment), `Entregas de ${assignment.name}`, true),
         ]);
         if (submissionsZip.length > MAX_AI_SINGLE_ACTIVITY_BYTES) {
           throw new Error(`${assignment.name}: os envios desta atividade ultrapassam o limite individual de 500 MB.`);
         }
-        const context = extractAssignmentContext(doc, assignment);
+        const context = extractAssignmentContext(doc, assignment, gradingDoc);
         const activityType = /senai\s*play/i.test(`${assignment.name} ${context.description}`) ? 'senai_play' : 'atividade_regular';
         const metadata = [
           `Curso ou UC: ${snapshot.course?.name || 'Não identificado'}`,
@@ -157,22 +207,41 @@
           { name: 'enunciado_da_atividade.txt', content: context.description || 'Enunciado não localizado automaticamente. Consulte o link informado em dados_da_atividade.txt antes de corrigir.' },
           { name: 'criterios_de_avaliacao.txt', content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
           { name: 'dados_da_atividade.txt', content: metadata },
+          { name: 'criterios_de_pontuacao.txt', content: context.gradeText
+            ? `NOTA MÁXIMA CONFIRMADA: ${context.gradeText}\nESCALA PERMITIDA: de 0 a ${context.gradeText}.\nA nota deve ser proporcional aos critérios e nunca pode ultrapassar ${context.gradeText}.\nSe o resultado calculado for zero, deixe a nota vazia e gere somente feedback.\nEm atividade SENAI Play pontuada e validada, utilize exatamente ${context.gradeText}.`
+            : 'A nota máxima não foi confirmada ou apresenta conflito. Não atribua nota automaticamente. Gere feedback e solicite conferência humana.' },
         ];
         const manifestRow = [location.hostname, snapshot.course?.id || '', snapshot.course?.name || '', assignment.cmid, assignment.name, activityType, context.dueText, context.gradeText, context.gradeConfidence, context.gradeSource, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
-        const filename = `correcao_ia_${courseSlug}_${assignment.cmid}_${slug(assignment.name)}_${new Date().toISOString().slice(0, 10)}.zip`;
-        U.downloadBlob(U.makeZipBlob(buildAiActivityPackageEntries(activityEntries, manifestRow)), filename, 'application/zip');
-        downloadedCount += 1;
-        if (index < pending.length - 1) await new Promise((resolve) => setTimeout(resolve, 250));
+        const entries = buildAiActivityPackageEntries(activityEntries, manifestRow);
+        bundles.push({
+          folder: `${String(index + 1).padStart(2, '0')}_${assignment.cmid}_${slug(assignment.name)}`,
+          entries,
+          manifestRow,
+          bytes: entries.reduce((total, entry) => total + entryByteLength(entry), 0),
+        });
       } catch (error) {
         failures.push(`${assignment.name}: ${error?.message || 'falha na preparação'}`);
       }
     }
 
-    if (failures.length) {
-      MAT.ui.toast(`${downloadedCount} pacote(s) baixado(s) e ${failures.length} com falha. ${failures.slice(0, 2).join(' ')}`, 'error');
+    if (!bundles.length) {
+      MAT.ui.toast(`Nenhuma atividade pôde ser preparada. ${failures.slice(0, 2).join(' ')}`, 'error');
       return;
     }
-    MAT.ui.toast(`${downloadedCount} pacote(s) preparado(s), um para cada atividade. Se o Chrome solicitar, permita vários downloads para esta página.`);
+    const parts = splitActivityBundles(bundles);
+    const date = new Date().toISOString().slice(0, 10);
+    parts.forEach((part, index) => {
+      const suffix = parts.length > 1 ? `_parte_${String(index + 1).padStart(2, '0')}_de_${String(parts.length).padStart(2, '0')}` : '';
+      const filename = `pacote_mestre_correcao_ia_${courseSlug}_${date}${suffix}.zip`;
+      U.downloadBlob(U.makeZipBlob(buildMasterPackageEntries(part, index, parts.length)), filename, 'application/zip');
+    });
+    if (failures.length) {
+      MAT.ui.toast(`${bundles.length} atividade(s) incluída(s) em ${parts.length} arquivo(s) e ${failures.length} com falha. ${failures.slice(0, 2).join(' ')}`, 'error');
+      return;
+    }
+    MAT.ui.toast(parts.length === 1
+      ? `Pacote mestre preparado com ${bundles.length} atividade(s) em um único ZIP.`
+      : `O volume excedeu 450 MB. Foram geradas ${parts.length} partes, mantendo cada atividade inteira.`);
   }
 
   // -----------------------------------------------------------------------------------
@@ -204,6 +273,10 @@
         nota: policy.record.nota,
         feedback: policy.record.feedback,
         situacaoRaw: policy.record.situacaoRaw,
+        notaMaxima: policy.record.notaMaxima,
+        notaMaximaStatus: policy.record.notaMaximaStatus,
+        notaMaximaFonte: policy.record.notaMaximaFonte,
+        tipoAtividade: policy.record.tipoAtividade,
         sourceRow: record.rowNumber,
       });
     }

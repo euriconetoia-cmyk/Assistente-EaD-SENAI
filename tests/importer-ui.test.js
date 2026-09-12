@@ -45,6 +45,12 @@ test('conferência permite editar nota e feedback antes do salvamento', () => {
   assert.match(batchSource, /invalidateChangePreview\(\)/);
 });
 
+test('lançamento bloqueia divergência entre a nota máxima do CSV e do Moodle', () => {
+  assert.match(source, /A nota máxima do CSV/);
+  assert.match(source, /difere da atividade no Moodle/);
+  assert.match(source, /não informa uma nota máxima válida/);
+});
+
 test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () => {
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 8\)/);
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 20\)/);
