@@ -20,6 +20,7 @@ const verifiedResult = {
   },
 };
 const defaultBatchTickResponder = (message) => {
+  if (message.transactionState === 'descobrir') return { status: 'discovered', pages: [{ page: 0, records: message.records }], diagnostics: { pagesRead: 1, recognizedStudents: message.records.length } };
   if (message.transactionState === 'enviado') return { status: 'saved', outcome: 'success', message: 'Salvo com confirmação.' };
   if (message.transactionState === 'verificar') return verifiedResult;
   return { status: 'submitting', report: { applied: ['Ana'], verificationPlan: [{ nome: 'Ana', expectedGrade: '8' }] } };
@@ -72,12 +73,14 @@ test('URL de avaliação é normalizada com parâmetros seguros', () => {
   assert.equal(url.searchParams.get('action'), 'grading');
   assert.equal(url.searchParams.get('quickgrading'), '1');
   assert.equal(url.searchParams.get('status'), 'all');
+  assert.equal(url.searchParams.get('filter'), '-1');
   assert.equal(url.searchParams.get('page'), '0');
-  assert.equal(url.searchParams.get('perpage'), '500');
+  assert.equal(url.searchParams.get('perpage'), '100');
   const verificationUrl = new URL(SW.buildVerificationUrl(url.href, 12));
   assert.equal(verificationUrl.searchParams.get('status'), 'all');
   assert.equal(verificationUrl.searchParams.get('page'), '0');
-  assert.equal(verificationUrl.searchParams.get('perpage'), '500');
+  assert.equal(verificationUrl.searchParams.get('filter'), '-1');
+  assert.equal(verificationUrl.searchParams.get('perpage'), '100');
 });
 
 test('lote inválido ou excessivo é recusado antes de abrir abas', () => {
@@ -105,7 +108,7 @@ test('fluxo transacional persiste fase, confirma salvamento e fecha a aba', asyn
   const done = notifications.find((item) => item.type === 'MAT_BATCH_DONE');
   assert.ok(done);
   assert.equal(done.results[0].outcome, 'sucesso');
-  assert.deepEqual(transactionStates, ['preparar', 'enviado', 'verificar']);
+  assert.deepEqual(transactionStates, ['descobrir', 'preparar', 'enviado', 'verificar']);
   assert.deepEqual(removedTabs, [2]);
   assert.equal(sessionValues.mat_active_batch_v3, undefined);
 });
@@ -132,6 +135,40 @@ test('fluxo restaura action=grading quando o Moodle remove a ação da URL', asy
   assert.ok(done);
   assert.equal(done.results[0].outcome, 'sucesso');
   assert.match(updatedTabs.at(-1).url, /action=grading/);
+  batchTickResponder = defaultBatchTickResponder;
+});
+
+test('fluxo descobre e salva alunos distribuídos em páginas diferentes', async () => {
+  const phases = [];
+  batchTickResponder = (message) => {
+    phases.push({ phase: message.transactionState, names: message.records.map((record) => record.nome) });
+    if (message.transactionState === 'descobrir') {
+      return {
+        status: 'discovered',
+        pages: [
+          { page: 0, records: [message.records[0]] },
+          { page: 2, records: [message.records[1]] },
+        ],
+        diagnostics: { pagesRead: 3, recognizedStudents: 150 },
+      };
+    }
+    if (message.transactionState === 'enviado') return { status: 'saved', message: 'Salvo.' };
+    if (message.transactionState === 'verificar') return verifiedResult;
+    return { status: 'submitting', report: { verificationPlan: [{ nome: message.records[0].nome, expectedGrade: '8' }] } };
+  };
+  const message = {
+    type: 'MAT_BATCH_LAUNCH_START', batchId: 'batch_pages',
+    jobs: [{ cmid: 22, activityName: 'SAP', gradingUrl: 'https://ead.fieg.com.br/mod/assign/view.php?id=22', records: [{ nome: 'Ana', nota: '8' }, { nome: 'Zilda', nota: '9' }] }],
+    options: {}
+  };
+  await new Promise((resolve) => runtimeMessageListener(message, { id: chrome.runtime.id, tab: { id: 1 } }, resolve));
+  const deadline = Date.now() + 1000;
+  while (!notifications.some((item) => item.type === 'MAT_BATCH_DONE' && item.batchId === 'batch_pages') && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
+  const done = notifications.find((item) => item.type === 'MAT_BATCH_DONE' && item.batchId === 'batch_pages');
+  assert.equal(done.results[0].outcome, 'sucesso');
+  assert.equal(done.results[0].diagnostics.pagesRead, 3);
+  assert.deepEqual(phases.filter((item) => item.phase === 'preparar').map((item) => item.names), [['Ana'], ['Zilda']]);
+  assert.ok(updatedTabs.some((item) => new URL(item.url).searchParams.get('page') === '2'));
   batchTickResponder = defaultBatchTickResponder;
 });
 

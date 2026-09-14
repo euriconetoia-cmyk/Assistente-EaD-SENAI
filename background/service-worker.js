@@ -45,22 +45,33 @@ const buildAutomationUrl = (gradingUrl, cmid) => {
   // A visão completa evita falsos "aluno não encontrado" e as opções de
   // sobrescrita continuam protegendo notas e feedbacks existentes.
   url.searchParams.set('status', 'all');
+  url.searchParams.set('filter', '-1');
   url.searchParams.set('page', '0');
-  // Mantém todos os alunos de turmas regulares na mesma página. A redução para
-  // 100 fazia estudantes da segunda página aparecerem como "não encontrados".
-  url.searchParams.set('perpage', '500');
+  // A cobertura completa é feita pela descoberta paginada. Não presumimos que
+  // o Moodle aceitará valores maiores que os configurados pelo administrador.
+  url.searchParams.set('perpage', '100');
   return url.href;
 };
 
-const buildVerificationUrl = (gradingUrl, cmid) => {
+const buildVerificationUrl = (gradingUrl, cmid, page = 0) => {
   const url = validateAutomationUrl(gradingUrl);
   url.searchParams.set('id', String(cmid));
   url.searchParams.set('action', 'grading');
   url.searchParams.set('quickgrading', '1');
   url.searchParams.set('status', 'all');
-  url.searchParams.set('perpage', '500');
-  url.searchParams.set('page', '0');
+  url.searchParams.set('filter', '-1');
+  url.searchParams.set('perpage', '100');
+  url.searchParams.set('page', String(page));
   return url.href;
+};
+
+const combinePageVerifications = (items = []) => {
+  const combined = { summary: { total: 0, confirmed: 0, divergent: 0, notFound: 0, notVerifiable: 0 }, items: [] };
+  items.forEach((verification) => {
+    Object.keys(combined.summary).forEach((key) => { combined.summary[key] += Number(verification?.summary?.[key] || 0); });
+    combined.items.push(...(verification?.items || []));
+  });
+  return combined;
 };
 
 const validateJobs = (jobs) => {
@@ -217,7 +228,7 @@ async function processCurrentJob(state) {
 
   if (!state.current) {
     const tab = await chrome.tabs.create({ url: job.gradingUrl, active: false });
-    state.current = { tabId: tab.id, phase: 'preparar' };
+    state.current = { tabId: tab.id, phase: 'descobrir', pageIndex: 0, pageResults: [] };
     await saveBatchState(state);
   }
 
@@ -227,12 +238,33 @@ async function processCurrentJob(state) {
   const response = await sendTickWithRetry(tabId, {
     batchId: state.batchId,
     cmid: job.cmid,
-    records: job.records,
+    records: state.current.pageJobs?.[state.current.pageIndex]?.records || job.records,
     options: state.options,
     transactionState: state.current.phase,
     verificationPlan: state.current.verificationPlan || [],
   });
   if (!response) throw new Error('A página não respondeu ao processamento.');
+
+  if (response.status === 'discovery_error') {
+    await finishCurrentJob(state, { outcome: 'erro', message: response.reason, diagnostics: response.diagnostics });
+    return;
+  }
+  if (response.status === 'discovered') {
+    state.current.pageJobs = response.pages;
+    state.current.pageIndex = 0;
+    state.current.pageResults = [];
+    state.current.diagnostics = response.diagnostics;
+    state.current.phase = 'preparar';
+    state.current.verificationPlan = [];
+    state.current.verificationUrl = '';
+    await saveBatchState(state);
+    const pageJob = state.current.pageJobs[0];
+    state.current.pageUrl = buildVerificationUrl(job.gradingUrl, job.cmid, pageJob.page);
+    await saveBatchState(state);
+    await chrome.tabs.update(tabId, { url: state.current.pageUrl });
+    await waitForTabComplete(tabId);
+    return;
+  }
 
   if (response.status === 'reloading') {
     await saveBatchState(state);
@@ -255,7 +287,7 @@ async function processCurrentJob(state) {
       return;
     }
     await saveBatchState(state);
-    await chrome.tabs.update(tabId, { url: state.current.verificationUrl || job.gradingUrl });
+    await chrome.tabs.update(tabId, { url: state.current.verificationUrl || state.current.pageUrl || job.gradingUrl });
     await waitForTabComplete(tabId);
     return;
   }
@@ -273,14 +305,30 @@ async function processCurrentJob(state) {
     state.current.phase = 'verificar';
     state.current.saveMessage = response.message || 'O Moodle confirmou o salvamento.';
     state.current.routeRestores = 0;
-    state.current.verificationUrl = buildVerificationUrl(job.gradingUrl, job.cmid);
+    const currentPage = state.current.pageJobs?.[state.current.pageIndex]?.page || 0;
+    state.current.verificationUrl = buildVerificationUrl(job.gradingUrl, job.cmid, currentPage);
     await saveBatchState(state);
     await chrome.tabs.update(tabId, { url: state.current.verificationUrl });
     await waitForTabComplete(tabId);
     return;
   }
   if (response.status === 'verified') {
-    const verification = response.verification;
+    state.current.pageResults = [...(state.current.pageResults || []), response.verification];
+    const nextPageIndex = state.current.pageIndex + 1;
+    if (nextPageIndex < (state.current.pageJobs?.length || 0)) {
+      state.current.pageIndex = nextPageIndex;
+      state.current.phase = 'preparar';
+      state.current.preview = null;
+      state.current.verificationPlan = [];
+      state.current.verificationUrl = '';
+      const nextPage = state.current.pageJobs[nextPageIndex].page;
+      state.current.pageUrl = buildVerificationUrl(job.gradingUrl, job.cmid, nextPage);
+      await saveBatchState(state);
+      await chrome.tabs.update(tabId, { url: state.current.pageUrl });
+      await waitForTabComplete(tabId);
+      return;
+    }
+    const verification = combinePageVerifications(state.current.pageResults);
     const summary = verification?.summary || {};
     const hasIssues = Number(summary.divergent || 0) + Number(summary.notFound || 0) + Number(summary.notVerifiable || 0) > 0;
     const message = hasIssues
@@ -292,6 +340,7 @@ async function processCurrentJob(state) {
       saveMessage: state.current.saveMessage || '',
       verification,
       report: state.current.preview,
+      diagnostics: state.current.diagnostics,
     });
     return;
   }
@@ -335,7 +384,9 @@ async function processBatch(batchId) {
         index: state.index,
         total: state.jobs.length,
         activityName: job.activityName,
-        phase: state.current?.phase === 'verificar' ? 'verificando' : 'processando',
+        phase: state.current?.phase === 'descobrir' ? 'descobrindo'
+          : state.current?.phase === 'verificar' ? 'verificando'
+            : 'processando',
       });
       try {
         await processCurrentJob(state);

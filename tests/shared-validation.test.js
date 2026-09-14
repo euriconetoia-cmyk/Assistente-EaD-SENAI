@@ -22,6 +22,17 @@ test('notas negativas e não numéricas são bloqueadas', () => {
   assert.equal(S.parseGrade('7,5').number, 7.5);
 });
 
+test('notas usam leitura flexível e exibição brasileira com duas casas', () => {
+  assert.equal(S.parseGrade('100,00').number, 100);
+  assert.equal(S.parseGrade('1.000,00').number, 1000);
+  assert.equal(S.parseGrade('1,000.00').number, 1000);
+  assert.equal(S.formatGradePtBr('0'), '0,00');
+  assert.equal(S.formatGradePtBr('85.5'), '85,50');
+  assert.equal(S.formatGradePtBr('100,00'), '100,00');
+  const parsed = S.parseBatchCsv('cmid;nome;nota;feedback\n10;Ana;85.5;Bom trabalho');
+  assert.equal(parsed.records[0].nota, '85,50');
+});
+
 test('duplicidade por atividade e estudante gera bloqueio', () => {
   const result = S.parseBatchCsv('cmid;nome;nota\n10;Ana;8\n10;Ana;9');
   assert.equal(result.records.length, 1);
@@ -113,6 +124,6 @@ test('política acadêmica bloqueia nota para atividade incorreta e automatiza S
   assert.equal(wrong.errors.length, 0);
 
   const play = S.applyAcademicGradePolicy({ nota: '3', feedback: 'Certificado validado.', situacaoRaw: 'SENAI Play validado', notaMaxima: '10' }, { name: 'Curso SENAI Play' });
-  assert.equal(play.record.nota, '10');
+  assert.equal(play.record.nota, '10,00');
   assert.equal(play.errors.length, 0);
 });
