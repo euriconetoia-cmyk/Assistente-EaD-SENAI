@@ -1,18 +1,33 @@
-# Validação da versão 3.7.4
+# Validação da versão 3.7.10
 
-Data: 30/08/2026
+Data: 12/09/2026
 
 ## Resultado automatizado
 
-- 61 testes automatizados aprovados.
+- 72 testes automatizados aprovados.
 - 0 testes reprovados.
-- 45 arquivos verificados pela auditoria estrutural.
+- 55 arquivos verificados pela auditoria estrutural.
 - 23 referências do manifesto confirmadas.
 - 0 falhas de sintaxe JavaScript.
 - 0 desequilíbrios de estrutura CSS.
 - 0 violações críticas, altas ou médias identificadas na varredura local.
 
-## Novas verificações da versão 3.7.4
+## Novas verificações da versão 3.7.10
+
+- Campo de nota editável diretamente na conferência.
+- Validação do limite máximo antes de aplicar a edição.
+- Erro apresentado junto ao campo, sem perder o restante da conferência.
+- Confirmação de envio desmarcada após alteração.
+- Navegação por teclado, rótulo acessível e foco visível.
+
+- Notas exibidas no padrão `0,00` a `100,00` quando a escala da atividade for 100.
+- Ponto e vírgula aceitos como separador decimal na entrada.
+- Comparação numérica independente da formatação visual.
+- Conversão para o formato reconhecido pela página do Moodle no envio.
+
+- Conferência pela tabela de avaliação rápida preservada.
+- Conferência pela ficha individual quando a tabela não reaparece.
+- Releitura de nota e feedback antes da classificação final.
 
 1. Menu lateral compacto, expansão e estado ativo.
 2. Preferência do menu armazenada localmente.
@@ -32,6 +47,13 @@ Data: 30/08/2026
 16. Tema claro e escuro no dashboard, painel e importador.
 17. Registro de eventos de análise, importação, conferência e exportação.
 18. Preservação das permissões mínimas e da CSP.
+19. Reconhecimento ampliado da nota máxima nos formatos reais do Moodle.
+20. Compatibilidade segura com CSV legado quando a página confirma a escala.
+21. Exibição da nota máxima, origem e estado na conferência anterior ao salvamento.
+22. Ausência de escala tratada como aviso, com restauração do envio operacional.
+23. Descoberta paginada sem alteração prévia de notas.
+24. Salvamento e conferência transacionais por página.
+25. Recuperação do identificador do aluno por múltiplas fontes do Moodle.
 
 ## Cobertura de regressão preservada
 
@@ -72,7 +94,7 @@ Data: 30/08/2026
 
 ## Auditoria visual
 
-O relatório [AUDITORIA_VISUAL_V3.7.4.md](AUDITORIA_VISUAL_V3.7.4.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
+O relatório [AUDITORIA_VISUAL_V3.7.0.md](AUDITORIA_VISUAL_V3.7.0.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
 
 ## Comandos executados
 

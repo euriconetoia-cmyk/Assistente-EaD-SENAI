@@ -319,7 +319,7 @@
       overwriteFeedback: $id('mat-batch-overwrite-feedback')?.checked ?? false,
       groups: STATE.groups.map((group) => ({
         cmid: String(group.assignment.cmid),
-        records: group.records.map((record) => [record.studentId || '', record.nome, record.nota, record.feedback]),
+        records: group.records.map((record) => [record.studentId || '', record.nome, record.nota, record.notaMaxima, record.notaMaximaStatus, record.feedback]),
       })),
     });
   }
@@ -477,6 +477,14 @@
     log.innerHTML = `<div class="mat-info" role="status"><strong>Arquivos validados:</strong> ${STATE.files.length} arquivo(s), ${STATE.groups.length} atividade(s) e ${STATE.parsed.records.length} registro(s), sem bloqueios. ${previewCurrent ? 'Alterações conferidas.' : 'Clique em Conferir alterações antes de autorizar o salvamento.'}</div>`;
   }
 
+  function confirmedRecordMaxGrade(group, record) {
+    const recordMaxGrade = S.parseGrade(record.notaMaxima || '');
+    const assignmentMaxGrade = S.parseGrade(group.assignment.maxGrade ?? group.assignment.gradeMax ?? group.assignment.metrics?.maxGrade ?? '');
+    if (recordMaxGrade.valid && recordMaxGrade.number > 0) return recordMaxGrade.number;
+    if (assignmentMaxGrade.valid && assignmentMaxGrade.number > 0) return assignmentMaxGrade.number;
+    return null;
+  }
+
   function renderChangePreview() {
     if (isBatchBlocked()) return MAT.ui.toast('Corrija os bloqueios antes de conferir as alterações.');
     const overwriteGrade = $id('mat-batch-overwrite-grade')?.checked ?? false;
@@ -489,14 +497,33 @@
       const isEditing = STATE.editingRecordKey === recordKey;
       const hasGrade = String(record.nota ?? '').trim() !== '';
       const hasFeedback = String(record.feedback ?? '').trim() !== '';
+      const recordMaxGrade = S.parseGrade(record.notaMaxima || '');
+      const assignmentMaxGrade = S.parseGrade(group.assignment.maxGrade ?? group.assignment.gradeMax ?? group.assignment.metrics?.maxGrade ?? '');
+      const confirmedMaxGrade = confirmedRecordMaxGrade(group, record);
+      const maxGradeStatus = String(record.notaMaximaStatus || '').trim();
+      const maxGradeUnsafe = /conflito|insuficiente|nao localizada|não localizada/i.test(maxGradeStatus);
+      const maxGradeSource = String(record.notaMaximaFonte || (recordMaxGrade.valid ? 'CSV' : assignmentMaxGrade.valid ? 'Moodle' : '')).trim();
+      const maxGrade = confirmedMaxGrade === null
+        ? '<span class="mat-badge mat-badge-warning">Não confirmada</span>'
+        : `<strong>${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}</strong>${maxGradeUnsafe ? '<div><span class="mat-badge mat-badge-warning">Requer conferência</span></div>' : ''}${maxGradeSource ? `<div class="mat-footer-note">Fonte: ${U.escapeHtml(maxGradeSource)}</div>` : ''}`;
       if (isEditing) return `<tr class="mat-change-edit-row">
         <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
         <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
         <td><label class="mat-sr-only" for="mat-edit-grade-${groupIndex}-${recordIndex}">Editar nota</label><input class="mat-input mat-change-grade-input" id="mat-edit-grade-${groupIndex}-${recordIndex}" data-edit-grade type="text" inputmode="decimal" value="${U.escapeHtml(record.nota || '')}" placeholder="Manter atual" /></td>
+        <td>${maxGrade}</td>
         <td><label class="mat-sr-only" for="mat-edit-feedback-${groupIndex}-${recordIndex}">Editar feedback</label><textarea class="mat-input mat-change-feedback-input" id="mat-edit-feedback-${groupIndex}-${recordIndex}" data-edit-feedback rows="5" maxlength="${S.LIMITS.maxCellLength}" placeholder="Manter feedback atual">${U.escapeHtml(record.feedback || '')}</textarea></td>
         <td><div class="mat-change-edit-actions"><button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-record="${recordKey}">Salvar edição</button><button class="mat-btn mat-btn-sm" type="button" data-cancel-record>Cancelar</button></div><div class="mat-footer-note" id="mat-edit-error-${groupIndex}-${recordIndex}" role="alert"></div></td>
       </tr>`;
-      const grade = hasGrade ? U.escapeHtml(record.nota) : '<span class="mat-text-muted">Manter valor atual</span>';
+      const studentLabel = U.escapeHtml(record.nome || record.studentId || 'aluno');
+      const grade = `<div class="mat-inline-grade-editor">
+        <label for="mat-inline-grade-${groupIndex}-${recordIndex}">Nota a enviar</label>
+        <div class="mat-inline-grade-control">
+          <input class="mat-input mat-change-grade-input" id="mat-inline-grade-${groupIndex}-${recordIndex}" data-inline-grade="${recordKey}" type="text" inputmode="decimal" value="${hasGrade ? U.escapeHtml(S.formatGradePtBr(record.nota)) : ''}" placeholder="Sem nota" aria-describedby="mat-inline-grade-help-${groupIndex}-${recordIndex}" />
+          <button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-grade="${recordKey}" aria-label="Salvar nova nota de ${studentLabel}">Aplicar</button>
+        </div>
+        <span class="mat-inline-grade-help" id="mat-inline-grade-help-${groupIndex}-${recordIndex}">${confirmedMaxGrade === null ? 'Limite ainda não confirmado' : `Máximo ${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}`}</span>
+        <span class="mat-inline-grade-error" id="mat-inline-grade-error-${groupIndex}-${recordIndex}" role="alert"></span>
+      </div>`;
       const feedback = hasFeedback
         ? `<details class="mat-change-details"><summary>Ver feedback</summary><p>${U.escapeHtml(record.feedback)}</p></details>`
         : '<span class="mat-text-muted">Manter feedback atual</span>';
@@ -507,7 +534,7 @@
       return `<tr>
         <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
         <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
-        <td>${grade}</td><td>${feedback}</td><td>${actions}<div class="mat-change-edit-actions"><button class="mat-btn mat-btn-sm" type="button" data-edit-record="${recordKey}" aria-label="Editar nota e feedback de ${U.escapeHtml(record.nome || record.studentId || 'aluno')}">Editar</button></div></td>
+        <td>${grade}</td><td>${maxGrade}</td><td>${feedback}</td><td>${actions}<div class="mat-change-edit-actions"><button class="mat-btn mat-btn-sm" type="button" data-edit-record="${recordKey}" aria-label="Editar nota e feedback de ${U.escapeHtml(record.nome || record.studentId || 'aluno')}">Editar</button></div></td>
       </tr>`;
     }).join('');
     const panel = $id('mat-batch-change-preview');
@@ -517,7 +544,7 @@
       <div class="mat-verification-summary" role="status"><strong>${records.length} aluno(s)</strong><span>${gradeCount} nota(s)</span><span>${feedbackCount} feedback(s)</span></div>
       <div class="mat-info"><strong>Regra de proteção:</strong> ${overwriteGrade ? 'notas existentes poderão ser sobrescritas' : 'notas existentes serão preservadas'}; ${overwriteFeedback ? 'feedbacks existentes poderão ser sobrescritos' : 'feedbacks existentes serão preservados'}.</div>
       <div class="mat-table-wrap"><table class="mat-table mat-change-preview-table">
-        <thead><tr><th>Atividade</th><th>Aluno</th><th>Nota</th><th>Feedback</th><th>Ação prevista</th></tr></thead>
+        <thead><tr><th>Atividade</th><th>Aluno</th><th>Nota</th><th>Nota máxima</th><th>Feedback</th><th>Ação prevista</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
     STATE.previewAccepted = true;
@@ -532,6 +559,44 @@
   }
 
   function handleChangePreviewAction(event) {
+    const saveGradeButton = event.target.closest('[data-save-grade]');
+    if (saveGradeButton) {
+      const [groupIndexText, recordIndexText] = saveGradeButton.dataset.saveGrade.split(':');
+      const groupIndex = Number(groupIndexText);
+      const recordIndex = Number(recordIndexText);
+      const group = STATE.groups[groupIndex];
+      const record = group?.records?.[recordIndex];
+      const gradeInput = $id(`mat-inline-grade-${groupIndex}-${recordIndex}`);
+      const errorBox = $id(`mat-inline-grade-error-${groupIndex}-${recordIndex}`);
+      if (!record || !gradeInput) return MAT.ui.toast('Não foi possível localizar a nota para edição.', 'error');
+      const parsedGrade = S.parseGrade(gradeInput.value);
+      if (!parsedGrade.valid) {
+        if (errorBox) errorBox.textContent = 'Informe uma nota numérica válida ou deixe o campo vazio.';
+        gradeInput.focus();
+        return;
+      }
+      const maxGrade = confirmedRecordMaxGrade(group, record);
+      if (parsedGrade.number !== null && maxGrade !== null && parsedGrade.number > maxGrade) {
+        if (errorBox) errorBox.textContent = `A nota não pode ultrapassar ${S.formatGradePtBr(maxGrade)}.`;
+        gradeInput.focus();
+        return;
+      }
+      if (parsedGrade.number === 0 && !String(record.feedback || '').trim()) {
+        if (errorBox) errorBox.textContent = 'Nota zero exige feedback. Edite o feedback antes de continuar.';
+        gradeInput.focus();
+        return;
+      }
+      record.nota = parsedGrade.number === null || parsedGrade.number === 0 ? '' : S.formatGradePtBr(parsedGrade.number);
+      record.notaNumero = parsedGrade.number === null || parsedGrade.number === 0 ? null : parsedGrade.number;
+      STATE.previewAccepted = false;
+      STATE.previewSignature = '';
+      const confirmInput = $id('mat-batch-confirm');
+      if (confirmInput) confirmInput.checked = false;
+      renderChangePreview();
+      MAT.ui.toast('Nota atualizada. Revise o valor e confirme novamente antes do envio.');
+      $id(`mat-inline-grade-${groupIndex}-${recordIndex}`)?.focus();
+      return;
+    }
     const editButton = event.target.closest('[data-edit-record]');
     if (editButton) {
       STATE.editingRecordKey = editButton.dataset.editRecord;
@@ -573,7 +638,7 @@
       feedbackInput?.focus();
       return;
     }
-    record.nota = parsedGrade.number === 0 ? '' : grade;
+    record.nota = parsedGrade.number === 0 ? '' : S.formatGradePtBr(parsedGrade.number);
     record.notaNumero = parsedGrade.number === 0 ? null : parsedGrade.number;
     record.feedback = feedback;
     STATE.editingRecordKey = '';
@@ -653,7 +718,8 @@
       row.className = 'mat-batch-row';
       list.appendChild(row);
     }
-    const statusLabel = phase === 'verificando' ? 'Conferindo no Moodle…'
+    const statusLabel = phase === 'descobrindo' ? 'Localizando alunos em todas as páginas…'
+      : phase === 'verificando' ? 'Conferindo no Moodle…'
       : phase === 'processando' ? 'Processando…'
       : result?.outcome === 'sucesso' ? 'Sucesso'
       : result?.outcome === 'divergente' ? 'Divergência'
@@ -825,14 +891,16 @@
 
   function downloadBatchReport() {
     if (!STATE.results.length) return;
-    const headers = ['atividade', 'cmid', 'aluno', 'resultado_atividade', 'situacao_conferencia', 'nota_esperada', 'nota_moodle', 'situacao_nota', 'feedback_esperado', 'feedback_moodle', 'situacao_feedback', 'mensagem'];
+    const headers = ['atividade', 'cmid', 'aluno', 'resultado_atividade', 'situacao_conferencia', 'nota_esperada', 'nota_moodle', 'situacao_nota', 'feedback_esperado', 'feedback_moodle', 'situacao_feedback', 'paginas_consultadas', 'alunos_reconhecidos', 'mensagem'];
     const rows = STATE.results.flatMap((result) => {
       const items = result.verification?.items || [];
-      if (!items.length) return [[result.activityName || '', result.cmid || '', '', result.outcome || '', 'nao_verificado', '', '', '', '', '', '', result.message || '']];
+      const pagesRead = result.diagnostics?.pagesRead ?? '';
+      const recognizedStudents = result.diagnostics?.recognizedStudents ?? '';
+      if (!items.length) return [[result.activityName || '', result.cmid || '', '', result.outcome || '', 'nao_verificado', '', '', '', '', '', '', pagesRead, recognizedStudents, result.message || '']];
       return items.map((item) => [
         result.activityName || '', result.cmid || '', item.moodleName || item.nome || '', result.outcome || '', item.status || '',
         item.grade?.expected || '', item.grade?.actual || '', item.grade?.status || '',
-        item.feedback?.expected || '', item.feedback?.actual || '', item.feedback?.status || '', item.message || result.message || '',
+        item.feedback?.expected || '', item.feedback?.actual || '', item.feedback?.status || '', pagesRead, recognizedStudents, item.message || result.message || '',
       ]);
     });
     const csv = '\ufeff' + [headers, ...rows].map((row) => row.map(csvEscape).join(';')).join('\n');

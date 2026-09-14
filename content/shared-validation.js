@@ -103,10 +103,30 @@
   const parseGrade = (value) => {
     const raw = String(value ?? '').trim();
     if (!raw) return { raw: '', number: null, valid: true };
-    const normalized = raw.replace(/\s/g, '').replace(',', '.');
+    const compact = raw.replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+    const lastComma = compact.lastIndexOf(',');
+    const lastDot = compact.lastIndexOf('.');
+    let normalized = compact;
+    if (lastComma >= 0 && lastDot >= 0) {
+      const decimalSeparator = lastComma > lastDot ? ',' : '.';
+      const thousandsSeparator = decimalSeparator === ',' ? /\./g : /,/g;
+      normalized = compact.replace(thousandsSeparator, '').replace(decimalSeparator, '.');
+    } else if (lastComma >= 0) {
+      normalized = compact.replace(',', '.');
+    }
     if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalized)) return { raw, number: null, valid: false };
     const number = Number(normalized);
     return { raw, number, valid: Number.isFinite(number) && number >= 0 };
+  };
+
+  const formatGradePtBr = (value, fractionDigits = 2) => {
+    const parsed = parseGrade(value);
+    if (!parsed.valid || parsed.number === null) return '';
+    return parsed.number.toLocaleString('pt-BR', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+      useGrouping: false,
+    });
   };
 
   const normalizeComparableFeedback = (value) => String(value ?? '')
@@ -240,6 +260,8 @@
         }
         record.nota = '';
         warnings.push(`Linha ${rowNumber}: nota zero removida; somente o feedback será enviado.`);
+      } else if (grade.number !== null) {
+        record.nota = formatGradePtBr(grade.number);
       }
       records.push({ ...record, notaNumero: record.nota ? grade.number : null });
     });
@@ -333,7 +355,7 @@
         next.notaNumero = null;
         errors.push('SENAI Play exige a situação "SENAI Play validado" antes do lançamento.');
       } else if (maxGrade !== null) {
-        next.nota = String(maxGrade);
+        next.nota = formatGradePtBr(maxGrade);
         next.notaNumero = maxGrade;
         warnings.push(`SENAI Play validado: aplicada a nota máxima confirmada (${maxGrade}).`);
       } else {
@@ -366,6 +388,7 @@
     detectDelimiter,
     parseDelimitedText,
     parseGrade,
+    formatGradePtBr,
     normalizeComparableFeedback,
     gradesEquivalent,
     compareSavedFields,

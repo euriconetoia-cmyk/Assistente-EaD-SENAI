@@ -8,6 +8,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.js'), 'utf8');
 const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch-grading.js'), 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.css'), 'utf8');
+const appStyles = fs.readFileSync(path.join(__dirname, '..', 'content', 'styles.css'), 'utf8');
 
 test('resumo do curso mantém Importar notas ao lado de Baixar atividades', () => {
   const download = source.indexOf('mqi-course-pending-summary__download');
@@ -39,16 +40,44 @@ test('conferência permite editar nota e feedback antes do salvamento', () => {
   assert.match(batchSource, /data-save-record/);
   assert.match(batchSource, /Editar nota e feedback/);
   assert.match(batchSource, /S\.parseGrade\(grade\)/);
-  assert.match(batchSource, /record\.nota = parsedGrade\.number === 0 \? '' : grade/);
+  assert.match(batchSource, /record\.nota = parsedGrade\.number === 0 \? '' : S\.formatGradePtBr\(parsedGrade\.number\)/);
   assert.match(batchSource, /record\.feedback = feedback/);
   assert.match(batchSource, /Edição salva\. Clique em Conferir alterações/);
   assert.match(batchSource, /invalidateChangePreview\(\)/);
 });
 
-test('lançamento bloqueia divergência entre a nota máxima do CSV e do Moodle', () => {
+test('nota pode ser editada diretamente na tabela de conferência', () => {
+  assert.match(batchSource, /data-inline-grade=/);
+  assert.match(batchSource, /data-save-grade=/);
+  assert.match(batchSource, /function confirmedRecordMaxGrade/);
+  assert.match(batchSource, /A nota não pode ultrapassar/);
+  assert.match(batchSource, /Revise o valor e confirme novamente antes do envio/);
+  assert.match(appStyles, /\.mat-inline-grade-editor/);
+  assert.match(appStyles, /\.mat-inline-grade-error/);
+});
+
+test('conferência mostra nota máxima, origem e estado de confirmação', () => {
+  assert.match(batchSource, /<th>Nota máxima<\/th>/);
+  assert.match(batchSource, /record\.notaMaxima/);
+  assert.match(batchSource, /group\.assignment\.maxGrade/);
+  assert.match(batchSource, /Fonte:/);
+  assert.match(batchSource, /Não confirmada/);
+  assert.match(batchSource, /Requer conferência/);
+});
+
+test('lançamento bloqueia somente divergência confirmada entre a nota máxima do CSV e do Moodle', () => {
   assert.match(source, /A nota máxima do CSV/);
   assert.match(source, /difere da atividade no Moodle/);
-  assert.match(source, /não informa uma nota máxima válida/);
+  assert.doesNotMatch(source, /report\.blocking\.push\('O CSV contém notas, mas não informa uma nota máxima válida/);
+  assert.match(source, /A nota máxima não foi informada no CSV nem reconhecida na página/);
+  assert.match(source, /report\.warnings\.push\(`A nota máxima do CSV está marcada como/);
+});
+
+test('nota máxima aceita formatos reais do Moodle e CSV legado quando a página confirma a escala', () => {
+  assert.match(source, /data-maxgrade/);
+  assert.match(source, /aria-valuemax/);
+  assert.match(source, /O CSV não informa a nota máxima; foi utilizada a escala/);
+  assert.match(source, /!declaredMaxGrades\.length && maxGrade === null/);
 });
 
 test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () => {
@@ -82,6 +111,29 @@ test('importação usa todos os alunos e relê notas em campos alternativos', ()
   assert.match(source, /function readGradeFieldValue/);
   assert.match(source, /selectedOptions/);
   assert.match(source, /actualGrade: readGradeFieldValue/);
+});
+
+test('conferência usa a ficha individual quando a tabela rápida não reaparece', () => {
+  assert.match(source, /function individualGraderUrl/);
+  assert.match(source, /function verifyOnIndividualGrader/);
+  assert.match(source, /action', 'grader'/);
+  assert.match(source, /userid', String\(studentId\)/);
+  assert.match(source, /assignfeedbackcomments_editor\[text\]/);
+  assert.match(source, /verificationSource: 'individual_grader'/);
+  assert.match(source, /await buildBatchVerification\(verificationPlan/);
+});
+
+test('lote descobre alunos em todas as páginas antes de preencher notas', () => {
+  assert.match(source, /function discoverBatchRecords/);
+  assert.match(source, /function fetchBatchDiscoveryPage/);
+  assert.match(source, /function paginationPages/);
+  assert.match(source, /transactionState === 'descobrir'/);
+  assert.match(source, /status: 'discovered'/);
+  assert.match(source, /filter', '-1'/);
+  assert.match(batchSource, /Localizando alunos em todas as páginas/);
+  assert.match(batchSource, /paginas_consultadas/);
+  assert.match(source, /profileLink\?\.closest\('td, \.cell'\)/);
+  assert.match(source, /url\.searchParams\.get\('userid'\)/);
 });
 
 test('página inicial monta inventário e relatório geral das turmas', () => {

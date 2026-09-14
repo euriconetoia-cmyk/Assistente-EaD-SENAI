@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.4';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.10';
   const S = globalThis.MAT_SHARED;
   const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
     source: 'grade-importer',
@@ -795,14 +795,36 @@
 
   function extractPageMaxGradeText() {
     const inputMax = getGradeInputs()
-      .map(input => String(input.getAttribute('max') || '').trim())
+      .flatMap(input => [
+        input.getAttribute('max'),
+        input.getAttribute('data-maxgrade'),
+        input.dataset?.maxGrade,
+        input.getAttribute('aria-valuemax'),
+      ])
+      .map(value => String(value || '').trim())
       .find(value => /^\d+([.,]\d+)?$/.test(value) && Number(value.replace(',', '.')) > 0);
     if (inputMax) return inputMax;
 
-    const sample = [...document.querySelectorAll('td, th, span, div')]
-      .map(node => (node.textContent || '').trim())
-      .find(text => /^\/\s*\d+([.,]\d+)?$/.test(text));
-    return sample ? sample.replace(/^\//, '').trim() : '';
+    const candidates = [...document.querySelectorAll(
+      'th, td, label, legend, .fstatic, .col-grade, [data-region="grade"], [aria-label], [title]'
+    )].flatMap(node => [
+      node.textContent || '',
+      node.getAttribute?.('aria-label') || '',
+      node.getAttribute?.('title') || '',
+    ]);
+    const patterns = [
+      /^\s*\/\s*(\d+(?:[.,]\d+)?)\s*$/i,
+      /(?:nota|avalia[cç][aã]o|pontua[cç][aã]o)\s+(?:m[aá]xima|de|sobre|at[eé])\s*:?[\s/]*(\d+(?:[.,]\d+)?)/i,
+      /(?:maximum\s+grade|grade\s+(?:out\s+of|maximum|up\s+to))\s*:?[\s/]*(\d+(?:[.,]\d+)?)/i,
+    ];
+    for (const candidate of candidates) {
+      const compact = String(candidate).replace(/\s+/g, ' ').trim();
+      for (const pattern of patterns) {
+        const match = compact.match(pattern);
+        if (match && Number(match[1].replace(',', '.')) > 0) return match[1];
+      }
+    }
+    return '';
   }
 
   function extractPageMaxGradeNumber() {
@@ -1053,6 +1075,8 @@
         }
         if (nota) warnings.push(`Linha ${rowNumber}: a nota foi removida; somente o feedback será preenchido.`);
         nota = '';
+      } else if (parsedGrade.number !== null) {
+        nota = S.formatGradePtBr(parsedGrade.number);
       }
       if (situacaoRaw && !situacao) {
         warnings.push(`Linha ${rowNumber}: situacao "${situacaoRaw}" não reconhecida. A tag foi ignorada.`);
@@ -1114,14 +1138,25 @@
     if (gradeMatch) return gradeMatch[1];
 
     const selected = row.querySelector('input[name="selectedusers"], input[id^="selectuser_"]');
-    return selected?.value || (selected?.id || '').replace(/^selectuser_/, '') || '';
+    const selectedId = selected?.value || (selected?.id || '').replace(/^selectuser_/, '') || '';
+    if (selectedId && selectedId !== '1' && selectedId !== 'on') return selectedId;
+
+    const profileLink = row.querySelector('a[href*="/user/view.php"], a[href*="/user/profile.php"], a[href*="userid="]');
+    if (profileLink) {
+      try {
+        const url = new URL(profileLink.href, window.location.href);
+        const profileId = url.searchParams.get('id') || url.searchParams.get('userid');
+        if (profileId) return profileId;
+      } catch {}
+    }
+    return '';
   }
 
-  function getMoodleRows() {
-    const table = findGradingTable();
+  function getMoodleRows(root = document) {
+    const table = findGradingTable(root);
     const rows = table
       ? [...table.querySelectorAll('tbody tr')]
-      : [...document.querySelectorAll('table.generaltable tbody tr, tr')];
+      : [...root.querySelectorAll('table.generaltable tbody tr, tr')];
 
     const seen = new Set();
     const items = [];
@@ -1135,7 +1170,8 @@
       const feedbackTextarea = userId
         ? row.querySelector(`textarea#quickgrade_comments_${CSS.escape(userId)}, textarea[name="quickgrade_comments_${CSS.escape(userId)}"]`)
         : getFeedbackTextareas(row)[0];
-      const nameCell = row.querySelector('td.username, td[class~="username"], .cell.username');
+      const profileLink = row.querySelector('a[href*="/user/view.php"], a[href*="/user/profile.php"], a[href*="userid="]');
+      const nameCell = row.querySelector('td.username, td[class~="username"], .cell.username') || profileLink?.closest('td, .cell') || null;
       const statusCell = row.querySelector('td.status, td[class~="status"], .cell.status, td.c3');
       const filesCell = row.querySelector('td.c6, td[class*="files"], .assignsubmission_file');
       const name = extractStudentName(nameCell);
@@ -1162,6 +1198,86 @@
     }
 
     return items;
+  }
+
+  function normalizedBatchPageUrl(page, perPage = 100) {
+    const url = new URL(window.location.href);
+    url.pathname = '/mod/assign/view.php';
+    url.searchParams.set('action', 'grading');
+    url.searchParams.set('quickgrading', '1');
+    url.searchParams.set('filter', '-1');
+    url.searchParams.set('status', 'all');
+    url.searchParams.set('perpage', String(perPage));
+    url.searchParams.set('page', String(page));
+    url.searchParams.delete('userid');
+    return url;
+  }
+
+  function paginationPages(root) {
+    const pages = [...root.querySelectorAll('a[href*="page="], [data-page]')]
+      .map((node) => {
+        if (node.dataset?.page && /^\d+$/.test(node.dataset.page)) return Number(node.dataset.page);
+        try { return Number(new URL(node.href, window.location.href).searchParams.get('page')); }
+        catch { return NaN; }
+      })
+      .filter((page) => Number.isInteger(page) && page >= 0);
+    return pages.length ? Math.max(...pages) : 0;
+  }
+
+  async function fetchBatchDiscoveryPage(page, perPage) {
+    const url = normalizedBatchPageUrl(page, perPage);
+    const response = await fetch(url.href, { credentials: 'include', cache: 'no-store', redirect: 'follow' });
+    if (!response.ok) throw new Error(`Falha HTTP ${response.status} ao consultar a página ${page + 1}.`);
+    const finalUrl = new URL(response.url, window.location.href);
+    if (finalUrl.origin !== window.location.origin || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado durante a descoberta dos alunos.');
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return { doc, url: finalUrl.href };
+  }
+
+  async function discoverBatchRecords(records, { perPage = 100, maxPages = 100 } = {}) {
+    const allRows = [];
+    const diagnostics = { requestedPerPage: perPage, pagesRead: 0, rowsRead: 0, recognizedStudents: 0, pageDetails: [] };
+    const seenStudents = new Set();
+    let lastPage = 0;
+
+    for (let page = 0; page <= Math.min(lastPage, maxPages - 1); page += 1) {
+      const { doc, url } = await fetchBatchDiscoveryPage(page, perPage);
+      const rows = getMoodleRows(doc).map((row) => ({ ...row, page }));
+      const before = seenStudents.size;
+      rows.forEach((row) => seenStudents.add(row.userId ? `id:${row.userId}` : `nome:${row.normalizedName}`));
+      lastPage = Math.max(lastPage, paginationPages(doc));
+      diagnostics.pagesRead += 1;
+      diagnostics.rowsRead += doc.querySelectorAll('tbody tr').length;
+      diagnostics.pageDetails.push({ page, url, rows: rows.length, newStudents: seenStudents.size - before });
+      allRows.push(...rows);
+      if (page > 0 && rows.length && seenStudents.size === before && page >= lastPage) break;
+    }
+
+    diagnostics.recognizedStudents = seenStudents.size;
+    diagnostics.detectedLastPage = lastPage;
+    diagnostics.truncated = lastPage >= maxPages;
+    const pageGroups = new Map();
+    const notFound = [];
+    const ambiguous = [];
+
+    records.forEach((record) => {
+      const result = findStudentRow(record, allRows, false);
+      if (result.status === 'not_found') { notFound.push(record.nome || record.studentId); return; }
+      if (result.status === 'ambiguous') { ambiguous.push(record.nome || record.studentId); return; }
+      const match = result.match;
+      if (!pageGroups.has(match.page)) pageGroups.set(match.page, []);
+      pageGroups.get(match.page).push({ ...record, studentId: record.studentId || match.userId, nome: record.nome || match.name });
+    });
+
+    diagnostics.notFound = notFound;
+    diagnostics.ambiguous = ambiguous;
+    return {
+      pages: [...pageGroups.entries()].sort((a, b) => a[0] - b[0]).map(([page, pageRecords]) => ({ page, records: pageRecords })),
+      diagnostics,
+      notFound,
+      ambiguous,
+    };
   }
 
   function findStudentGradingRow(element) {
@@ -1399,12 +1515,16 @@
       .filter(value => Number.isFinite(value) && value > 0))];
     const unsafeMaxStatus = recordsWithGrade.find(record => /conflito|insuficiente|nao localizada|não localizada/i.test(record.notaMaximaStatus || ''));
     if (declaredMaxGrades.length > 1) report.blocking.push('O CSV contém mais de uma nota máxima para a mesma atividade.');
-    if (recordsWithGrade.length && !declaredMaxGrades.length) report.blocking.push('O CSV contém notas, mas não informa uma nota máxima válida para conferência.');
-    if (recordsWithGrade.length && maxGrade === null) report.blocking.push('A nota máxima atual não pôde ser confirmada na página do Moodle.');
+    if (recordsWithGrade.length && !declaredMaxGrades.length && maxGrade === null) {
+      report.warnings.push('A nota máxima não foi informada no CSV nem reconhecida na página. Confira manualmente a escala antes de confirmar o salvamento.');
+    } else if (recordsWithGrade.length && !declaredMaxGrades.length && maxGrade !== null) {
+      report.warnings.push(`O CSV não informa a nota máxima; foi utilizada a escala ${maxGrade} confirmada na página atual do Moodle.`);
+    }
+    if (recordsWithGrade.length && maxGrade === null) report.warnings.push('A nota máxima atual não pôde ser confirmada automaticamente na página do Moodle.');
     if (declaredMaxGrades.length === 1 && maxGrade !== null && !S.gradesEquivalent(declaredMaxGrades[0], maxGrade)) {
       report.blocking.push(`A nota máxima do CSV (${declaredMaxGrades[0]}) difere da atividade no Moodle (${maxGrade}).`);
     }
-    if (unsafeMaxStatus) report.blocking.push(`A nota máxima do CSV está marcada como ${unsafeMaxStatus.notaMaximaStatus}; confirme a atividade antes de lançar notas.`);
+    if (unsafeMaxStatus) report.warnings.push(`A nota máxima do CSV está marcada como ${unsafeMaxStatus.notaMaximaStatus}; confira manualmente a atividade antes de confirmar o salvamento.`);
 
     if (!readiness.gradeCount && STATE.records.some(record => record.nota)) {
       report.blocking.push('A atividade não possui campo de nota para um ou mais registros.');
@@ -1511,7 +1631,70 @@
     return report;
   }
 
-  function buildBatchVerification(plan = []) {
+  function verificationSummary(items = []) {
+    return items.reduce((totals, item) => {
+      totals.total += 1;
+      if (item.status === 'confirmed') totals.confirmed += 1;
+      else if (item.status === 'divergent') totals.divergent += 1;
+      else if (item.status === 'not_found') totals.notFound += 1;
+      else totals.notVerifiable += 1;
+      return totals;
+    }, { total: 0, confirmed: 0, divergent: 0, notFound: 0, notVerifiable: 0 });
+  }
+
+  function buildVerificationItem(expected, match) {
+    const comparison = S.compareSavedFields(expected, {
+      hasGradeField: Boolean(match.gradeInput),
+      actualGrade: readGradeFieldValue(match.gradeInput, match.row),
+      hasFeedbackField: Boolean(match.feedbackTextarea),
+      actualFeedback: match.feedbackTextarea?.value ?? '',
+    });
+    match.row?.classList?.add(comparison.status === 'confirmed' ? 'mqi-status-success' : comparison.status === 'divergent' ? 'mqi-status-danger' : 'mqi-status-warning');
+    return {
+      studentId: expected.studentId || match.userId || '',
+      nome: expected.nome || match.name,
+      moodleName: match.name || expected.moodleName || '',
+      ...comparison,
+      message: comparison.status === 'confirmed'
+        ? 'Nota e feedback solicitados foram confirmados no Moodle.'
+        : comparison.status === 'divergent'
+          ? 'Há diferença entre o CSV e o valor relido no Moodle.'
+          : 'Um dos campos não pôde ser conferido nesta página.',
+    };
+  }
+
+  function individualGraderUrl(studentId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('action', 'grader');
+    url.searchParams.set('userid', String(studentId));
+    ['page', 'perpage', 'filter', 'status', 'quickgrading'].forEach(key => url.searchParams.delete(key));
+    return url;
+  }
+
+  function readIndividualGrader(doc, expected) {
+    const gradeInput = doc.querySelector('input[name="grade"], select[name="grade"], input[id$="_grade"], select[id$="_grade"]');
+    const feedbackTextarea = doc.querySelector('textarea[name="assignfeedbackcomments_editor[text]"], textarea[name*="feedbackcomments"], textarea[id*="feedbackcomments"]');
+    const profileLink = doc.querySelector(`a[href*="user/view.php?id=${CSS.escape(String(expected.studentId))}"], a[href*="user/profile.php?id=${CSS.escape(String(expected.studentId))}"]`);
+    const name = String(profileLink?.textContent || expected.moodleName || expected.nome || '').replace(/\s+/g, ' ').trim();
+    return { row: null, gradeInput, feedbackTextarea, userId: String(expected.studentId || ''), name };
+  }
+
+  async function verifyOnIndividualGrader(expected) {
+    if (!expected.studentId) return null;
+    const url = individualGraderUrl(expected.studentId);
+    const response = await fetch(url.href, { credentials: 'include', cache: 'no-store', redirect: 'follow' });
+    if (!response.ok) throw new Error(`O Moodle respondeu HTTP ${response.status} ao conferir ${expected.nome || expected.studentId}.`);
+    const finalUrl = new URL(response.url || url.href, window.location.href);
+    if (finalUrl.origin !== window.location.origin || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado durante a conferência individual.');
+    const html = await response.text();
+    if (/name=["']username["']/i.test(html) && /name=["']password["']/i.test(html)) throw new Error('A sessão do Moodle expirou durante a conferência individual.');
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const match = readIndividualGrader(doc, expected);
+    if (!match.gradeInput && !match.feedbackTextarea) return null;
+    return buildVerificationItem(expected, match);
+  }
+
+  async function buildBatchVerification(plan = [], { allowIndividualFallback = true } = {}) {
     const moodleRows = getMoodleRows();
     const items = [];
 
@@ -1530,37 +1713,22 @@
         continue;
       }
 
-      const match = result.match;
-      const comparison = S.compareSavedFields(expected, {
-        hasGradeField: Boolean(match.gradeInput),
-        actualGrade: readGradeFieldValue(match.gradeInput, match.row),
-        hasFeedbackField: Boolean(match.feedbackTextarea),
-        actualFeedback: match.feedbackTextarea?.value ?? '',
-      });
-      match.row.classList.add(comparison.status === 'confirmed' ? 'mqi-status-success' : comparison.status === 'divergent' ? 'mqi-status-danger' : 'mqi-status-warning');
-      items.push({
-        studentId: expected.studentId || match.userId || '',
-        nome: expected.nome || match.name,
-        moodleName: match.name,
-        ...comparison,
-        message: comparison.status === 'confirmed'
-          ? 'Nota e feedback solicitados foram confirmados no Moodle.'
-          : comparison.status === 'divergent'
-            ? 'Há diferença entre o CSV e o valor relido no Moodle.'
-            : 'Um dos campos não pôde ser conferido nesta página.',
-      });
+      items.push(buildVerificationItem(expected, result.match));
     }
 
-    const summary = items.reduce((totals, item) => {
-      totals.total += 1;
-      if (item.status === 'confirmed') totals.confirmed += 1;
-      else if (item.status === 'divergent') totals.divergent += 1;
-      else if (item.status === 'not_found') totals.notFound += 1;
-      else totals.notVerifiable += 1;
-      return totals;
-    }, { total: 0, confirmed: 0, divergent: 0, notFound: 0, notVerifiable: 0 });
+    if (allowIndividualFallback) {
+      for (let index = 0; index < items.length; index += 1) {
+        if (!['not_found', 'not_verifiable'].includes(items[index].status)) continue;
+        try {
+          const fallback = await verifyOnIndividualGrader(plan[index]);
+          if (fallback) items[index] = { ...fallback, verificationSource: 'individual_grader' };
+        } catch (error) {
+          items[index].message = `${items[index].message} ${error.message}`.trim();
+        }
+      }
+    }
 
-    return { items, summary, verifiedAt: new Date().toISOString() };
+    return { items, summary: verificationSummary(items), verifiedAt: new Date().toISOString() };
   }
 
   function previewImport() {
@@ -3626,10 +3794,9 @@
     }
 
     if (transactionState === 'verificar') {
-      if (!readiness.hasTable || (!readiness.gradeCount && !readiness.feedbackCount)) {
-        return { status: 'error', reason: formatPageReadinessError(readiness) };
-      }
-      const verification = buildBatchVerification(verificationPlan);
+      // Alguns temas removem a tabela da rota action=grading depois do POST.
+      // Nesse caso, a conferência continua pela ficha individual de cada aluno.
+      const verification = await buildBatchVerification(verificationPlan, { allowIndividualFallback: true });
       if (!verification.summary.total) {
         return { status: 'error', reason: 'O plano de conferência ficou vazio e os valores salvos não puderam ser reconciliados.' };
       }
@@ -3644,6 +3811,17 @@
 
     if (!readiness.isSupported) {
       return { status: 'error', reason: formatPageReadinessError(readiness) };
+    }
+
+    if (transactionState === 'descobrir') {
+      const discovery = await discoverBatchRecords(Array.isArray(records) ? records : []);
+      if (discovery.notFound.length || discovery.ambiguous.length || !discovery.pages.length) {
+        const parts = [];
+        if (discovery.notFound.length) parts.push(`${discovery.notFound.join(', ')}: aluno não localizado após consultar ${discovery.diagnostics.pagesRead} página(s).`);
+        if (discovery.ambiguous.length) parts.push(`${discovery.ambiguous.join(', ')}: correspondência ambígua.`);
+        return { status: 'discovery_error', reason: parts.join(' ') || 'Nenhum aluno do lote foi localizado.', diagnostics: discovery.diagnostics };
+      }
+      return { status: 'discovered', pages: discovery.pages, diagnostics: discovery.diagnostics };
     }
 
     STATE.records = Array.isArray(records) ? records.map((record) => ({

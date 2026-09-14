@@ -1,5 +1,59 @@
 # Alterações
 
+## 3.7.10
+
+- permite editar a nota diretamente na tabela de conferência;
+- mostra o limite máximo junto ao campo de cada aluno;
+- valida número, separador decimal e limite antes de aceitar a alteração;
+- mantém a nota em branco quando o valor informado for zero e exige feedback;
+- desmarca a confirmação anterior depois de qualquer mudança de nota;
+- preserva a edição completa para alterações no feedback.
+
+## 3.7.9
+
+- padroniza a apresentação de notas no formato brasileiro com duas casas decimais;
+- interpreta corretamente valores como `85`, `85.5`, `85,50`, `1.000,00` e `1,000.00`;
+- converte a nota para o separador decimal aceito pela página do Moodle somente no momento do envio;
+- mantém a nota máxima real de cada atividade, sem forçar escala 100 quando o Moodle confirmar outro valor;
+- preserva a regra de deixar a nota em branco e enviar somente feedback quando o resultado for zero.
+
+## 3.7.8
+
+- corrige a conferência quando o Moodle não devolve a tabela de avaliação rápida após o salvamento;
+- adiciona validação pela ficha individual do aluno usando o ID confirmado na descoberta;
+- relê nota e feedback antes de classificar o resultado final;
+- mantém separados os estados de salvamento confirmado, conferido, divergente e não verificável;
+- preserva os créditos de Eurico Cirilo, as permissões mínimas e o funcionamento local.
+
+## 3.7.7
+
+- cria uma fase de descoberta que percorre todas as páginas da avaliação antes de alterar dados;
+- remove filtros herdados e utiliza a visualização de todos os participantes;
+- agrupa alunos pela página real em que foram localizados;
+- salva e confere cada página antes de avançar para a próxima;
+- recupera o `student_id` por campos de avaliação, seleção ou link do perfil;
+- registra páginas consultadas e alunos reconhecidos no relatório de conferência;
+- inclui teste transacional com alunos distribuídos em páginas diferentes;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
+## 3.7.6
+
+- restaura o envio de notas quando a nota máxima não puder ser identificada automaticamente;
+- transforma ausência de escala e status insuficiente em avisos visíveis na conferência;
+- mantém o bloqueio para notas inválidas, negativas, acima do limite conhecido e escalas confirmadamente divergentes;
+- mantém a nota máxima como informação na conferência, sem impedir o fluxo operacional anterior;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
+## 3.7.5
+
+- mostra a nota máxima e sua origem na conferência anterior ao salvamento;
+- sinaliza escalas não confirmadas ou que exigem conferência humana;
+- amplia a identificação da nota máxima nos campos, atributos, cabeçalhos e rótulos do Moodle;
+- reconhece formatos como “Nota de 50”, “Avaliação máxima” e “Grade out of 50”;
+- permite CSV legado sem `nota_maxima` quando a página atual confirma uma escala válida;
+- mantém o bloqueio quando nenhuma fonte confiável informa a nota máxima;
+- preserva os créditos de Eurico Cirilo na aplicação e na documentação.
+
 ## 3.7.4
 
 - consulta a nota máxima na página da atividade e na tela de avaliação do Moodle;
