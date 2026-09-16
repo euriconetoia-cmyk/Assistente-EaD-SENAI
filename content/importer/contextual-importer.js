@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.10';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.11';
   const S = globalThis.MAT_SHARED;
   const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
     source: 'grade-importer',
@@ -493,6 +493,13 @@
       .map(cell => cell.textContent || '')
       .join(' ');
     if (/\d,\d/.test(gradeCells)) return ',';
+
+    // Em páginas ainda sem notas preenchidas não há um valor de amostra para inferir
+    // a convenção decimal. O Moodle interpreta a nota de acordo com o idioma ativo;
+    // enviar ponto em uma interface pt-BR pode fazer o servidor preservar o feedback
+    // e rejeitar silenciosamente somente a nota.
+    const pageLanguage = String(document.documentElement?.lang || document.body?.lang || '').toLowerCase();
+    if (/^pt(?:-|$)/.test(pageLanguage)) return ',';
 
     return '.';
   }
@@ -1656,9 +1663,11 @@
       moodleName: match.name || expected.moodleName || '',
       ...comparison,
       message: comparison.status === 'confirmed'
-        ? 'Nota e feedback solicitados foram confirmados no Moodle.'
+        ? 'Todos os campos solicitados para este aluno foram relidos e confirmados no Moodle.'
         : comparison.status === 'divergent'
-          ? 'Há diferença entre o CSV e o valor relido no Moodle.'
+          ? comparison.grade?.status === 'divergent' && comparison.feedback?.status === 'confirmed'
+            ? 'O feedback foi gravado, mas a nota não foi lançada com o valor autorizado.'
+            : 'Há diferença entre os valores autorizados e os valores relidos no Moodle.'
           : 'Um dos campos não pôde ser conferido nesta página.',
     };
   }
@@ -1672,7 +1681,11 @@
   }
 
   function readIndividualGrader(doc, expected) {
-    const gradeInput = doc.querySelector('input[name="grade"], select[name="grade"], input[id$="_grade"], select[id$="_grade"]');
+    const gradeCandidates = [...doc.querySelectorAll(
+      'input[name="grade"]:not([type="hidden"]), select[name="grade"], ' +
+      'input[id$="_grade"]:not([type="hidden"]), select[id$="_grade"]'
+    )];
+    const gradeInput = gradeCandidates.find(field => !field.disabled && String(field.name || '').trim()) || null;
     const feedbackTextarea = doc.querySelector('textarea[name="assignfeedbackcomments_editor[text]"], textarea[name*="feedbackcomments"], textarea[id*="feedbackcomments"]');
     const profileLink = doc.querySelector(`a[href*="user/view.php?id=${CSS.escape(String(expected.studentId))}"], a[href*="user/profile.php?id=${CSS.escape(String(expected.studentId))}"]`);
     const name = String(profileLink?.textContent || expected.moodleName || expected.nome || '').replace(/\s+/g, ' ').trim();
@@ -3732,6 +3745,45 @@
     return false;
   }
 
+  function validateGradeSubmissionPayload(target, verificationPlan = []) {
+    const form = target?.form;
+    if (!form) return { ok: false, reason: 'O formulário que receberá as notas não foi identificado.' };
+
+    const gradeRequests = (Array.isArray(verificationPlan) ? verificationPlan : [])
+      .filter(item => item.expectedGrade !== null && item.expectedGrade !== undefined && String(item.expectedGrade).trim() !== '');
+    if (!gradeRequests.length) return { ok: true, checked: 0 };
+
+    const moodleRows = getMoodleRows(form);
+    const payload = new FormData(form);
+    let checked = 0;
+
+    for (const expected of gradeRequests) {
+      const result = findStudentRow(expected, moodleRows, false);
+      if (result.status !== 'found') {
+        return { ok: false, reason: `${expected.nome || expected.studentId}: o campo de nota deixou de corresponder ao aluno antes do envio.` };
+      }
+
+      const field = result.match.gradeInput;
+      if (!field || !form.contains(field)) {
+        return { ok: false, reason: `${expected.nome || expected.studentId}: o campo de nota não pertence ao formulário que será enviado.` };
+      }
+      if (field.disabled || !String(field.name || '').trim()) {
+        return { ok: false, reason: `${expected.nome || expected.studentId}: o campo de nota está desabilitado ou sem identificador de envio.` };
+      }
+
+      const submittedValue = payload.get(field.name);
+      if (submittedValue === null || !S.gradesEquivalent(expected.expectedGrade, submittedValue)) {
+        return {
+          ok: false,
+          reason: `${expected.nome || expected.studentId}: a nota exibida não entrou corretamente nos dados do formulário. Esperado ${expected.expectedGrade}; preparado ${submittedValue ?? 'ausente'}.`,
+        };
+      }
+      checked += 1;
+    }
+
+    return { ok: true, checked };
+  }
+
   function detectMoodleSaveOutcome() {
     const errorNode = document.querySelector('.alert-danger, .notifyproblem, [data-region="notification"] .alert-danger, [role="alert"].alert-danger');
     if (errorNode) return { outcome: 'error', message: normalizeText(errorNode.textContent || '').slice(0, 300) };
@@ -3856,6 +3908,15 @@
     const saveTarget = findQuickGradingSaveTarget();
     if (!saveTarget) {
       return { status: 'error', reason: 'Formulário de avaliação rápida do Moodle não foi encontrado nesta página.', report };
+    }
+
+    const gradePayloadCheck = validateGradeSubmissionPayload(saveTarget, report.verificationPlan);
+    if (!gradePayloadCheck.ok) {
+      return {
+        status: 'error',
+        reason: `Envio bloqueado antes do Moodle: ${gradePayloadCheck.reason}`,
+        report,
+      };
     }
 
     if (!submitQuickGrading(saveTarget)) {

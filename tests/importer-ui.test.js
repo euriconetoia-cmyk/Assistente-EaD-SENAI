@@ -120,6 +120,8 @@ test('conferência usa a ficha individual quando a tabela rápida não reaparece
   assert.match(source, /userid', String\(studentId\)/);
   assert.match(source, /assignfeedbackcomments_editor\[text\]/);
   assert.match(source, /verificationSource: 'individual_grader'/);
+  assert.match(source, /input\[name="grade"\]:not\(\[type="hidden"\]\)/);
+  assert.match(source, /!field\.disabled && String\(field\.name/);
   assert.match(source, /await buildBatchVerification\(verificationPlan/);
 });
 
@@ -170,6 +172,26 @@ test('salvamento em lote reconhece o rodapé fixo do Moodle 5 e possui fallback 
   const handler = source.slice(source.indexOf('async function handleBatchTick'));
   assert.ok(handler.indexOf("transactionState === 'enviado'") < handler.indexOf("if (!readiness.isGradingAction)"));
   assert.match(handler, /status: 'redirecting'/);
+});
+
+test('nota usa convenção decimal pt-BR quando a página ainda não possui valor de amostra', () => {
+  assert.match(source, /document\.documentElement\?\.lang/);
+  assert.match(source, /\^pt\(\?:-\|\$\)/);
+  assert.match(source, /return ','/);
+});
+
+test('envio valida se cada nota está realmente no formulário submetido', () => {
+  assert.match(source, /function validateGradeSubmissionPayload/);
+  assert.match(source, /new FormData\(form\)/);
+  assert.match(source, /field\.disabled/);
+  assert.match(source, /form\.contains\(field\)/);
+  assert.match(source, /payload\.get\(field\.name\)/);
+  assert.match(source, /S\.gradesEquivalent\(expected\.expectedGrade, submittedValue\)/);
+  assert.match(source, /Envio bloqueado antes do Moodle/);
+});
+
+test('conferência distingue feedback salvo de nota não lançada', () => {
+  assert.match(source, /O feedback foi gravado, mas a nota não foi lançada com o valor autorizado/);
 });
 
 test('resultado do lote diferencia falhas de um processamento integralmente concluído', () => {
