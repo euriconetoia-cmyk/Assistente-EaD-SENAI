@@ -1,10 +1,10 @@
-# Validação da versão 3.7.10
+# Validação da versão 3.7.11
 
-Data: 12/09/2026
+Data: 15/09/2026
 
 ## Resultado automatizado
 
-- 72 testes automatizados aprovados.
+- 75 testes automatizados aprovados.
 - 0 testes reprovados.
 - 55 arquivos verificados pela auditoria estrutural.
 - 23 referências do manifesto confirmadas.
@@ -12,7 +12,15 @@ Data: 12/09/2026
 - 0 desequilíbrios de estrutura CSS.
 - 0 violações críticas, altas ou médias identificadas na varredura local.
 
-## Novas verificações da versão 3.7.10
+## Novas verificações da versão 3.7.11
+
+- Interface Moodle em português usa vírgula como separador quando os campos vazios não oferecem uma amostra confiável.
+- Cada nota autorizada é procurada novamente no aluno correspondente antes do envio.
+- O campo de nota precisa estar habilitado, nomeado e contido no formulário submetido.
+- O valor precisa constar no `FormData` e ser numericamente equivalente ao valor autorizado.
+- O envio é bloqueado antes de alcançar o Moodle quando qualquer uma dessas verificações falha.
+- A conferência individual ignora campos de nota ocultos ou desabilitados.
+- Feedback confirmado com nota divergente recebe mensagem específica e não é classificado como sucesso.
 
 - Campo de nota editável diretamente na conferência.
 - Validação do limite máximo antes de aplicar a edição.

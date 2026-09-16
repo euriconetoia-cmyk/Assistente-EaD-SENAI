@@ -1,5 +1,13 @@
 # Alterações
 
+## 3.7.11
+
+- Corrige a convenção decimal usada em páginas Moodle em português quando todos os campos de nota ainda estão vazios.
+- Valida, imediatamente antes do envio, se cada nota autorizada está realmente presente no `FormData` do formulário correto e vinculada ao aluno esperado.
+- Bloqueia o envio quando o campo de nota está desabilitado, sem nome, fora do formulário ou com valor diferente do autorizado.
+- Diferencia explicitamente o caso em que o feedback foi gravado, mas a nota não foi lançada.
+- Mantém a confirmação final condicionada à releitura da nota e do feedback no Moodle.
+
 ## 3.7.10
 
 - permite editar a nota diretamente na tabela de conferência;
