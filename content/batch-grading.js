@@ -573,14 +573,83 @@
     if (resolution?.status === 'conflict') {
       return `<div class="mat-footer-note mat-text-danger">Nota máxima com conflito: ${U.escapeHtml(resolution.message || 'confira a atividade antes de continuar.')}</div>`;
     }
-    if (resolution?.status === 'missing' || resolution?.status === 'error') {
-      return `<div class="mat-footer-note mat-text-danger">Nota máxima não confirmada: ${U.escapeHtml(resolution.message || 'não foi possível identificar a escala da atividade.')}</div>`;
-    }
     if (maximum !== null) {
       const source = String(assignment.maxGradeSource || resolution?.source || 'Moodle').trim();
-      return `<div class="mat-footer-note">Nota máxima: <strong>${U.escapeHtml(S.formatGradePtBr(maximum))}</strong>. Fonte: ${U.escapeHtml(source)}.</div>`;
+      const manual = resolution?.status === 'manual' || /manual/i.test(source);
+      return `<div class="mat-footer-note">Nota máxima: <strong>${U.escapeHtml(S.formatGradePtBr(maximum))}</strong>. Fonte: ${U.escapeHtml(source)}.${manual ? ' Valor informado manualmente pelo tutor.' : ''}</div>`;
     }
-    return '<div class="mat-footer-note">Nota máxima ainda não identificada.</div>';
+    const message = resolution?.status === 'missing' || resolution?.status === 'error'
+      ? U.escapeHtml(resolution.message || 'não foi possível identificar a escala da atividade.')
+      : 'A escala ainda não foi identificada automaticamente.';
+    return `
+      <div class="mat-footer-note mat-text-danger">Nota máxima não confirmada: ${message}</div>
+      <div class="mat-manual-max-grade" data-manual-max-grade-for="${U.escapeHtml(key)}">
+        <label for="mat-manual-max-grade-${U.escapeHtml(key)}">Informar nota máxima manualmente</label>
+        <div class="mat-manual-max-grade__control">
+          <input
+            id="mat-manual-max-grade-${U.escapeHtml(key)}"
+            class="mat-input"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ex.: 100"
+            aria-describedby="mat-manual-max-grade-help-${U.escapeHtml(key)}"
+            data-manual-max-grade-input="${U.escapeHtml(key)}"
+          />
+          <button
+            type="button"
+            class="mat-btn mat-btn-primary mat-btn-sm"
+            data-apply-manual-max-grade="${U.escapeHtml(key)}"
+          >Aplicar</button>
+        </div>
+        <div id="mat-manual-max-grade-help-${U.escapeHtml(key)}" class="mat-footer-note">
+          Use somente o valor máximo configurado na atividade do Moodle. Esse valor será usado para converter desempenho_0_100.
+        </div>
+        <div id="mat-manual-max-grade-error-${U.escapeHtml(key)}" class="mat-inline-grade-error" role="alert"></div>
+      </div>`;
+  }
+
+  function applyManualMaximum(cmid) {
+    const assignments = pendingAssignments(MAT.state.snapshot);
+    const assignment = assignments.find((item) => String(item.cmid) === String(cmid));
+    const input = $id(`mat-manual-max-grade-${cmid}`);
+    const errorBox = $id(`mat-manual-max-grade-error-${cmid}`);
+    if (!assignment || !input) return MAT.ui.toast('Não foi possível localizar a atividade para informar a nota máxima.', 'error');
+
+    const parsed = S.parseGrade(input.value);
+    if (!parsed.valid || parsed.number === null || parsed.number <= 0) {
+      if (errorBox) errorBox.textContent = 'Informe uma nota máxima numérica maior que zero.';
+      input.focus();
+      return;
+    }
+
+    updateAssignmentMaximum(assignment, parsed.number, 'informada manualmente pelo tutor', 'confirmada_manual');
+    STATE.gradeResolution[String(cmid)] = {
+      status: 'manual',
+      maximum: parsed.number,
+      source: 'informada manualmente pelo tutor',
+      confidence: 'manual',
+    };
+
+    invalidateChangePreview();
+    rebuildBatchState(assignments);
+    renderPreview();
+    updateBatchControls();
+    MAT.ui.toast(`Nota máxima ${S.formatGradePtBr(parsed.number)} aplicada à atividade. Confira as notas calculadas antes de salvar.`);
+    $id('mat-batch-review-changes')?.focus();
+  }
+
+  function handleBatchPreviewClick(event) {
+    const button = event.target.closest('[data-apply-manual-max-grade]');
+    if (!button) return;
+    applyManualMaximum(button.dataset.applyManualMaxGrade);
+  }
+
+  function handleBatchPreviewKeydown(event) {
+    const input = event.target.closest('[data-manual-max-grade-input]');
+    if (!input || event.key !== 'Enter') return;
+    event.preventDefault();
+    applyManualMaximum(input.dataset.manualMaxGradeInput);
   }
 
   function updateAssignmentMaximum(assignment, maximum, source, status = 'alta') {
@@ -1328,6 +1397,8 @@
       if (button) $id(button.dataset.batchFocus)?.focus();
     });
     $id('mat-batch-preview').addEventListener('change', handleFileMappingChange);
+    $id('mat-batch-preview').addEventListener('click', handleBatchPreviewClick);
+    $id('mat-batch-preview').addEventListener('keydown', handleBatchPreviewKeydown);
     $id('mat-batch-review-changes').addEventListener('click', renderChangePreview);
     for (const id of ['mat-batch-overwrite-grade', 'mat-batch-overwrite-feedback']) {
       $id(id).addEventListener('change', () => { invalidateChangePreview(); updateBatchControls(); });

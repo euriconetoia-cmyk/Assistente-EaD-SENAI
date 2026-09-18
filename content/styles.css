@@ -915,3 +915,40 @@
 .mat-extension-credit a:focus-visible {
   text-decoration: underline;
 }
+
+
+.mat-manual-max-grade {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--mat-border);
+  border-radius: 10px;
+  background: var(--mat-surface, #fff);
+}
+
+.mat-manual-max-grade > label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.mat-manual-max-grade__control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mat-manual-max-grade__control .mat-input {
+  width: 120px;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .mat-manual-max-grade__control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mat-manual-max-grade__control .mat-input {
+    width: 100%;
+  }
+}
