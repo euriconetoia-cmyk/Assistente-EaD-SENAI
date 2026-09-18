@@ -37,7 +37,7 @@
     url.searchParams.set('id', assignment.cmid);
     url.searchParams.set('action', 'grading');
     url.searchParams.set('quickgrading', '1');
-    url.searchParams.set('status', 'all');
+    url.searchParams.set('status', 'requiregrading');
     url.searchParams.set('perpage', '500');
     return url.href;
   };
