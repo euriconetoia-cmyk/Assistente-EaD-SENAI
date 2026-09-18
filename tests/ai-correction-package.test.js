@@ -15,7 +15,9 @@ test('lote para IA inclui contexto verificável de cada atividade', () => {
   assert.match(batchSource, /criterios_de_avaliacao\.txt/);
   assert.match(batchSource, /dados_da_atividade\.txt/);
   assert.match(batchSource, /criterios_de_pontuacao\.txt/);
-  assert.match(batchSource, /envios_dos_alunos\.zip/);
+  assert.match(batchSource, /envios_pendentes\/manifesto_pendencias\.csv/);
+  assert.match(batchSource, /collectPendingSubmissionEntries/);
+  assert.doesNotMatch(batchSource, /envios_dos_alunos\.zip/);
   assert.match(batchSource, /manifesto_atividade\.csv/);
   assert.match(batchSource, /Nota máxima não localizada/);
   assert.match(batchSource, /buildAssignmentGradingUrl/);
