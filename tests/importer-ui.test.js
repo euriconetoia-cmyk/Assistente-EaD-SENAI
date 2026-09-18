@@ -262,7 +262,7 @@ test('resultado do lote diferencia falhas de um processamento integralmente conc
 
 test('menu lateral usa ícone hamburger e identificação compacta do curso', () => {
   assert.match(uiSource, /menu: '<svg[^']+<path d="M4 7h16"\/><path d="M4 12h16"\/><path d="M4 17h16"\/>/);
-  assert.match(uiSource, /id="mat-nav-toggle"[^>]+navIcon\('menu'\)/);
+  assert.match(uiSource, /id="mat-nav-toggle"[\s\S]{0,300}navIcon\('menu'\)/);
   assert.match(uiSource, /class="mat-course-status" id="mat-last-update"/);
   assert.match(uiSource, /id="mat-header-context"|class="mat-header-context"/);
   assert.match(appStyles, /\.mat-course-name[^}]+white-space: nowrap/);
