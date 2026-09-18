@@ -8,6 +8,7 @@
   const isSupportedMoodlePage = () => ['ead.fieg.com.br', 'ead.senai.br'].includes(location.hostname.toLowerCase());
   const canShowAssistant = () => isSupportedMoodlePage();
   const COURSE_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+  const AUTO_REFRESH_CHECK_MS = 60 * 1000;
   const SNAPSHOT_SCHEMA_VERSION = 5;
 
   const isSnapshotFresh = (snapshot, now = Date.now()) => {
@@ -114,7 +115,7 @@
     if (MAT.state.settings.autoOpenPanel) MAT.ui.openPanel({ refresh: true });
   };
 
-  const refreshAnalysis = async () => {
+  const refreshAnalysis = async ({ silent = false } = {}) => {
     if (MAT.state.isMoodleAuthoring || MAT.state.isCollecting || MAT.state.isCollectingGrades) return;
     if (!MAT.state.course?.id) {
       MAT.ui.toast('Abra a página de um curso para iniciar a análise.');
@@ -133,7 +134,7 @@
         onProgress: MAT.ui.showProgress
       });
       if (location.hostname !== collectedHost || MAT.state.course?.id !== collectedCourse.id) {
-        MAT.ui.toast('O contexto do curso mudou durante a análise. O resultado foi descartado para evitar misturar dados.');
+        if (!silent) MAT.ui.toast('O contexto do curso mudou durante a análise. O resultado foi descartado para evitar misturar dados.');
         return;
       }
       MAT.state.snapshot = snapshot;
@@ -164,7 +165,7 @@
         : snapshot.summary.activitiesUnverified > 0
           ? `${snapshot.summary.activitiesUnverified} atividade(s) ainda precisam de conferência`
           : 'ausência de correções pendentes confirmada';
-      MAT.ui.toast(`Análise concluída: ${snapshot.summary.assignments} atividade(s), ${snapshot.summary.delivered} entrega(s), ${snapshot.summary.corrected} corrigida(s) e ${gradingMessage}.`);
+      if (!silent) MAT.ui.toast(`Análise concluída: ${snapshot.summary.assignments} atividade(s), ${snapshot.summary.delivered} entrega(s), ${snapshot.summary.corrected} corrigida(s) e ${gradingMessage}.`);
     } catch (error) {
       console.error('[Assistente EaD] Falha na análise', error);
       await MAT.storage.addAuditEvent?.({
@@ -175,11 +176,28 @@
         source: 'course-analysis',
         message: error?.message || 'Falha ao concluir a análise do curso.'
       }).catch(() => {});
-      MAT.ui.toast(`Não foi possível concluir a análise: ${error.message || error}`);
+      if (!silent) MAT.ui.toast(`Não foi possível concluir a análise: ${error.message || error}`);
     } finally {
       MAT.ui.setBusy(false);
       setTimeout(() => MAT.ui.hideProgress(), 1200);
     }
+  };
+
+  const refreshAfterChange = async (reason = 'alteração') => {
+    if (!MAT.state.course?.id || MAT.state.isMoodleAuthoring || MAT.state.isCollecting || MAT.state.isCollectingGrades) return false;
+    await refreshAnalysis({ silent: true });
+    MAT.ui?.toast?.(`Dados do curso atualizados após ${reason}.`);
+    return true;
+  };
+
+  const refreshIfStale = async () => {
+    if (!MAT.state.course?.id || !MAT.state.isOpen || MAT.state.isMoodleAuthoring || MAT.state.isCollecting || MAT.state.isCollectingGrades) return false;
+    if (isSnapshotFresh(MAT.state.snapshot)) {
+      MAT.ui?.updateHeader?.();
+      return false;
+    }
+    await refreshAnalysis({ silent: true });
+    return true;
   };
 
   const refreshGrades = async (downloadFormat = '') => {
@@ -397,9 +415,13 @@
     if (message?.type === 'MAT_TOGGLE_PANEL' && canShowAssistant() && !MAT.state.isMoodleAuthoring) MAT.ui.togglePanel({ refresh: true });
   });
 
-  MAT.main = { initializeContext, refreshAnalysis, refreshGrades, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
+  MAT.main = { initializeContext, refreshAnalysis, refreshAfterChange, refreshIfStale, refreshGrades, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, AUTO_REFRESH_CHECK_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
 
   initializeContext().then(() => tryFillMoodleMessageDraft()).catch((error) => console.error('[Assistente EaD] Falha na inicialização', error));
   setInterval(reinitializeIfContextChanged, 1800);
+  setInterval(() => refreshIfStale().catch((error) => console.warn('[Assistente EaD] Falha na atualização automática', error)), AUTO_REFRESH_CHECK_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshIfStale().catch((error) => console.warn('[Assistente EaD] Falha na atualização ao retomar a página', error));
+  });
   startNativeOverlayWatcher();
 })();

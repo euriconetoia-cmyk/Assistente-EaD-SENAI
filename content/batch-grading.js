@@ -1197,6 +1197,7 @@
       recordVerificationHistory().catch((error) => {
         MAT.state.storageError = error?.message || 'Não foi possível registrar a conferência no histórico local.';
       });
+      window.setTimeout(() => MAT.main?.refreshAfterChange?.('salvamento das correções'), 1200);
       if (errorCount) {
         MAT.ui.toast(`Lote concluído com falhas: ${errorCount} de ${STATE.results.length} atividade(s) não foram salvas.`, 'error');
       } else if (divergentCount || unverifiedCount) {

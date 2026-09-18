@@ -49,7 +49,7 @@
     curso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>',
     fechamento: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3"/></svg>',
     diagnostico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8m-4-4v4M7 9h4m-4 4h8"/></svg>',
-    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>',
     atualizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   }[name] || '');
   const rateBar = (value, label) => `
@@ -154,19 +154,20 @@
           <div class="mat-brand">
             <div class="mat-brand-name">Assistente EaD SENAI</div>
             <h2 class="mat-course-name" id="mat-panel-title">Detectando curso atual</h2>
-            <div class="mat-meta-line">
-              <span class="mat-env-badge" id="mat-env-badge">Moodle</span>
-              <span class="mat-operation-badge" id="mat-operation-badge">Pronto</span>
-              <span id="mat-last-update">Sem análise salva</span>
-            </div>
+            <div class="mat-course-status" id="mat-last-update">Sem análise salva</div>
           </div>
           <button class="mat-close" id="mat-close" type="button" title="Fechar" aria-label="Fechar assistente">×</button>
         </div>
         <div class="mat-toolbar">
           <button class="mat-btn mat-btn-primary mat-refresh-button" id="mat-refresh" type="button">${navIcon('atualizar')}<span>Atualizar</span></button>
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-open-course" type="button" aria-label="Abrir curso" title="Abrir curso">${navIcon('curso')}<span class="mat-action-label">Abrir curso</span></button>
-          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('mais')}<span class="mat-sr-only">Opções de análise</span></button>
+          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('menu')}<span class="mat-sr-only">Opções de análise</span></button>
           <div class="mat-header-menu" id="mat-header-menu" hidden>
+            <div class="mat-header-context" aria-label="Contexto do curso">
+              <div><span>Ambiente</span><strong id="mat-env-badge">Moodle</strong></div>
+              <div><span>Status</span><strong id="mat-operation-badge">Pronto</strong></div>
+              <div><span>Atualização</span><strong id="mat-menu-update-status">Sem análise salva</strong></div>
+            </div>
             <label for="mat-analysis-mode">Modo de análise</label>
             <select class="mat-mode-select" id="mat-analysis-mode" aria-label="Modo de análise"><option value="complete">Completa</option><option value="quick">Rápida</option></select>
             <button class="mat-menu-action" data-tab="diagnostico" type="button">Configurações e diagnóstico</button>
@@ -179,7 +180,7 @@
       </header>
       <div class="mat-workspace">
       <nav class="mat-side-nav" id="mat-primary-nav" aria-label="Seções do assistente">
-        <button class="mat-nav-toggle" id="mat-nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false">${navIcon('mais')}<span class="mat-nav-label">Recolher</span></button>
+        <button class="mat-nav-toggle" id="mat-nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false">${navIcon('menu')}<span class="mat-nav-label">Recolher</span></button>
         <div class="mat-nav-main">
           <button class="mat-nav-item mat-active" id="mat-tab-hoje" data-tab="hoje" type="button" aria-current="page" aria-controls="mat-view-hoje" title="Visão geral">${navIcon('hoje')}<span class="mat-nav-label">Visão geral</span></button>
           <button class="mat-nav-item" id="mat-tab-alunos" data-tab="alunos" type="button" aria-controls="mat-view-alunos" title="Alunos">${navIcon('alunos')}<span class="mat-nav-label">Alunos</span><span class="mat-nav-count" id="mat-nav-student-count" hidden>0</span></button>
@@ -241,6 +242,8 @@
       const toggle = document.getElementById('mat-nav-toggle');
       toggle?.setAttribute('aria-expanded', String(expanded));
       toggle?.setAttribute('aria-label', expanded ? 'Recolher menu' : 'Expandir menu');
+      const label = toggle?.querySelector('.mat-nav-label');
+      if (label) label.textContent = expanded ? 'Recolher' : 'Expandir';
       MAT.state.settings.navigationExpanded = expanded;
       await MAT.storage.saveSettings(MAT.state.settings);
     }));
@@ -353,14 +356,31 @@
     const refresh = document.getElementById('mat-refresh');
     const operation = document.getElementById('mat-operation-badge');
     const panel = document.getElementById('mat-panel');
-    if (courseName) courseName.textContent = course?.id ? course.name : 'Página inicial do Moodle';
+    if (courseName) {
+      courseName.textContent = course?.id ? course.name : 'Página inicial do Moodle';
+      courseName.title = course?.id ? course.name : 'Página inicial do Moodle';
+    }
     if (env) env.textContent = course?.environment || MAT.state.adapter?.environment || 'Moodle';
-    if (update) update.textContent = snapshot?.meta?.collectedAt ? `Atualizado em ${U.formatDate(snapshot.meta.collectedAt, true)}` : 'Sem análise detalhada salva';
+    const collectedAt = snapshot?.meta?.collectedAt ? Date.parse(snapshot.meta.collectedAt) : NaN;
+    const ageMinutes = Number.isFinite(collectedAt) ? Math.max(0, Math.floor((Date.now() - collectedAt) / 60000)) : null;
+    const updateLabel = ageMinutes === null
+      ? 'Sem análise salva'
+      : ageMinutes < 1
+        ? 'Atualizado agora'
+        : ageMinutes === 1
+          ? 'Atualizado há 1 min'
+          : `Atualizado há ${ageMinutes} min`;
+    if (update) {
+      update.textContent = updateLabel;
+      update.title = snapshot?.meta?.collectedAt ? `Última análise: ${U.formatDate(snapshot.meta.collectedAt, true)}` : 'Nenhuma análise completa salva';
+    }
+    const menuUpdate = document.getElementById('mat-menu-update-status');
+    if (menuUpdate) menuUpdate.textContent = snapshot?.meta?.collectedAt ? U.formatDate(snapshot.meta.collectedAt, true) : 'Sem análise salva';
     if (mode && settings) mode.value = settings.analysisMode;
     if (openCourse) openCourse.textContent = course?.id ? 'Abrir curso' : 'Meus cursos';
     if (refresh && !MAT.state.isCollecting) {
       refresh.disabled = !course?.id;
-      refresh.textContent = course?.id ? 'Atualizar análise' : 'Abra um curso';
+      refresh.textContent = course?.id ? 'Atualizar' : 'Abra um curso';
     }
     if (operation) {
       const labels = { consulta: 'Pronto', preparacao: 'Preparando', salvamento: 'Salvando', concluido: 'Concluído' };
@@ -397,7 +417,7 @@
     const button = document.getElementById('mat-refresh');
     if (button) {
       button.disabled = busy || !MAT.state.course?.id;
-      button.textContent = busy ? 'Analisando curso' : MAT.state.course?.id ? 'Atualizar análise' : 'Abra um curso';
+      button.textContent = busy ? 'Atualizando' : MAT.state.course?.id ? 'Atualizar' : 'Abra um curso';
     }
   };
 
@@ -1359,7 +1379,8 @@
       await MAT.storage.saveSnapshot(MAT.state.snapshot, MAT.state.course.id);
     }
     renderAll();
-    toast('UC ativa salva.');
+    toast('UC ativa salva. Atualizando o curso...');
+    window.setTimeout(() => MAT.main?.refreshAfterChange?.('alteração da UC'), 700);
   };
 
   const saveChecklist = async () => {
