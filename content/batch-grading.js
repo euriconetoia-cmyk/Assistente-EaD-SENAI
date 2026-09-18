@@ -605,7 +605,7 @@
         <div id="mat-manual-max-grade-help-${U.escapeHtml(key)}" class="mat-footer-note">
           Use somente o valor máximo configurado na atividade do Moodle. Esse valor será usado para converter desempenho_0_100.
         </div>
-        <div class="mat-inline-grade-error" data-manual-max-grade-error="${U.escapeHtml(key)}" role="alert"></div>
+        <div id="mat-manual-max-grade-error-${U.escapeHtml(key)}" class="mat-inline-grade-error" role="alert"></div>
       </div>`;
   }
 
@@ -613,7 +613,7 @@
     const assignments = pendingAssignments(MAT.state.snapshot);
     const assignment = assignments.find((item) => String(item.cmid) === String(cmid));
     const input = $id(`mat-manual-max-grade-${cmid}`);
-    const errorBox = MAT.dom.ensureHost().querySelector?.(`[data-manual-max-grade-error="${CSS.escape(String(cmid))}"]`) || null;
+    const errorBox = $id(`mat-manual-max-grade-error-${cmid}`);
     if (!assignment || !input) return MAT.ui.toast('Não foi possível localizar a atividade para informar a nota máxima.', 'error');
 
     const parsed = S.parseGrade(input.value);
