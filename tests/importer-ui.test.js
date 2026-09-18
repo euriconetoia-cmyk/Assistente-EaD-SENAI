@@ -9,6 +9,8 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.js'), 'utf8');
 const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch-grading.js'), 'utf8');
 const adaptersSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'adapters.js'), 'utf8');
+const uiSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'ui.js'), 'utf8');
+const mainSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'main.js'), 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.css'), 'utf8');
 const appStyles = fs.readFileSync(path.join(__dirname, '..', 'content', 'styles.css'), 'utf8');
 
@@ -255,4 +257,23 @@ test('resultado do lote diferencia falhas de um processamento integralmente conc
   assert.match(batchSource, /Atualizar painel do curso/);
   assert.match(batchSource, /dataset\.action === 'review-results'/);
   assert.match(batchSource, /type: 'conferencia_lote'/);
+});
+
+
+test('menu lateral usa ícone hamburger e identificação compacta do curso', () => {
+  assert.match(uiSource, /menu: '<svg[^']+<path d="M4 7h16"\/><path d="M4 12h16"\/><path d="M4 17h16"\/>/);
+  assert.match(uiSource, /id="mat-nav-toggle"[^>]+navIcon\('menu'\)/);
+  assert.match(uiSource, /class="mat-course-status" id="mat-last-update"/);
+  assert.match(uiSource, /id="mat-header-context"|class="mat-header-context"/);
+  assert.match(appStyles, /\.mat-course-name[^}]+white-space: nowrap/);
+});
+
+test('curso é atualizado automaticamente ao ficar obsoleto e após alterações', () => {
+  assert.match(mainSource, /COURSE_CACHE_MAX_AGE_MS = 15 \* 60 \* 1000/);
+  assert.match(mainSource, /AUTO_REFRESH_CHECK_MS = 60 \* 1000/);
+  assert.match(mainSource, /const refreshIfStale = async/);
+  assert.match(mainSource, /setInterval\(\(\) => refreshIfStale/);
+  assert.match(mainSource, /visibilitychange/);
+  assert.match(uiSource, /refreshAfterChange\?\.\('alteração da UC'\)/);
+  assert.match(batchSource, /refreshAfterChange\?\.\('salvamento das correções'\)/);
 });
