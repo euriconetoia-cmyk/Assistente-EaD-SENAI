@@ -537,9 +537,14 @@
         const gradeCell = gradeIndex >= 0 ? cells[gradeIndex] : tr.querySelector('td[class*="grade"], [data-region="grade"]');
         const gradeInput = gradeCell?.querySelector('input[type="text"], input[type="number"], select');
         const selectedText = gradeInput?.tagName === 'SELECT' ? gradeInput.selectedOptions?.[0]?.textContent : '';
-        const gradeRaw = gradeInput?.value ?? selectedText ?? gradeCell?.textContent ?? '';
         const gradeText = U.cleanText(selectedText || gradeInput?.value || gradeCell?.textContent || '');
-        const grade = U.parseGrade(gradeRaw || gradeText);
+        const gradeRaw = gradeInput
+          ? (gradeInput.value || selectedText || '')
+          : gradeText;
+        const slashGrade = !gradeInput && gradeText.match(/^\s*([^/]+?)\s*\/\s*\d+(?:[.,]\d+)?\s*$/);
+        const grade = slashGrade
+          ? U.parseGrade(slashGrade[1])
+          : U.parseGrade(gradeRaw || gradeText);
 
         const fileLinks = fileIndex >= 0
           ? [...cells[fileIndex]?.querySelectorAll('a[href]') || []].map((a) => ({ name: U.cleanText(a.textContent), url: U.absoluteUrl(a.href) }))
