@@ -295,3 +295,10 @@ test('pacote pendente bloqueia fallback inseguro quando a análise não identifi
   assert.match(batchSource, /AVISO_PENDENCIAS_SEM_ARQUIVO\.txt/);
   assert.match(batchSource, /AVISO_ARQUIVOS_NAO_BAIXADOS\.txt/);
 });
+
+
+test('pacote consulta o Moodle com filtro oficial de requer correção', () => {
+  assert.match(batchSource, /url\.searchParams\.set\('status', 'requiregrading'\)/);
+  assert.match(batchSource, /url\.searchParams\.set\('perpage', '500'\)/);
+  assert.doesNotMatch(batchSource, /url\.searchParams\.set\('status', 'all'\)/);
+});
