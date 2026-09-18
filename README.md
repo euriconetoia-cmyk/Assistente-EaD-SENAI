@@ -19,12 +19,15 @@ O desenvolvimento, a especificação, a integração e as colaborações técnic
 - Retenção local configurável e opção para desativar o armazenamento do texto das mensagens.
 - Central de Gestão em página própria, com dez áreas, filtros globais, calendário, fila de trabalho, histórico e relatórios CSV, JSON e PDF.
 - Menu lateral compacto, expansível e responsivo na Central de Gestão.
+- Ícones consistentes no painel e na Central; menu da Central com nomes visíveis em telas largas e preferência de expansão preservada.
+- Situação da coleta visível com fonte local, horário, cobertura e pendências confirmadas, inclusive quando a leitura está parcial ou antiga.
 - Preferências iniciais com botão lateral, histórico de mensagens, varreduras automáticas e português ativados; escolhas anteriores salvas pelo usuário continuam prevalecendo.
 - Auditoria Local em linha do tempo, com filtros por período, resultado, tipo de ação e pesquisa.
 - Escolha segura de uma pasta para salvar evidências, com autorização explícita do Chrome e fallback em ZIP.
 - Pacote de auditoria com relatório HTML, CSV, JSON, manifesto e hashes SHA-256.
 - Pacote para correção com IA, contendo o texto da tarefa, seus anexos e, quando localizado na mesma UC, o recurso Arquivo “SAP” correspondente, além de critérios, nota máxima, manifesto e ZIPs das entregas.
 - O download de correções fica somente na área **Correções** do painel. Os materiais são organizados em pastas separadas para envios dos alunos, anexos da tarefa e arquivos SAP da UC. Um nome correspondente não confirma o conteúdo: abra e confira o enunciado antes de corrigir. A faixa da página do curso mostra pendências, importação contextual e atualização da contagem.
+- A revisão do lote mostra as etapas Arquivos, Atividades, Conferência, Salvamento e Verificação; os erros apontam diretamente para a associação que precisa de ajuste.
 
 Na correção por IA, o CSV pode trazer `desempenho_0_100` para cada aluno, deixando `nota` vazia. O importador calcula `desempenho_0_100 ÷ 100 × nota_maxima`, mostra a avaliação e a nota proporcional na conferência e permite editar a nota final antes do envio. A escala máxima deve ser confirmada na atividade ou no manifesto; conflitos e ausência de confirmação impedem a conversão. CSVs anteriores com `nota` preenchida continuam sendo importados sem nova conversão. Nunca preencha os dois campos na mesma linha. Desempenho zero ou atividade incorreta gera somente feedback; SENAI Play validado segue a regra da nota máxima confirmada.
 
