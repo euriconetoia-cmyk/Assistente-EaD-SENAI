@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.js'), 'utf8');
 const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch-grading.js'), 'utf8');
@@ -34,6 +35,24 @@ test('importador exige conferência de notas e feedbacks antes de salvar', () =>
   assert.match(batchSource, /buildPreviewSignature/);
   assert.match(batchSource, /invalidateChangePreview/);
   assert.match(batchSource, /Confira novamente as notas e os feedbacks antes de salvar/);
+});
+
+test('etapas do lote distinguem arquivos, associação, conferência, salvamento e verificação', () => {
+  const start = batchSource.indexOf('  function updateBatchSteps()');
+  const end = batchSource.indexOf('  function confirmedRecordMaxGrade(', start);
+  assert.ok(start >= 0 && end > start);
+  const steps = Array.from({ length: 5 }, (_, index) => ({ dataset: { step: String(index + 1) }, setAttribute(name, value) { this[name] = value; }, removeAttribute(name) { delete this[name]; } }));
+  const state = { files: [], running: false, results: [], previewAccepted: false };
+  const context = vm.createContext({ STATE: state, $id: () => ({ querySelectorAll: () => steps }), isBatchBlocked: () => state.blocked });
+  vm.runInContext(`${batchSource.slice(start, end)}\nglobalThis.step = updateBatchSteps;`, context);
+  const current = () => steps.findIndex((item) => item['aria-current'] === 'step') + 1;
+  context.step(); assert.equal(current(), 1);
+  state.files = [{}]; state.blocked = true; context.step(); assert.equal(current(), 2);
+  state.blocked = false; context.step(); assert.equal(current(), 3);
+  state.previewAccepted = true; context.step(); assert.equal(current(), 4);
+  state.running = true; state.results = [{}]; context.step(); assert.equal(current(), 5);
+  assert.match(batchSource, /data-batch-focus="mat-batch-file-map-/);
+  assert.match(appStyles, /\.mat-change-preview-table td::before/);
 });
 
 test('conferência permite editar nota e feedback antes do salvamento', () => {
@@ -144,7 +163,7 @@ test('página inicial monta inventário e relatório geral das turmas', () => {
   assert.match(source, /function buildMyCoursesInventory/);
   assert.match(source, /runWithConcurrency\(MY_COURSES_STATE\.courses, 2/);
   assert.match(source, /Visão geral das turmas/);
-  assert.match(source, /Gerar relatório geral CSV/);
+  assert.match(source, /id="mqi-my-courses-export"[^>]*>Exportar CSV/);
   assert.match(source, /relatorio_geral_turmas_/);
   assert.match(source, /neutralizeSpreadsheetFormula/);
   assert.match(source, /perpage', '96'/);

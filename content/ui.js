@@ -41,17 +41,17 @@
   const rateValue = (value) => Number.isFinite(value) ? `${value}%` : 'Dados indisponíveis';
 
   const navIcon = (name) => ({
-    hoje: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.2 12 4l8 7.2V20h-5v-5H9v5H4z"/></svg>',
-    alunos: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM8 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 0c-1 0-2 .2-2.8.6 1.7 1.2 2.8 3.2 2.8 5.4v1h6v-1c0-3.3-2.7-6-6-6ZM8 15c-3.3 0-6 2.7-6 6h12c0-3.3-2.7-6-6-6Z"/></svg>',
-    correcoes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 5h10V6H7v2Zm0 5h4v-2H7v2Zm0 4h7v-2H7v2Zm9.7-5.7-3.2 3.2-1.2-1.2-1.4 1.4 2.6 2.6 4.6-4.6-1.4-1.4Z"/></svg>',
-    notas: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4V3Zm3 4v2h10V7H7Zm0 4v2h6v-2H7Zm0 4v2h4v-2H7Zm9.6-.9-2.1 2.1-1-1-1.4 1.4 2.4 2.4 3.5-3.5-1.4-1.4Z"/></svg>',
-    historico: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 1-8.5 6H1l3.5-4L8 9H5.6A7 7 0 1 0 12 5v4l4 2.4-1 1.7-5-3V3h2Z"/></svg>',
-    mais: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
-    curso: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h8l2 2h8v12H3V5Zm2 4v8h14V9H5Z"/></svg>',
-    fechamento: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v16H4V5h3V3Zm2 2h6V4H9v1Zm-2 4v2h10V9H7Zm0 4v2h7v-2H7Z"/></svg>',
-    diagnostico: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v3.1a7 7 0 0 1 3 1.3l2.2-2.2 1.4 1.4-2.2 2.2a7 7 0 0 1 1.4 3H22v2h-3.2a7 7 0 0 1-1.4 3l2.2 2.2-1.4 1.4-2.2-2.2a7 7 0 0 1-3 1.4V22h-2v-3.2a7 7 0 0 1-3-1.4l-2.2 2.2-1.4-1.4 2.2-2.2a7 7 0 0 1-1.4-3H2v-2h3.2a7 7 0 0 1 1.4-3L4.4 5.6l1.4-1.4L8 6.4a7 7 0 0 1 3-1.3V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></svg>'
+    hoje: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg>',
+    alunos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m2-14a3 3 0 0 1 0 6m2 8v-2a6 6 0 0 0-3-5.2"/></svg>',
+    correcoes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8m-8 4 2 2 5-5"/></svg>',
+    notas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 17v-5m6 5V5m6 12V9"/></svg>',
+    historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5m4-1v5l3 2"/></svg>',
+    curso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>',
+    fechamento: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3"/></svg>',
+    diagnostico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8m-4-4v4M7 9h4m-4 4h8"/></svg>',
+    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    atualizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   }[name] || '');
-
   const rateBar = (value, label) => `
     <div class="mat-rate">
       <div class="mat-rate-head"><span>${U.escapeHtml(label)}</span><strong>${rateValue(value)}</strong></div>
@@ -163,7 +163,7 @@
           <button class="mat-close" id="mat-close" type="button" title="Fechar" aria-label="Fechar assistente">×</button>
         </div>
         <div class="mat-toolbar">
-          <button class="mat-btn mat-btn-primary mat-refresh-button" id="mat-refresh" type="button">${navIcon('historico')}<span>Atualizar</span></button>
+          <button class="mat-btn mat-btn-primary mat-refresh-button" id="mat-refresh" type="button">${navIcon('atualizar')}<span>Atualizar</span></button>
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-open-course" type="button" aria-label="Abrir curso" title="Abrir curso">${navIcon('curso')}<span class="mat-action-label">Abrir curso</span></button>
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('mais')}<span class="mat-sr-only">Opções de análise</span></button>
           <div class="mat-header-menu" id="mat-header-menu" hidden>
@@ -496,11 +496,6 @@
     const journeySteps = MAT.journey.steps;
     view.innerHTML = `
       ${warningsHtml(s)}
-      <section class="mat-card mat-journey" aria-labelledby="mat-journey-title">
-        <div class="mat-section-head"><div><span class="mat-eyebrow">Minha jornada</span><h3 id="mat-journey-title">O que preciso fazer agora?</h3><p>Curso: ${U.escapeHtml(s.course?.name || MAT.state.course?.name || 'Curso não identificado')} · UC: ${U.escapeHtml(s.activityPanorama?.scope?.label || 'Verificar')}</p></div><span class="mat-badge mat-badge-neutral">${s.meta?.collectedAt ? `Lido em ${U.escapeHtml(U.formatDate(s.meta.collectedAt, true))}` : 'Leitura sem horário'}</span></div>
-        <ol class="mat-journey-steps">${journeySteps.map((step, index) => `<li><button type="button" data-action="journey-step" data-step="${step.id}" aria-label="Etapa ${index + 1}: ${U.escapeHtml(step.title)}. ${U.escapeHtml(step.detail)}"><span>${index + 1}</span><strong>${U.escapeHtml(step.title)}</strong></button></li>`).join('')}</ol>
-        <p class="mat-journey-explanation" id="mat-journey-explanation">${U.escapeHtml(journeySteps[0].detail)}</p>
-      </section>
       <section class="mat-priority-hero" aria-labelledby="mat-priority-title">
         <div class="mat-section-head"><div><span class="mat-eyebrow">Central operacional</span><h3 id="mat-priority-title">Próximas ações</h3><p>Até três tarefas desta UC, ordenadas pelo tipo de cuidado e pelo prazo confirmado.</p></div><span class="mat-badge ${dataPartial ? 'mat-risk-atencao' : 'mat-risk-regular'}">${dataPartial ? 'Leitura parcial' : 'Leitura detalhada'}</span></div>
         ${nextTask ? `<div class="mat-journey-priorities">${tasks.slice(0, 3).map((task, index) => `<article class="mat-next-action"><div><span class="mat-next-label">${index === 0 ? 'Próxima ação' : `Prioridade ${index + 1}`}: ${U.escapeHtml(task.source)}</span><h4>${U.escapeHtml(task.title)}</h4><p>${U.escapeHtml(task.description || task.action || '')}</p><small>${task.collectedAt ? `Referência: ${U.escapeHtml(U.formatDate(task.collectedAt, true))}` : 'Horário não confirmado'}</small></div><div class="mat-task-actions"><button class="mat-btn mat-btn-sm mat-btn-primary" data-action="journey-open-task" data-task-id="${U.escapeHtml(task.id)}" type="button">${task.type === 'conferencia_lote' ? 'Conferir no Moodle' : task.type === 'aluno' ? 'Ver aluno' : task.type === 'correcao' ? 'Abrir correções' : 'Ver tarefa'}</button>${task.type === 'conferencia_lote' ? `<button class="mat-btn mat-btn-sm" data-action="journey-confirm-manual" data-action-id="${U.escapeHtml(task.actionId)}" type="button">Registrar conferência manual</button>` : ''}</div></article>`).join('')}</div>` : '<div class="mat-info">Nenhuma ação prioritária foi identificada com os dados disponíveis.</div>'}
@@ -511,6 +506,11 @@
         <div class="mat-card mat-kpi ${metrics.activitiesUnverified ? 'mat-kpi-orange' : correctionValue > 0 ? 'mat-kpi-orange' : 'mat-kpi-green'}"><div class="mat-kpi-top"><div class="mat-kpi-label">Correções pendentes</div><span class="mat-badge ${correctionState.className}">${correctionState.label}</span></div><div class="mat-kpi-value">${correctionValue === null ? 'Dados indisponíveis' : U.escapeHtml(correctionValue)}</div><div class="mat-kpi-hint">${metrics.activitiesUnverified ? `${metrics.activitiesUnverified} atividade(s) precisam de conferência` : `${metrics.activitiesWithPending} atividade(s) com pendência`}</div></div>
         ${metricCard('Alunos em atenção', attentionStudents, `${summary.riskImmediate || 0} com ação imediata`, attentionStudents > 0 ? 'orange' : 'green')}
       </div>
+      <details class="mat-card mat-journey" aria-labelledby="mat-journey-title"><summary><strong id="mat-journey-title">Minha jornada</strong><span>Ver etapas e orientações</span></summary><div class="mat-journey-body">
+        <div class="mat-section-head"><div><h3>Etapas do acompanhamento</h3><p>Curso: ${U.escapeHtml(s.course?.name || MAT.state.course?.name || 'Curso não identificado')} · UC: ${U.escapeHtml(s.activityPanorama?.scope?.label || 'Verificar')}</p></div><span class="mat-badge mat-badge-neutral">${s.meta?.collectedAt ? `Lido em ${U.escapeHtml(U.formatDate(s.meta.collectedAt, true))}` : 'Leitura sem horário'}</span></div>
+        <ol class="mat-journey-steps">${journeySteps.map((step, index) => `<li><button type="button" data-action="journey-step" data-step="${step.id}" aria-label="Etapa ${index + 1}: ${U.escapeHtml(step.title)}. ${U.escapeHtml(step.detail)}"><span>${index + 1}</span><strong>${U.escapeHtml(step.title)}</strong></button></li>`).join('')}</ol>
+        <p class="mat-journey-explanation" id="mat-journey-explanation">${U.escapeHtml(journeySteps[0].detail)}</p>
+      </div></details>
       <details class="mat-card mat-situation-card" open>
         <summary><div><span class="mat-eyebrow">Situação da UC</span><strong>${U.escapeHtml(panorama.scope.label)}</strong></div><span class="mat-badge ${panorama.dataMode === 'detalhado' ? 'mat-risk-regular' : 'mat-risk-atencao'}">${panorama.dataMode === 'detalhado' ? 'Leitura detalhada' : 'Leitura estimada'}</span></summary>
         ${panorama.scope.warning ? `<div class="mat-warning"><strong>Escopo:</strong> ${U.escapeHtml(panorama.scope.warning)}</div>` : ''}
@@ -522,13 +522,13 @@
         </div>
         <div class="mat-grid mat-grid-2 mat-rate-grid">${rateBar(metrics.deliveryRate, 'Progresso das entregas')}${rateBar(metrics.correctionRate, 'Progresso das correções')}</div>
       </details>
-      <div class="mat-card mat-recent-card">
+      <details class="mat-card mat-recent-card"><summary><strong>Atividade recente</strong><span>Ver histórico desta UC</span></summary><div class="mat-recent-body">
         <div class="mat-section-head">
-          <div><h3>Atividade recente</h3><p>Registros locais vinculados à auditoria.</p></div>
+          <div><h3>Últimos registros</h3><p>Registros locais vinculados à auditoria.</p></div>
           <button class="mat-btn mat-btn-sm" data-action="tab" data-tab="historico" type="button">Ver auditoria</button>
         </div>
         <div class="mat-activity-timeline">${operationalTimelineHtml(s)}</div>
-      </div>
+      </div></details>
       ${tasks.length > 3 ? `<details class="mat-card mat-work-queue"><summary><span><strong>Fila completa de trabalho</strong><small>${tasks.length} ações, das quais três estão em destaque</small></span><span class="mat-quality-action">Expandir</span></summary><div class="mat-task-list">${tasks.slice(3).map(taskHtml).join('')}</div></details>` : ''}
     `;
   };

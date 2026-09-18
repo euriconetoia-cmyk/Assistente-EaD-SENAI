@@ -496,6 +496,7 @@
   function updateBatchControls() {
     const blocked = isBatchBlocked();
     const previewCurrent = STATE.previewAccepted && STATE.previewSignature === buildPreviewSignature();
+    updateBatchSteps();
     const reviewBtn = $id('mat-batch-review-changes');
     const confirmInput = $id('mat-batch-confirm');
     const launchBtn = $id('mat-batch-launch');
@@ -510,12 +511,34 @@
       delete launchBtn.dataset.action;
     }
     const log = $id('mat-batch-log');
+    const summary = $id('mat-batch-error-summary');
+    if (summary) {
+      const invalidFiles = STATE.files.map((file, index) => ({ file, index })).filter(({ file }) => file.error || file.parsed?.errors?.length);
+      const mapping = STATE.files.findIndex((file) => !file.error && !file.embeddedActivity && !file.selectedCmid);
+      const messages = invalidFiles.map(({ file, index }) => `<li><button type="button" data-batch-focus="mat-batch-file">${U.escapeHtml(file.name)}: ${U.escapeHtml(file.error || file.parsed.errors.join('; '))}. Substituir arquivo</button></li>`);
+      if (mapping >= 0) messages.push(`<li><button type="button" data-batch-focus="mat-batch-file-map-${mapping}">Selecionar atividade do arquivo ${U.escapeHtml(STATE.files[mapping].name)}</button></li>`);
+      if (STATE.unmatched.length) messages.push(`<li><button type="button" data-batch-focus="mat-batch-file">${STATE.unmatched.length} registro(s) sem atividade exata. Confira CMID ou substitua o CSV.</button></li>`);
+      if (blocked && STATE.files.length && messages.length) {
+        summary.hidden = false;
+        summary.innerHTML = `<strong>Corrija ${messages.length} bloqueio(s) antes de conferir</strong><ul>${messages.join('')}</ul>`;
+      } else { summary.hidden = true; summary.innerHTML = ''; }
+    }
     if (!log) return;
     if (blocked) {
       log.innerHTML = '<div class="mat-warning mat-error" role="alert"><strong>Revisão necessária:</strong> associe todos os arquivos às atividades e corrija os erros indicados.</div>';
       return;
     }
     log.innerHTML = `<div class="mat-info" role="status"><strong>Arquivos validados:</strong> ${STATE.files.length} arquivo(s), ${STATE.groups.length} atividade(s) e ${STATE.parsed.records.length} registro(s), sem bloqueios. ${previewCurrent ? 'Alterações conferidas.' : 'Clique em Conferir alterações antes de autorizar o salvamento.'}</div>`;
+  }
+
+  function updateBatchSteps() {
+    const current = STATE.results.length ? 5 : STATE.running ? 4 : !STATE.files.length ? 1 : isBatchBlocked() ? 2 : STATE.previewAccepted ? 4 : 3;
+    $id('mat-batch-steps')?.querySelectorAll('[data-step]')?.forEach((step) => {
+      const index = Number(step.dataset.step);
+      step.dataset.state = index < current ? 'complete' : index === current ? 'current' : 'upcoming';
+      if (index === current) step.setAttribute('aria-current', 'step');
+      else step.removeAttribute('aria-current');
+    });
   }
 
   function confirmedRecordMaxGrade(group, record) {
@@ -548,12 +571,12 @@
         ? '<span class="mat-badge mat-badge-warning">Não confirmada</span>'
         : `<strong>${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}</strong>${maxGradeUnsafe ? '<div><span class="mat-badge mat-badge-warning">Requer conferência</span></div>' : ''}${maxGradeSource ? `<div class="mat-footer-note">Fonte: ${U.escapeHtml(maxGradeSource)}</div>` : ''}`;
       if (isEditing) return `<tr class="mat-change-edit-row">
-        <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
-        <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
-        <td><label class="mat-sr-only" for="mat-edit-grade-${groupIndex}-${recordIndex}">Editar nota</label><input class="mat-input mat-change-grade-input" id="mat-edit-grade-${groupIndex}-${recordIndex}" data-edit-grade type="text" inputmode="decimal" value="${U.escapeHtml(record.nota || '')}" placeholder="Manter atual" /></td>
-        <td>${maxGrade}</td>
-        <td><label class="mat-sr-only" for="mat-edit-feedback-${groupIndex}-${recordIndex}">Editar feedback</label><textarea class="mat-input mat-change-feedback-input" id="mat-edit-feedback-${groupIndex}-${recordIndex}" data-edit-feedback rows="5" maxlength="${S.LIMITS.maxCellLength}" placeholder="Manter feedback atual">${U.escapeHtml(record.feedback || '')}</textarea></td>
-        <td><div class="mat-change-edit-actions"><button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-record="${recordKey}">Salvar edição</button><button class="mat-btn mat-btn-sm" type="button" data-cancel-record>Cancelar</button></div><div class="mat-footer-note" id="mat-edit-error-${groupIndex}-${recordIndex}" role="alert"></div></td>
+        <td data-label="Atividade"><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
+        <td data-label="Aluno">${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
+        <td data-label="Nota"><label class="mat-sr-only" for="mat-edit-grade-${groupIndex}-${recordIndex}">Editar nota</label><input class="mat-input mat-change-grade-input" id="mat-edit-grade-${groupIndex}-${recordIndex}" data-edit-grade type="text" inputmode="decimal" value="${U.escapeHtml(record.nota || '')}" placeholder="Manter atual" /></td>
+        <td data-label="Nota máxima">${maxGrade}</td>
+        <td data-label="Feedback"><label class="mat-sr-only" for="mat-edit-feedback-${groupIndex}-${recordIndex}">Editar feedback</label><textarea class="mat-input mat-change-feedback-input" id="mat-edit-feedback-${groupIndex}-${recordIndex}" data-edit-feedback rows="5" maxlength="${S.LIMITS.maxCellLength}" placeholder="Manter feedback atual">${U.escapeHtml(record.feedback || '')}</textarea></td>
+        <td data-label="Ação"><div class="mat-change-edit-actions"><button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-record="${recordKey}">Salvar edição</button><button class="mat-btn mat-btn-sm" type="button" data-cancel-record>Cancelar</button></div><div class="mat-footer-note" id="mat-edit-error-${groupIndex}-${recordIndex}" role="alert"></div></td>
       </tr>`;
       const studentLabel = U.escapeHtml(record.nome || record.studentId || 'aluno');
       const grade = `<div class="mat-inline-grade-editor">
@@ -574,9 +597,9 @@
         hasFeedback ? (overwriteFeedback ? 'Feedback: preencher ou sobrescrever' : 'Feedback: preencher se estiver vazio') : '',
       ].filter(Boolean).join('<br>') || 'Nenhuma alteração solicitada';
       return `<tr>
-        <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
-        <td>${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
-        <td>${grade}</td><td>${maxGrade}</td><td>${feedback}</td><td>${actions}<div class="mat-change-edit-actions"><button class="mat-btn mat-btn-sm" type="button" data-edit-record="${recordKey}" aria-label="Editar nota e feedback de ${U.escapeHtml(record.nome || record.studentId || 'aluno')}">Editar</button></div></td>
+        <td data-label="Atividade"><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
+        <td data-label="Aluno">${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>
+        <td data-label="Nota">${grade}</td><td data-label="Nota máxima">${maxGrade}</td><td data-label="Feedback">${feedback}</td><td data-label="Ação prevista">${actions}<div class="mat-change-edit-actions"><button class="mat-btn mat-btn-sm" type="button" data-edit-record="${recordKey}" aria-label="Editar nota e feedback de ${U.escapeHtml(record.nome || record.studentId || 'aluno')}">Editar</button></div></td>
       </tr>`;
     }).join('');
     const panel = $id('mat-batch-change-preview');
@@ -742,6 +765,7 @@
       renderPreview();
       const log = $id('mat-batch-log');
       if (log) log.innerHTML = `<div class="mat-warning"><strong>Erro no arquivo:</strong> ${U.escapeHtml(error.message)}</div>`;
+      updateBatchSteps();
     }
   }
 
@@ -755,6 +779,7 @@
     rebuildBatchState();
     renderPreview();
     updateBatchControls();
+    $id(`mat-batch-file-map-${select.dataset.batchFileIndex}`)?.focus({ preventScroll: true });
   }
 
   function renderProgressRow(activityName, phase, result) {
@@ -924,6 +949,7 @@
       STATE.running = false;
       MAT.state.operationMode = 'concluido';
       STATE.results = message.results || [];
+      updateBatchSteps();
       const launchBtn = $id('mat-batch-launch');
       const cancelBtn = $id('mat-batch-cancel');
       const reportBtn = $id('mat-batch-report');
@@ -1008,6 +1034,7 @@
 
     STATE.batchId = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     STATE.running = true;
+    updateBatchSteps();
     STATE.results = [];
     MAT.state.operationMode = 'salvamento';
     MAT.ui.updateHeader();
@@ -1039,6 +1066,7 @@
     }, (response) => {
       if (chrome.runtime.lastError || response?.accepted === false) {
         STATE.running = false;
+        updateBatchSteps();
         MAT.state.operationMode = 'preparacao';
         MAT.ui.updateHeader();
         if (launchBtn) { launchBtn.disabled = false; launchBtn.textContent = 'Confirmar salvamento'; }
@@ -1083,7 +1111,9 @@
           <button type="button" id="mat-batch-close" aria-label="Fechar">×</button>
         </header>
         <div class="mat-batch-body">
+          <ol class="mat-batch-steps" id="mat-batch-steps" aria-label="Etapas do lançamento"><li data-step="1">1. Arquivos</li><li data-step="2">2. Atividades</li><li data-step="3">3. Conferência</li><li data-step="4">4. Salvamento</li><li data-step="5">5. Verificação</li></ol>
           <p>${pendingCount} atividade(s) com correção pendente foram reconhecidas nesta UC. Você pode selecionar um CSV combinado ou vários CSVs individuais.</p>
+          <div id="mat-batch-error-summary" class="mat-warning mat-error mat-batch-error-summary" role="alert" hidden></div>
           <div class="mat-warning"><strong>Alteração acadêmica:</strong> a etapa final salvará notas e feedbacks no Moodle. O processo será bloqueado se houver atividade, estudante ou nota sem validação.</div>
 
           <label class="mat-check"><input id="mat-batch-overwrite-grade" type="checkbox" /> Sobrescrever notas existentes</label>
@@ -1135,6 +1165,10 @@
     document.addEventListener('keydown', STATE.keyHandler);
     $id('mat-batch-close').addEventListener('click', closeModal);
     $id('mat-batch-file').addEventListener('change', handleBatchFiles);
+    $id('mat-batch-error-summary').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-batch-focus]');
+      if (button) $id(button.dataset.batchFocus)?.focus();
+    });
     $id('mat-batch-preview').addEventListener('change', handleFileMappingChange);
     $id('mat-batch-review-changes').addEventListener('click', renderChangePreview);
     for (const id of ['mat-batch-overwrite-grade', 'mat-batch-overwrite-feedback']) {
@@ -1148,6 +1182,7 @@
       const previewCurrent = STATE.previewAccepted && STATE.previewSignature === buildPreviewSignature();
       $id('mat-batch-launch').disabled = blocked || !previewCurrent || !event.target.checked;
     });
+    updateBatchSteps();
     $id('mat-batch-close').focus();
   }
 

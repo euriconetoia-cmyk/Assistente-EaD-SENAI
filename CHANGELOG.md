@@ -2,6 +2,16 @@
 
 ## 3.7.15, homologação
 
+### Revisão visual e de usabilidade da mesma versão
+
+- Unifica o estilo dos ícones da Central, do painel e dos comandos de atualização; atualiza as imagens do ícone da extensão.
+- Exibe a próxima ação antes dos detalhes e recolhe jornada e atividade recente até o tutor solicitá-las.
+- Mostra cinco etapas no lote de notas, liga erros aos arquivos que exigem correção e dispõe as informações por aluno em cartões nas telas estreitas.
+- Apresenta tabela de cursos e fila em cartões nas telas menores, com botões de acompanhamento mais fáceis de acionar.
+- Diferencia dados locais, leitura parcial, coleta antiga e pendências confirmadas no dashboard; melhora foco e anúncios dos filtros.
+- Valida os links externos do dashboard para abrir somente os dois domínios Moodle autorizados e mantém leituras sem total de pendências na fila de conferência.
+- Mantém os créditos, os limites de segurança e as regras acadêmicas de lançamento e releitura.
+
 ### Organização do repositório e simplificação da navegação
 
 - Retira da visão inicial quatro atalhos repetidos, mantendo as ações no cabeçalho e no menu lateral.

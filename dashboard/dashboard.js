@@ -14,6 +14,28 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString('pt-BR'
 const formatDateTime = (value) => value ? new Date(value).toLocaleString('pt-BR') : 'Não identificada';
 const average = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 const sum = (courses, key) => courses.reduce((total, course) => total + (number(course[key]) || 0), 0);
+const supportedMoodleHosts = new Set(['ead.senai.br', 'ead.fieg.com.br']);
+function allowedMoodleUrl(value) {
+  try {
+    const url = new URL(text(value));
+    return url.protocol === 'https:' && supportedMoodleHosts.has(url.hostname.toLowerCase()) ? url.href : null;
+  } catch { return null; }
+}
+const courseLink = (url, label) => {
+  const safeUrl = allowedMoodleUrl(url);
+  return safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>` : `<span>${escapeHtml(label)}</span>`;
+};
+function localDataStatus(payload, now = Date.now()) {
+  if (!payload.generatedAt || !Number.isFinite(Date.parse(payload.generatedAt))) return 'Dados locais · sem coleta';
+  if (payload.inventoryPartial) return 'Dados locais · leitura parcial';
+  if (now - Date.parse(payload.generatedAt) > 24 * 60 * 60 * 1000) return 'Dados locais · atualizar leitura';
+  return 'Dados locais · leitura disponível';
+}
+function updateThemeLabel() {
+  const label = document.documentElement.dataset.theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro';
+  $('theme-toggle').setAttribute('aria-label', label);
+  $('theme-toggle').title = label;
+}
 
 function toast(message, type = '') {
   const region = $('toast-region');
@@ -40,7 +62,7 @@ function quality(label, value, detail) {
 }
 
 function viewHead(title, description, action = '') {
-  return `<header class="view-head"><div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div>${action}</header>`;
+  return `<header class="view-head"><div><h2 tabindex="-1">${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div>${action}</header>`;
 }
 
 function empty(message) {
@@ -62,6 +84,9 @@ function applyFilters() {
     return !query || `${course.groupName} ${course.name} ${course.courseId}`.toLowerCase().includes(query);
   });
   renderView();
+  const verified = state.filtered.filter((course) => readingStatus(course) === 'Concluída').length;
+  const incomplete = state.filtered.length - verified;
+  $('filter-summary').textContent = `${state.filtered.length} UC(s) exibida(s). ${verified} leitura(s) concluída(s)${incomplete ? ` e ${incomplete} exigindo conferência` : ''}. ${sum(state.filtered, 'totalPending')} pendência(s) confirmada(s).`;
 }
 
 function courseTable(courses = state.filtered) {
@@ -70,7 +95,7 @@ function courseTable(courses = state.filtered) {
     const pending = number(course.totalPending);
     const completion = number(course.completionPercentage);
     const rowClass = pending > 0 ? 'pending' : reading !== 'Concluída' ? 'review' : '';
-    return `<tr class="${rowClass}"><td><strong>${escapeHtml(course.groupName || 'Não identificada')}</strong></td><td><a href="${escapeHtml(course.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(course.name)}</a><br><small>ID ${escapeHtml(course.courseId)}</small></td><td>${escapeHtml(course.vigencyLabel || course.vigency)}</td><td>${escapeHtml(formatDate(course.startsAt))} a ${escapeHtml(formatDate(course.endsAt))}</td><td>${completion === null ? 'Não coletada' : `${completion}%`}</td><td>${number(course.studentCount) ?? 'Não coletado'}</td><td>${number(course.classAverage) ?? 'Não coletada'}</td><td class="${pending > 0 ? 'status-red' : pending === 0 ? 'status-green' : 'status-amber'}">${pending === null ? 'Não coletada' : pending}</td><td>${escapeHtml(reading)}</td></tr>`;
+    return `<tr class="${rowClass}"><td data-label="Turma"><strong>${escapeHtml(course.groupName || 'Não identificada')}</strong></td><td data-label="UC ou curso">${courseLink(course.url, course.name)}<br><small>ID ${escapeHtml(course.courseId)}</small></td><td data-label="Vigência">${escapeHtml(course.vigencyLabel || course.vigency)}</td><td data-label="Período">${escapeHtml(formatDate(course.startsAt))} a ${escapeHtml(formatDate(course.endsAt))}</td><td data-label="Conclusão">${completion === null ? 'Não coletada' : `${completion}%`}</td><td data-label="Alunos">${number(course.studentCount) ?? 'Não coletado'}</td><td data-label="Média">${number(course.classAverage) ?? 'Não coletada'}</td><td data-label="Pendências" class="${pending > 0 ? 'status-red' : reading === 'Concluída' && pending === 0 ? 'status-green' : 'status-amber'}">${pending === null ? 'Não coletada' : pending}</td><td data-label="Leitura">${escapeHtml(reading)}</td></tr>`;
   }).join('');
   return `<div class="table-wrap"><table><thead><tr><th>Turma</th><th>UC ou curso</th><th>Vigência</th><th>Período</th><th>Conclusão</th><th>Alunos</th><th>Média</th><th>Pendências</th><th>Leitura</th></tr></thead><tbody>${rows || '<tr><td colspan="9">Nenhum registro corresponde aos filtros.</td></tr>'}</tbody></table></div>`;
 }
@@ -89,9 +114,9 @@ function overview() {
   const top = [...courses].filter((course) => number(course.totalPending) > 0).sort((a, b) => number(b.totalPending) - number(a.totalPending)).slice(0, 8);
   const maxPending = Math.max(1, ...top.map((course) => number(course.totalPending) || 0));
   return viewHead('Prioridades de hoje', 'Acompanhe os principais indicadores e comece pelas UCs que exigem ação.')
-    + `<section class="metrics">${metric('Cursos e UCs', courses.length, `${current} atuais e ${future} futuras`)}${metric('Alunos identificados', students.length ? students.reduce((a, b) => a + b, 0) : 'Não coletado', `${students.length} turma(s) com fonte`)}${metric('Pendências', pending, `${affected} UC(s) com ação`, pending > 0)}${metric('Conclusão média', completion.length ? `${average(completion).toFixed(1)}%` : 'Não coletada', `${completion.length} UC(s) com fonte`)}${metric('Média das turmas', grades.length ? average(grades).toFixed(1) : 'Não coletada', `${grades.length} turma(s) com fonte`)}${metric('Conferir leitura', review, `${verified} leitura(s) concluída(s)`)}</section>`
+    + `<section class="metrics">${metric('Cursos e UCs', courses.length, `${current} atuais e ${future} futuras`)}${metric('Alunos identificados', students.length ? students.reduce((a, b) => a + b, 0) : 'Não coletado', `${students.length} turma(s) com fonte`)}${metric('Pendências confirmadas', review || state.payload.inventoryPartial ? `≥${pending}` : pending, `${affected} UC(s) com ação · ${verified}/${courses.length} leituras concluídas`, pending > 0)}${metric('Conclusão média', completion.length ? `${average(completion).toFixed(1)}%` : 'Não coletada', `${completion.length} UC(s) com fonte`)}${metric('Média das turmas', grades.length ? average(grades).toFixed(1) : 'Não coletada', `${grades.length} turma(s) com fonte`)}${metric('Conferir leitura', review, `${verified} leitura(s) concluída(s)`)}</section>`
     + `<section class="panel"><div class="panel-head"><div><h3>Maiores filas de correção</h3><p>Prioridade por volume confirmado de pendências.</p></div><button class="button" data-open-view="queue" type="button">Ver fila completa</button></div><div class="chart-list">${top.length ? top.map((course) => `<div class="chart-row"><span>${escapeHtml(course.name)}</span><div class="bar danger" role="img" aria-label="${number(course.totalPending)} pendências"><span style="width:${Math.max(4, number(course.totalPending) / maxPending * 100)}%"></span></div><strong>${number(course.totalPending)}</strong></div>`).join('') : empty('Nenhuma pendência confirmada nos filtros atuais.')}</div></section>`
-    + `<section class="panel"><div class="panel-head"><div><h3>Qualidade dos dados</h3><p>Somente fontes reconhecidas entram nos cálculos.</p></div></div><div class="quality-grid">${quality('Cobertura da leitura', courses.length ? `${Math.round(verified / courses.length * 100)}%` : '0%', `${verified} de ${courses.length} concluída(s)`)}${quality('UCs atuais', current, 'Vigência reconhecida')}${quality('Turmas futuras', future, 'Com início reconhecido')}${quality('Turmas com pendências', affected, `${pending} correção(ões) confirmada(s)`)}</div></section>`;
+    + `<section class="panel"><div class="panel-head"><div><h3>Qualidade dos dados</h3><p>Somente fontes reconhecidas entram nos cálculos.</p></div></div><div class="quality-grid">${quality('Cobertura da leitura', courses.length ? `${Math.round(verified / courses.length * 100)}%` : 'Não coletada', `${verified} de ${courses.length} concluída(s)`)}${quality('UCs atuais', current, 'Vigência reconhecida')}${quality('Turmas futuras', future, 'Com início reconhecido')}${quality('Turmas com pendências', affected, `${pending} correção(ões) confirmada(s)`)}</div></section>`;
 }
 
 function courses() { return viewHead('Turmas e UCs', `${state.filtered.length} registro(s) após os filtros globais.`) + `<section class="panel">${courseTable()}</section>`; }
@@ -104,8 +129,8 @@ function performance() {
   return viewHead('Notas e desempenho', 'Conclusão de atividades e média da turma são indicadores separados.') + '<p class="notice info">Ausência de fonte aparece como “Não coletada” e nunca como zero.</p>' + `<section class="panel"><div class="panel-head"><div><h3>Conclusão por UC</h3><p>${measured.length} UC(s) com pelo menos uma métrica reconhecida.</p></div></div><div class="chart-list">${measured.length ? measured.map((course) => { const value = number(course.completionPercentage); return `<div class="chart-row"><span>${escapeHtml(course.name)}</span><div class="bar" role="img" aria-label="${value === null ? 'Conclusão não disponível' : `${value}% de conclusão`}"><span style="width:${value ?? 0}%"></span></div><strong>${value === null ? 'N/D' : `${value}%`}</strong></div>`; }).join('') : empty('O Moodle ainda não forneceu métricas de conclusão ou média.')}</div></section>`;
 }
 function tutors() { return viewHead('Tutores e monitores', 'Cobertura operacional por responsável.') + '<p class="notice warning">Os cartões da página inicial não fornecem identificação padronizada do tutor em todos os ambientes. A Central não atribui cursos sem fonte verificável.</p>' + `<section class="metrics">${metric('Tutores identificados', 'Não coletado')}${metric('Cursos sem responsável', 'Não verificável')}${metric('Carga média por tutor', 'Não calculável')}</section>`; }
-function calendar() { const future = state.filtered.filter((course) => course.vigency === 'future' && course.startsAt).sort((a, b) => a.startsAt - b.startsAt); return viewHead('Calendário de futuras turmas', 'Cursos e UCs ordenados pela data de início reconhecida.') + `<div class="calendar-grid">${future.length ? future.map((course) => `<article class="calendar-card"><time datetime="${new Date(course.startsAt).toISOString()}">${escapeHtml(formatDate(course.startsAt))}${course.endsAt ? ` a ${escapeHtml(formatDate(course.endsAt))}` : ''}</time><h3>${escapeHtml(course.name)}</h3><p>${escapeHtml(course.groupName || 'Turma não identificada')}</p><a href="${escapeHtml(course.url)}" target="_blank" rel="noopener noreferrer">Abrir no Moodle</a></article>`).join('') : empty('Nenhuma turma futura com data reconhecida corresponde aos filtros.')}</div>`; }
-function queue() { const items = state.filtered.map((course) => ({ ...course, priority: (number(course.totalPending) || 0) * 10 + (readingStatus(course) === 'Parcial' ? 5 : readingStatus(course) === 'Conferir' ? 3 : 0) })).filter((course) => course.priority > 0).sort((a, b) => b.priority - a.priority); return viewHead('Fila de trabalho', 'Priorização por volume de pendências e integridade da leitura.') + `<section class="panel"><div class="table-wrap"><table><thead><tr><th>Prioridade</th><th>Turma</th><th>UC</th><th>Pendências</th><th>Leitura</th><th>Ação</th></tr></thead><tbody>${items.map((course, index) => `<tr class="${number(course.totalPending) > 0 ? 'pending' : 'review'}"><td><span class="badge ${index < 3 ? 'red' : ''}">${index + 1}</span></td><td>${escapeHtml(course.groupName || 'Não identificada')}</td><td>${escapeHtml(course.name)}</td><td>${number(course.totalPending) ?? 'Não coletada'}</td><td>${escapeHtml(readingStatus(course))}</td><td><a href="${escapeHtml(course.url)}" target="_blank" rel="noopener noreferrer">Abrir UC</a></td></tr>`).join('') || '<tr><td colspan="6">Nenhuma ação pendente nos filtros atuais.</td></tr>'}</tbody></table></div></section>`; }
+function calendar() { const future = state.filtered.filter((course) => course.vigency === 'future' && Number.isFinite(Date.parse(course.startsAt))).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)); return viewHead('Calendário de futuras turmas', 'Cursos e UCs ordenados pela data de início reconhecida.') + `<div class="calendar-grid">${future.length ? future.map((course) => `<article class="calendar-card"><time datetime="${new Date(course.startsAt).toISOString()}">${escapeHtml(formatDate(course.startsAt))}${course.endsAt ? ` a ${escapeHtml(formatDate(course.endsAt))}` : ''}</time><h3>${escapeHtml(course.name)}</h3><p>${escapeHtml(course.groupName || 'Turma não identificada')}</p>${courseLink(course.url, 'Abrir no Moodle')}</article>`).join('') : empty('Nenhuma turma futura com data reconhecida corresponde aos filtros.')}</div>`; }
+function queue() { const items = state.filtered.map((course) => ({ ...course, priority: (number(course.totalPending) || 0) * 10 + (readingStatus(course) === 'Concluída' ? 0 : readingStatus(course) === 'Parcial' ? 5 : 3) })).filter((course) => course.priority > 0).sort((a, b) => b.priority - a.priority); return viewHead('Fila de trabalho', 'Priorização por volume de pendências e integridade da leitura.') + `<section class="panel"><div class="table-wrap"><table><thead><tr><th>Prioridade</th><th>Turma</th><th>UC</th><th>Pendências</th><th>Leitura</th><th>Ação</th></tr></thead><tbody>${items.map((course, index) => `<tr class="${number(course.totalPending) > 0 ? 'pending' : 'review'}"><td data-label="Prioridade"><span class="badge ${index < 3 ? 'red' : ''}">${index + 1}</span></td><td data-label="Turma">${escapeHtml(course.groupName || 'Não identificada')}</td><td data-label="UC">${escapeHtml(course.name)}</td><td data-label="Pendências">${number(course.totalPending) ?? 'Não coletada'}</td><td data-label="Leitura">${escapeHtml(readingStatus(course))}</td><td data-label="Ação">${courseLink(course.url, 'Abrir UC')}</td></tr>`).join('') || '<tr><td colspan="6">Nenhuma ação pendente nos filtros atuais.</td></tr>'}</tbody></table></div></section>`; }
 function environments() { const groups = state.filtered.reduce((result, course) => { const key = course.environment || 'Não identificado'; (result[key] ||= []).push(course); return result; }, {}); return viewHead('Comparativo de ambientes', 'Cobertura e pendências por domínio Moodle.') + `<section class="metrics">${Object.entries(groups).map(([name, items]) => metric(name, items.length, `${sum(items, 'totalPending')} pendência(s)`, sum(items, 'totalPending') > 0)).join('') || metric('Ambientes', 0)}</section><section class="panel">${courseTable()}</section>`; }
 
 function auditFilters() {
@@ -171,7 +196,7 @@ function setView(name) {
     active ? item.setAttribute('aria-current', 'page') : item.removeAttribute('aria-current');
   });
   renderView();
-  $('workspace').focus({ preventScroll: true });
+  document.querySelector('#view-root .view-head h2')?.focus({ preventScroll: true });
 }
 
 function csvCell(value) { const raw = text(value); const safe = /^[\s]*[=+\-@]/.test(raw) ? `'${raw}` : raw; return `"${safe.replace(/"/g, '""')}"`; }
@@ -271,23 +296,28 @@ async function initialize() {
   state.filteredAudit = [...state.auditEvents];
   state.filtered = state.payload.courses;
   document.documentElement.dataset.theme = data[THEME_KEY] || 'light';
-  document.documentElement.dataset.nav = data[NAV_KEY] || 'compact';
+  document.documentElement.dataset.nav = data[NAV_KEY] || (window.matchMedia('(max-width: 840px)').matches ? 'compact' : 'expanded');
   $('nav-toggle').setAttribute('aria-expanded', String(document.documentElement.dataset.nav === 'expanded'));
   $('nav-toggle').setAttribute('aria-label', document.documentElement.dataset.nav === 'expanded' ? 'Recolher menu' : 'Expandir menu');
-  $('generated-at').textContent = state.payload.generatedAt ? `Dados atualizados em ${formatDateTime(state.payload.generatedAt)}` : 'Nenhum dado agregado foi recebido.';
+  $('generated-at').textContent = state.payload.generatedAt ? `Última coleta salva em ${formatDateTime(state.payload.generatedAt)}` : 'Nenhum dado agregado foi recebido.';
+  $('source-status').textContent = localDataStatus(state.payload);
   $('partial-warning').hidden = !state.payload.inventoryPartial;
-  $('nav-pending-count').textContent = String(sum(state.payload.courses, 'totalPending'));
+  const pendingConfirmed = sum(state.payload.courses, 'totalPending');
+  const readingIncomplete = state.payload.inventoryPartial || state.payload.courses.some((course) => readingStatus(course) !== 'Concluída');
+  $('nav-pending-count').textContent = `${readingIncomplete ? '≥' : ''}${pendingConfirmed}`;
+  document.querySelector('[data-view="queue"]').setAttribute('aria-label', `Fila de trabalho: ${pendingConfirmed} pendências confirmadas${readingIncomplete ? ', leitura incompleta' : ''}`);
   [...new Set(state.payload.courses.map((course) => course.environment).filter(Boolean))].sort().forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value; $('filter-environment').appendChild(option); });
   ['filter-environment', 'filter-vigency', 'filter-status'].forEach((id) => $(id).addEventListener('change', applyFilters));
   $('filter-search').addEventListener('input', applyFilters);
   document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
   $('nav-toggle').addEventListener('click', async () => { const nav = document.documentElement.dataset.nav === 'expanded' ? 'compact' : 'expanded'; document.documentElement.dataset.nav = nav; $('nav-toggle').setAttribute('aria-expanded', String(nav === 'expanded')); $('nav-toggle').setAttribute('aria-label', nav === 'expanded' ? 'Recolher menu' : 'Expandir menu'); await chrome.storage.local.set({ [NAV_KEY]: nav }); });
-  $('theme-toggle').addEventListener('click', async () => { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; await chrome.storage.local.set({ [THEME_KEY]: theme }); });
-  $('refresh-source').addEventListener('click', () => { const host = state.payload.courses.find((course) => course.environment)?.environment; if (host) window.open(`https://${host}/my/`, '_blank', 'noopener'); else toast('Nenhum ambiente Moodle foi identificado.', 'error'); });
+  updateThemeLabel();
+  $('theme-toggle').addEventListener('click', async () => { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; updateThemeLabel(); await chrome.storage.local.set({ [THEME_KEY]: theme }); });
+  $('refresh-source').addEventListener('click', () => { const host = state.payload.courses.find((course) => supportedMoodleHosts.has(text(course.environment).toLowerCase()))?.environment; if (host) window.open(`https://${host}/my/`, '_blank', 'noopener'); else toast('Nenhum ambiente Moodle autorizado foi identificado.', 'error'); });
   try { state.directoryHandle = await globalThis.MAT_DIRECTORY.loadHandle(); } catch (error) { state.directoryHandle = null; }
   await chrome.storage.local.set({ [AUDIT_KEY]: state.auditEvents });
   await saveSnapshot();
-  renderView();
+  applyFilters();
 }
 
 initialize().catch((error) => { $('view-root').innerHTML = `<p class="notice warning" role="alert">Não foi possível abrir a Central de Gestão: ${escapeHtml(error?.message || error)}</p>`; });

@@ -2480,7 +2480,7 @@
     summary.innerHTML = `
       <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
       <span class="mqi-course-pending-summary__text" role="status" aria-live="polite">Consultando atividades que precisam de avaliação…</span>
-        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens">↻</button></span>
+        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button></span>
     `;
 
     placePendingSummaryAtTop(main, summary);
@@ -3081,7 +3081,7 @@
       <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
       <span class="mqi-course-pending-summary__text">Consultando pendências dos cursos exibidos…</span>
       <span class="mqi-course-pending-summary__actions">
-        <button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens">↻</button>
+        <button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
       </span>
     `;
     placePendingSummaryAtTop(main, summary);
@@ -3310,7 +3310,7 @@
     panel.innerHTML = `
       <div class="mqi-my-courses-head">
         <div><h2 id="mqi-my-courses-title">Visão geral das turmas</h2><p id="mqi-my-courses-status" role="status" aria-live="polite">Identificando os cursos vinculados ao seu usuário…</p></div>
-        <div class="mqi-my-courses-actions"><button type="button" id="mqi-my-courses-calendar">Mostrar calendário</button><button type="button" id="mqi-my-courses-dashboard-open" disabled>Abrir dashboard</button><button type="button" id="mqi-my-courses-refresh">Atualizar análise</button><button type="button" id="mqi-my-courses-export" disabled>Gerar relatório geral CSV</button></div>
+        <div class="mqi-my-courses-actions"><button type="button" id="mqi-my-courses-refresh">Atualizar análise</button><button type="button" id="mqi-my-courses-dashboard-open" disabled>Abrir dashboard</button><button type="button" id="mqi-my-courses-calendar">Mostrar calendário</button><button type="button" id="mqi-my-courses-export" disabled>Exportar CSV</button></div>
       </div>
       <div class="mqi-my-courses-metrics" id="mqi-my-courses-metrics"></div>
       <section class="mqi-my-courses-calendar" id="mqi-my-courses-calendar-panel" hidden><h3>Calendário de futuras turmas e UCs</h3><div id="mqi-my-courses-calendar-body"></div></section>
@@ -3353,7 +3353,7 @@
       const pending = result ? result.totalPending : null;
       const reading = !result ? 'Aguardando' : result.errors > 0 ? 'Parcial' : result.unverified > 0 ? 'Conferir' : 'Concluída';
       const rowClass = pending > 0 ? 'has-pending' : reading !== 'Concluída' ? 'needs-review' : '';
-      return `<tr class="${rowClass}"><td>${escapeHtml(course.groupName || 'Turma não identificada')}</td><td><a href="${escapeHtml(course.link.href)}">${escapeHtml(course.name)}</a><div>Curso ${escapeHtml(course.courseId)}</div></td><td>${escapeHtml(myCourseVigencyLabel(course.vigency))}</td><td>${escapeHtml(formatInventoryDate(course.availability?.startsAt))} a ${escapeHtml(formatInventoryDate(course.availability?.endsAt))}</td><td><strong>${pending === null ? 'Consultando' : pending}</strong></td><td>${escapeHtml(reading)}</td></tr>`;
+      return `<tr class="${rowClass}"><td data-label="Turma">${escapeHtml(course.groupName || 'Turma não identificada')}</td><td data-label="UC ou curso"><a href="${escapeHtml(course.link.href)}">${escapeHtml(course.name)}</a><div>Curso ${escapeHtml(course.courseId)}</div></td><td data-label="Vigência">${escapeHtml(myCourseVigencyLabel(course.vigency))}</td><td data-label="Período">${escapeHtml(formatInventoryDate(course.availability?.startsAt))} a ${escapeHtml(formatInventoryDate(course.availability?.endsAt))}</td><td data-label="Pendências"><strong>${pending === null ? 'Consultando' : pending}</strong></td><td data-label="Leitura">${escapeHtml(reading)}</td></tr>`;
     }).join('') || '<tr><td colspan="6">Nenhum curso foi identificado nesta página.</td></tr>';
     renderFutureCoursesCalendar();
   }

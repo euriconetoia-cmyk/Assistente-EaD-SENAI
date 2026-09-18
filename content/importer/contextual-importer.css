@@ -727,8 +727,8 @@ li.mqi-assignment-has-pending > .activity-item {
 }
 
 .mqi-course-pending-summary__refresh {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -739,6 +739,8 @@ li.mqi-assignment-has-pending > .activity-item {
   font-size: 18px;
   cursor: pointer;
 }
+
+.mqi-course-pending-summary__refresh svg { width:19px; height:19px; }
 
 .mqi-course-pending-summary__refresh:hover,
 .mqi-course-pending-summary__refresh:focus {
@@ -992,7 +994,7 @@ li.mqi-assignment-has-pending > .activity-item {
   color: #0b579b;
   font-weight: 700;
 }
-.mqi-my-courses-actions button:last-child { background: #0f6cbf; color: #fff; }
+.mqi-my-courses-actions #mqi-my-courses-refresh { background: #0f6cbf; color: #fff; }
 .mqi-my-courses-actions button:disabled { opacity: .55; cursor: not-allowed; }
 .mqi-my-courses-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
 .mqi-my-courses-metrics span { padding: 7px 9px; border-radius: 7px; background: #eef5fc; color: #084f8c; font-size: 13px; }
@@ -1050,7 +1052,7 @@ li.mqi-assignment-has-pending > .activity-item {
 }
 
 .mqi-course-pending-summary__import {
-  min-height: 30px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1060,7 +1062,7 @@ li.mqi-assignment-has-pending > .activity-item {
   border-radius: 6px;
   background: #fff;
   color: #0f6cbf;
-  font: 600 12px/1.2 Arial, sans-serif;
+  font: 650 14px/1.2 Arial, sans-serif;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1166,5 +1168,16 @@ li.mqi-assignment-has-pending > .activity-item {
   .mqi-my-courses-table tr.has-pending td { background: #441e20; }
   .mqi-my-courses-table tr.needs-review td { background: #412f10; }
   .mqi-my-courses-actions button { background: #121e2c; color: #78bdf1; border-color: #47a8ec; }
-  .mqi-my-courses-actions button:last-child { background: #2488d4; color: #fff; }
+  .mqi-my-courses-actions #mqi-my-courses-refresh { background: #2488d4; color: #fff; }
+}
+
+@media (max-width: 760px) {
+  .mqi-my-courses-table { min-width:0; width:100%; }
+  .mqi-my-courses-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+  .mqi-my-courses-table tbody { display:grid; gap:12px; padding:8px; }
+  .mqi-my-courses-table tr { display:grid; border:1px solid #d8e1ec; border-radius:11px; overflow:hidden; }
+  .mqi-my-courses-table td, .mqi-my-courses-table td:first-child { position:static; display:grid; grid-template-columns:minmax(90px,32%) minmax(0,1fr); gap:8px; align-items:start; padding:9px 10px; min-width:0; font-size:14px; overflow-wrap:anywhere; }
+  .mqi-my-courses-table td::before { content:attr(data-label); color:#5b6880; font-size:12px; font-weight:750; }
+  .mqi-my-courses-table td[colspan] { display:block; }
+  .mqi-my-courses-table td[colspan]::before { content:none; }
 }

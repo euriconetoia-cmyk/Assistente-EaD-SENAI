@@ -14,7 +14,7 @@ test('menu lateral compacto possui expansão, estado ativo e créditos', () => {
   const html = read('dashboard/index.html');
   const css = read('dashboard/dashboard.css');
   const js = read('dashboard/dashboard.js');
-  assert.match(html, /data-nav="compact"/);
+  assert.match(html, /data-nav="expanded"/);
   assert.match(html, /id="nav-toggle"/);
   assert.match(html, /By Eurico Cirilo/);
   assert.match(html, /aria-current="page"/);
