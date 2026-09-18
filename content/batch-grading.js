@@ -710,7 +710,7 @@
       const confirmedMaxGrade = confirmedRecordMaxGrade(group, record);
       const maxGradeStatus = String(record.notaMaximaStatus || '').trim();
       const maxGradeUnsafe = /conflito|insuficiente|nao localizada|não localizada/i.test(maxGradeStatus);
-      const maxGradeSource = String(record.notaMaximaFonte || (recordMaxGrade.valid ? 'CSV' : assignmentMaxGrade.valid ? 'Moodle' : '')).trim();
+      const maxGradeSource = String(record.notaMaximaFonte || (recordMaxGrade.valid ? 'CSV' : assignmentMaxGrade.valid ? (group.assignment.maxGradeSource || 'Moodle') : '')).trim();
       const maxGrade = confirmedMaxGrade === null
         ? '<span class="mat-badge mat-badge-warning">Não confirmada</span>'
         : `<strong>${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}</strong>${maxGradeUnsafe ? '<div><span class="mat-badge mat-badge-warning">Requer conferência</span></div>' : ''}${maxGradeSource ? `<div class="mat-footer-note">Fonte: ${U.escapeHtml(maxGradeSource)}</div>` : ''}`;
