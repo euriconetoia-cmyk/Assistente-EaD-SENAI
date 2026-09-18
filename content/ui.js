@@ -154,11 +154,7 @@
           <div class="mat-brand">
             <div class="mat-brand-name">Assistente EaD SENAI</div>
             <h2 class="mat-course-name" id="mat-panel-title">Detectando curso atual</h2>
-            <div class="mat-meta-line">
-              <span class="mat-env-badge" id="mat-env-badge">Moodle</span>
-              <span class="mat-operation-badge" id="mat-operation-badge">Pronto</span>
-              <span id="mat-last-update">Sem análise salva</span>
-            </div>
+            <div class="mat-course-status" id="mat-last-update">Sem análise salva</div>
           </div>
           <button class="mat-close" id="mat-close" type="button" title="Fechar" aria-label="Fechar assistente">×</button>
         </div>
@@ -167,6 +163,11 @@
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-open-course" type="button" aria-label="Abrir curso" title="Abrir curso">${navIcon('curso')}<span class="mat-action-label">Abrir curso</span></button>
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('menu')}<span class="mat-sr-only">Opções de análise</span></button>
           <div class="mat-header-menu" id="mat-header-menu" hidden>
+            <div class="mat-header-context" aria-label="Contexto do curso">
+              <div><span>Ambiente</span><strong id="mat-env-badge">Moodle</strong></div>
+              <div><span>Status</span><strong id="mat-operation-badge">Pronto</strong></div>
+              <div><span>Atualização</span><strong id="mat-menu-update-status">Sem análise salva</strong></div>
+            </div>
             <label for="mat-analysis-mode">Modo de análise</label>
             <select class="mat-mode-select" id="mat-analysis-mode" aria-label="Modo de análise"><option value="complete">Completa</option><option value="quick">Rápida</option></select>
             <button class="mat-menu-action" data-tab="diagnostico" type="button">Configurações e diagnóstico</button>
@@ -241,6 +242,8 @@
       const toggle = document.getElementById('mat-nav-toggle');
       toggle?.setAttribute('aria-expanded', String(expanded));
       toggle?.setAttribute('aria-label', expanded ? 'Recolher menu' : 'Expandir menu');
+      const label = toggle?.querySelector('.mat-nav-label');
+      if (label) label.textContent = expanded ? 'Recolher' : 'Expandir';
       MAT.state.settings.navigationExpanded = expanded;
       await MAT.storage.saveSettings(MAT.state.settings);
     }));
@@ -353,14 +356,31 @@
     const refresh = document.getElementById('mat-refresh');
     const operation = document.getElementById('mat-operation-badge');
     const panel = document.getElementById('mat-panel');
-    if (courseName) courseName.textContent = course?.id ? course.name : 'Página inicial do Moodle';
+    if (courseName) {
+      courseName.textContent = course?.id ? course.name : 'Página inicial do Moodle';
+      courseName.title = course?.id ? course.name : 'Página inicial do Moodle';
+    }
     if (env) env.textContent = course?.environment || MAT.state.adapter?.environment || 'Moodle';
-    if (update) update.textContent = snapshot?.meta?.collectedAt ? `Atualizado em ${U.formatDate(snapshot.meta.collectedAt, true)}` : 'Sem análise detalhada salva';
+    const collectedAt = snapshot?.meta?.collectedAt ? Date.parse(snapshot.meta.collectedAt) : NaN;
+    const ageMinutes = Number.isFinite(collectedAt) ? Math.max(0, Math.floor((Date.now() - collectedAt) / 60000)) : null;
+    const updateLabel = ageMinutes === null
+      ? 'Sem análise salva'
+      : ageMinutes < 1
+        ? 'Atualizado agora'
+        : ageMinutes === 1
+          ? 'Atualizado há 1 min'
+          : `Atualizado há ${ageMinutes} min`;
+    if (update) {
+      update.textContent = updateLabel;
+      update.title = snapshot?.meta?.collectedAt ? `Última análise: ${U.formatDate(snapshot.meta.collectedAt, true)}` : 'Nenhuma análise completa salva';
+    }
+    const menuUpdate = document.getElementById('mat-menu-update-status');
+    if (menuUpdate) menuUpdate.textContent = snapshot?.meta?.collectedAt ? U.formatDate(snapshot.meta.collectedAt, true) : 'Sem análise salva';
     if (mode && settings) mode.value = settings.analysisMode;
     if (openCourse) openCourse.textContent = course?.id ? 'Abrir curso' : 'Meus cursos';
     if (refresh && !MAT.state.isCollecting) {
       refresh.disabled = !course?.id;
-      refresh.textContent = course?.id ? 'Atualizar análise' : 'Abra um curso';
+      refresh.textContent = course?.id ? 'Atualizar' : 'Abra um curso';
     }
     if (operation) {
       const labels = { consulta: 'Pronto', preparacao: 'Preparando', salvamento: 'Salvando', concluido: 'Concluído' };
@@ -397,7 +417,7 @@
     const button = document.getElementById('mat-refresh');
     if (button) {
       button.disabled = busy || !MAT.state.course?.id;
-      button.textContent = busy ? 'Analisando curso' : MAT.state.course?.id ? 'Atualizar análise' : 'Abra um curso';
+      button.textContent = busy ? 'Atualizando' : MAT.state.course?.id ? 'Atualizar' : 'Abra um curso';
     }
   };
 
@@ -1359,7 +1379,8 @@
       await MAT.storage.saveSnapshot(MAT.state.snapshot, MAT.state.course.id);
     }
     renderAll();
-    toast('UC ativa salva.');
+    toast('UC ativa salva. Atualizando o curso...');
+    window.setTimeout(() => MAT.main?.refreshAfterChange?.('alteração da UC'), 700);
   };
 
   const saveChecklist = async () => {
