@@ -19,7 +19,7 @@ c18e3ab7dc7943eccab7465dd4b79262462936cb0e47fdc176e0e341fe5e0ead  ./content/expo
 7773f70779c6ea12df3fb0ef760595b7e9251fdbb0a913a462ef4957f008b086  ./content/journey.js
 da41a59af6cd458375e61425fa9d6b396eb716f30e29309010c1e49c3948c1d3  ./content/language.js
 bcf9e05e889ce8c4a419ad5dd7fcf623cff58630ed2f44029c65d6cfa1120e6c  ./content/main.js
-ae1b4c914eb8413ec91b7841038b2ffdae80d14198d47039f9176ba76979a743  ./content/namespace.js
+8e0660e9a1be4824165c1390a1bf350f21d9c2866c09a4279d3270b89ca10778  ./content/namespace.js
 0de54bf491e79d86f6be62e018f8eb8cd66a878430095c631178435e759229dd  ./content/page-layout.css
 9c82d15d41cd2213dcc336d399525a32bba196b29758bea9e43dc7f216257be2  ./content/rules.js
 9bda3563e989849361298c60242d4414fa08b18920a9e527ec6497f363a89ef6  ./content/shared-validation.js
@@ -60,12 +60,12 @@ e8bffad8914f212f931ce502e552f040db92a14b47ef9d2fbfd523ac94fae6aa  ./docs/reports
 5e4ac52f6522775115d36659efcc8481a5bd88199b71c5d8779a590ede9da06f  ./docs/reports/REVISAO_SIMPLIFICACAO_REPOSITORIO_V3.7.15.md
 6e3df17f292fcb00e5c8fb2b52ae5dc671db8128bd6cc887e8a045b4008d8866  ./docs/reports/VALIDACAO_POS_MERGE_2026-09-18.md
 2e7866ba17cfeaba190185cb9c94c18fef10b4c2a726d69150d31c286ffe4764  ./docs/specs/SPECIFICACAO_V3.7.0_RENOVACAO_VISUAL_AUDITORIA_LOCAL.md
-27f546d4854336f59e666dea706d1c64d9c44f6fd1ef7527956cefc3af46d118  ./manifest.json
-d22188ba297325d17d44f2f0a085cb2e658e8aa296b7fa0de3bb1257211d7e77  ./package.json
+f831a63565d327632cfae11f7986a7af28a21e42086dd9acd15d03f624be4981  ./manifest.json
+24db8bbc30cc329e55e66d52b3749ad8f4c62830d894bbf3a465f34950311c66  ./package.json
 802eb1b70d19b245e849e9d5b8698837062149637831521660290aaf7130c4bd  ./PRIVACIDADE.md
-275b2a048728d0642e62465093bd68503490f2443fbbd1c1fcbc3c5a11cd05a0  ./README.md
+49f356e85d142742bf64c4847a08844a2151405eee0ee62deefa997bb7ecd89c  ./README.md
 c7d38654dec9b7007d096a6704d0044073d0145d236cff50cd0e7386b1c4fa11  ./scripts/checksums.js
-bfb300cee53126ce9f9b272c6f606d88a11b3c63afa18a08a33ebb2f38ad1e23  ./scripts/validate-extension.js
+f66c9c4b69a51455f9a66bff1591899b59ff4c9b45ccb3f17a6db99107146bea  ./scripts/validate-extension.js
 f4c5b9d16d64bdcb3a709de13d63b9dee97fbec10c51edf563c1b3d38d022f7b  ./tests/ai-correction-package.test.js
 6b301ff7326bff9443ff2252f93c14dea02c754c7cf131bb69431881ee1477cb  ./tests/audit-v370.test.js
 f30be514228baae1539cd87b2e5649a42754698c78e75918c80bfc8e467bc239  ./tests/communications.test.js
@@ -73,7 +73,7 @@ f30be514228baae1539cd87b2e5649a42754698c78e75918c80bfc8e467bc239  ./tests/commun
 48147a847bff8befb7b6f4b4e01d531aae14042e50bba53002e9bf98620a147d  ./tests/evidence-export.test.js
 916ec09f86800ea70febaa0e82c1e506065204520a6c49c21688c7eea96136cc  ./tests/importer-ui.test.js
 f4593bbe355bc75d6aab035d41394bafe006ef8f7b282503d332bf0212f50bab  ./tests/journey.test.js
-b20f879f4d27b9c5d75927c710860265cbd9d34cd841c17fce61e342ce757971  ./tests/package-structure.test.js
+17ed1cd76f55507ff655f135c36a879a1dc2dd7dbc26b3e3b26e5aeda4d90add  ./tests/package-structure.test.js
 50c4fe718609b24910e7ee697ce081a33feda51e077f82de6975bfcc4cc75a8a  ./tests/pending-confirmation.test.js
 9c7eb614f79c7e1a6defe8a05b467f4bf4c8ea4268003ee55fbfea808e701647  ./tests/service-worker.test.js
 543ad5254cf5ef9b1fce52bc330555471f147e9d417381e450d4ba76109c6ec4  ./tests/shared-validation.test.js
