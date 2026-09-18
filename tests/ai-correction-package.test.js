@@ -15,7 +15,9 @@ test('lote para IA inclui contexto verificável de cada atividade', () => {
   assert.match(batchSource, /criterios_de_avaliacao\.txt/);
   assert.match(batchSource, /dados_da_atividade\.txt/);
   assert.match(batchSource, /criterios_de_pontuacao\.txt/);
-  assert.match(batchSource, /envios_dos_alunos\.zip/);
+  assert.match(batchSource, /envios_pendentes\/manifesto_pendencias\.csv/);
+  assert.match(batchSource, /collectPendingSubmissionEntries/);
+  assert.doesNotMatch(batchSource, /envios_dos_alunos\.zip/);
   assert.match(batchSource, /manifesto_atividade\.csv/);
   assert.match(batchSource, /Nota máxima não localizada/);
   assert.match(batchSource, /buildAssignmentGradingUrl/);
@@ -147,7 +149,7 @@ test('pacote mestre inclui o PDF SAP ao lado dos envios quando a tarefa não tem
   const saved = [];
   const MAT = { state: { snapshot: {
     course: { id: 11225, name: 'Cabeamento Estruturado', sections: [] },
-    activityPanorama: { assignments: [{ cmid: 335663, name: 'Envio da SAP 01', url: 'https://ead.senai.br/mod/assign/view.php?id=335663', sectionId: 'section-1', sectionName: 'Cabeamento Estruturado', metrics: { pending: 1 } }] }
+    activityPanorama: { assignments: [{ cmid: 335663, name: 'Envio da SAP 01', url: 'https://ead.senai.br/mod/assign/view.php?id=335663', sectionId: 'section-1', sectionName: 'Cabeamento Estruturado', metrics: { pending: 1 }, gradingRows: [{ studentName: 'Aluno Pendente', studentKey: 'id:10', submitted: true, graded: false, requiresGrading: true, missing: false, statusText: 'Enviado para avaliação', files: [{ name: 'resposta.pdf', url: 'https://ead.senai.br/pluginfile.php/999/assignsubmission_file/submission_files/1/resposta.pdf' }] }] }] }
   } }, ui: { toast: () => {} }, assistedGrading: { AGENT_MARKDOWN: 'Revisar antes de corrigir.' }, dom: {},
   utils: null };
   MAT.state.adapter = { extractSections: () => [{ id: 'section-1', name: 'Cabeamento Estruturado', activities: [{ cmid: 336353, name: 'SAP 01', moduleType: 'resource', url: 'https://ead.senai.br/mod/resource/view.php?id=336353' }] }] };
@@ -158,8 +160,8 @@ test('pacote mestre inclui o PDF SAP ao lado dos envios quando a tarefa não tem
     fetch: async (url) => {
       const value = String(url);
       if (value.includes('/mod/resource/')) return { ok: true, url: 'https://ead.senai.br/pluginfile.php/510/mod_resource/content/1/SAP%2001.pdf', headers: { get: (name) => name === 'content-type' ? 'application/pdf' : null }, arrayBuffer: async () => Uint8Array.from([37, 80, 68, 70]).buffer };
-      if (value.includes('action=downloadall')) return { ok: true, url: value, arrayBuffer: async () => Uint8Array.from([80, 75, 3, 4]).buffer };
-      return { ok: true, url: value, text: async () => '<html>Nota máxima: 100</html>' };
+      if (value.includes('assignsubmission_file')) return { ok: true, url: value, headers: { get: (name) => name === 'content-type' ? 'application/pdf' : null }, arrayBuffer: async () => Uint8Array.from([37, 80, 68, 70]).buffer };
+      return { ok: true, url: value, headers: { get: () => 'text/html' }, text: async () => '<html>Nota máxima: 100</html>' };
     }
   });
   context.globalThis = context;
@@ -172,6 +174,7 @@ test('pacote mestre inclui o PDF SAP ao lado dos envios quando a tarefa não tem
   assert.equal(saved.length, 1);
   const zip = new TextDecoder().decode(new Uint8Array(await saved[0].blob.arrayBuffer()));
   assert.match(zip, /arquivos_sap_da_uc\/1_336353_SAP 01\.pdf/);
-  assert.match(zip, /envios_dos_alunos\.zip/);
+  assert.match(zip, /envios_pendentes\/Aluno Pendente\/1_resposta\.pdf/);
+  assert.match(zip, /envios_pendentes\/manifesto_pendencias\.csv/);
   assert.match(zip, /arquivo associado, conferir/);
 });
