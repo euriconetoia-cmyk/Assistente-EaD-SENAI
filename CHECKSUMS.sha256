@@ -66,7 +66,7 @@ d22188ba297325d17d44f2f0a085cb2e658e8aa296b7fa0de3bb1257211d7e77  ./package.json
 275b2a048728d0642e62465093bd68503490f2443fbbd1c1fcbc3c5a11cd05a0  ./README.md
 c7d38654dec9b7007d096a6704d0044073d0145d236cff50cd0e7386b1c4fa11  ./scripts/checksums.js
 bfb300cee53126ce9f9b272c6f606d88a11b3c63afa18a08a33ebb2f38ad1e23  ./scripts/validate-extension.js
-9cce36a8e9cdb3f83800e61cb7a1eb3f1ba4caba0dea720868b141b9e78fcd0c  ./tests/ai-correction-package.test.js
+1e12947ce4fcb8f45678275de4636397993f3171b3dd17cbb5ec5a3c1fc6448a  ./tests/ai-correction-package.test.js
 6b301ff7326bff9443ff2252f93c14dea02c754c7cf131bb69431881ee1477cb  ./tests/audit-v370.test.js
 f30be514228baae1539cd87b2e5649a42754698c78e75918c80bfc8e467bc239  ./tests/communications.test.js
 567954e0057dcd4702a7db60cc553e3664ef4835f111ad833b7184f74369f9e9  ./tests/dashboard.test.js
