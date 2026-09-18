@@ -38,7 +38,7 @@
     url.searchParams.set('action', 'grading');
     url.searchParams.set('quickgrading', '1');
     url.searchParams.set('status', 'all');
-    url.searchParams.set('perpage', '20');
+    url.searchParams.set('perpage', '500');
     return url.href;
   };
 
@@ -165,8 +165,33 @@
     .trim()
     .slice(0, 120) || fallback;
 
+  const isPendingGradingRow = (row) => Boolean(row && !row.missing && (row.requiresGrading || (row.submitted && !row.graded)));
+
   const pendingRowsForAssignment = (assignment) => (assignment?.gradingRows || [])
-    .filter((row) => !row.missing && (row.requiresGrading || (row.submitted && !row.graded)));
+    .filter(isPendingGradingRow);
+
+  const resolvePendingRows = (assignment, gradingDoc = null) => {
+    const snapshotRows = pendingRowsForAssignment(assignment);
+    if (!gradingDoc || typeof MAT.state.adapter?.extractAssignmentGradingRows !== 'function') {
+      return { rows: snapshotRows, source: snapshotRows.length ? 'análise salva' : 'não identificada', parsedRows: 0 };
+    }
+
+    try {
+      const parsed = MAT.state.adapter.extractAssignmentGradingRows(gradingDoc, assignment);
+      const liveRows = Array.isArray(parsed?.rows) ? parsed.rows : [];
+      if (liveRows.length) {
+        return {
+          rows: liveRows.filter(isPendingGradingRow),
+          source: 'tela de avaliação consultada agora',
+          parsedRows: liveRows.length,
+        };
+      }
+    } catch (error) {
+      console.warn('[Assistente EaD] Não foi possível reler as pendências da atividade', assignment?.cmid, error);
+    }
+
+    return { rows: snapshotRows, source: snapshotRows.length ? 'análise salva' : 'não identificada', parsedRows: 0 };
+  };
 
   async function fetchSubmissionFile(file, label, remainingBytes) {
     const controller = new AbortController();
@@ -191,10 +216,14 @@
     }
   }
 
-  async function collectPendingSubmissionEntries(assignment) {
-    const rows = pendingRowsForAssignment(assignment);
+  async function collectPendingSubmissionEntries(assignment, gradingDoc = null) {
+    const resolution = resolvePendingRows(assignment, gradingDoc);
+    const rows = resolution.rows;
     if (!rows.length) {
-      throw new Error('a atividade está marcada como pendente, mas a análise não identificou individualmente quais alunos ainda precisam de correção. Atualize a análise antes de gerar o pacote.');
+      if (resolution.parsedRows > 0) {
+        throw new Error('a tela de avaliação foi consultada agora, mas nenhum aluno ainda pendente foi encontrado. Atualize a análise do curso para sincronizar o indicador.');
+      }
+      throw new Error('a atividade está marcada como pendente, mas não foi possível identificar individualmente quais alunos precisam de correção nem na análise salva nem na tela de avaliação consultada agora.');
     }
 
     const entries = [];
@@ -253,7 +282,7 @@
     }
     if (errors.length) entries.push({ name: 'envios_pendentes/AVISO_ARQUIVOS_NAO_BAIXADOS.txt', content: errors.join('\n') });
 
-    return { entries, rows, errors, withoutFiles, totalBytes };
+    return { entries, rows, errors, withoutFiles, totalBytes, source: resolution.source };
   }
 
   async function downloadAllForCorrection() {
@@ -290,11 +319,11 @@
       const assignment = pending[index];
       try {
         MAT.ui.toast(`Preparando ${index + 1} de ${pending.length}: ${assignment.name}`);
-        const [doc, gradingDoc, pendingSubmissions] = await Promise.all([
+        const [doc, gradingDoc] = await Promise.all([
           fetchMoodleResource(buildAssignmentViewUrl(assignment), `Enunciado de ${assignment.name}`),
-          fetchMoodleResource(buildAssignmentGradingUrl(assignment), `Escala de nota de ${assignment.name}`),
-          collectPendingSubmissionEntries(assignment),
+          fetchMoodleResource(buildAssignmentGradingUrl(assignment), `Avaliação e escala de nota de ${assignment.name}`),
         ]);
+        const pendingSubmissions = await collectPendingSubmissionEntries(assignment, gradingDoc);
         const context = extractAssignmentContext(doc, assignment, gradingDoc);
         const attachments = await U.fetchAssignmentAttachments(doc, buildAssignmentViewUrl(assignment));
         const resources = MAT.statementResources.matchingResources(courseSections, assignment);
@@ -322,6 +351,7 @@
           `Anexos do enunciado: ${attachments.files.length} baixado(s); ${attachments.errors.length} falha(s)`,
           `Recursos SAP da mesma UC: ${resourceFiles.length} baixado(s); ${resourceErrors.length} falha(s)`,
           `Entregas pendentes identificadas: ${pendingSubmissions.rows.length} aluno(s)`,
+          `Fonte das pendências: ${pendingSubmissions.source}`,
           `Arquivos pendentes baixados: ${pendingSubmissions.entries.filter((entry) => entry.bytes).length}`,
           `Pendências sem arquivo individual: ${pendingSubmissions.withoutFiles.length}`,
           `Falhas ao baixar arquivo pendente: ${pendingSubmissions.errors.length}`,
