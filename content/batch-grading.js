@@ -149,7 +149,7 @@
       `Parte ${partIndex + 1} de ${partCount}.`,
       `Atividades nesta parte: ${part.bundles.length}.`,
       '',
-      'Cada pasta corresponde a uma única atividade e contém os envios, o contexto encontrado e as instruções próprias. Se houver aviso sobre enunciado ou anexos, confira a página do Moodle antes de corrigir.',
+      'Cada pasta corresponde a uma única atividade e contém somente as entregas ainda pendentes de correção, além do contexto encontrado e das instruções próprias. Alunos já avaliados não são incluídos. Se houver aviso sobre enunciado, anexos ou entrega sem arquivo individual, confira a página do Moodle antes de corrigir.',
       'Não misture resultados entre pastas. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno.',
     ].join('\n');
     return [
@@ -157,6 +157,103 @@
       { name: 'manifesto_geral.csv', content: manifest },
       ...part.bundles.flatMap((bundle) => bundle.entries.map((entry) => ({ ...entry, name: `${bundle.folder}/${entry.name}` }))),
     ];
+  }
+
+  const sanitizePackageName = (value = '', fallback = 'arquivo') => String(value || fallback)
+    .replace(/[\\/\x00-\x1f:*?"<>|]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120) || fallback;
+
+  const pendingRowsForAssignment = (assignment) => (assignment?.gradingRows || [])
+    .filter((row) => !row.missing && (row.requiresGrading || (row.submitted && !row.graded)));
+
+  async function fetchSubmissionFile(file, label, remainingBytes) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    try {
+      if (!U.isAllowedMoodleUrl(file.url)) throw new Error('endereço fora dos ambientes autorizados');
+      const response = await fetch(file.url, { credentials: 'include', cache: 'no-store', redirect: 'follow', signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!U.isAllowedMoodleUrl(response.url) || /\/login\//i.test(new URL(response.url).pathname)) throw new Error('sessão expirada ou redirecionamento não autorizado');
+      if (/text\/html/i.test(response.headers.get('content-type') || '')) throw new Error('o Moodle devolveu HTML em vez do arquivo');
+      const contentLength = Number(response.headers.get('content-length'));
+      if (Number.isFinite(contentLength) && contentLength > remainingBytes) throw new Error('arquivo excede o limite restante do pacote');
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!bytes.length) throw new Error('arquivo vazio');
+      if (bytes.length > remainingBytes) throw new Error('arquivo excede o limite restante do pacote');
+      return bytes;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error(`${label}: tempo limite de 2 minutos excedido`);
+      throw new Error(`${label}: ${error?.message || 'falha no download'}`);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function collectPendingSubmissionEntries(assignment) {
+    const rows = pendingRowsForAssignment(assignment);
+    if (!rows.length) {
+      throw new Error('a atividade está marcada como pendente, mas a análise não identificou individualmente quais alunos ainda precisam de correção. Atualize a análise antes de gerar o pacote.');
+    }
+
+    const entries = [];
+    const errors = [];
+    const withoutFiles = [];
+    const seenUrls = new Set();
+    let totalBytes = 0;
+
+    for (const row of rows) {
+      const studentName = sanitizePackageName(row.studentName || row.name || row.studentKey || 'aluno', 'aluno');
+      const files = Array.isArray(row.files) ? row.files.filter((file) => file?.url) : [];
+      if (!files.length) {
+        withoutFiles.push(row.studentName || row.name || row.studentKey || 'Aluno não identificado');
+        continue;
+      }
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+        const file = files[fileIndex];
+        if (seenUrls.has(file.url)) continue;
+        seenUrls.add(file.url);
+        try {
+          const remaining = MAX_AI_SINGLE_ACTIVITY_BYTES - totalBytes;
+          if (remaining <= 0) throw new Error('os envios pendentes ultrapassam o limite individual de 500 MB');
+          const bytes = await fetchSubmissionFile(file, `Entrega de ${row.studentName || row.name || 'aluno'}`, remaining);
+          totalBytes += bytes.length;
+          const fileName = sanitizePackageName(file.name || new URL(file.url).pathname.split('/').pop() || `arquivo_${fileIndex + 1}`);
+          entries.push({ name: `envios_pendentes/${studentName}/${fileIndex + 1}_${fileName}`, bytes });
+        } catch (error) {
+          errors.push(`${row.studentName || row.name || 'Aluno não identificado'}: ${error.message}`);
+        }
+      }
+    }
+
+    const manifest = [
+      'aluno;status;arquivos;corrigida;requer_correcao',
+      ...rows.map((row) => [
+        row.studentName || row.name || row.studentKey || '',
+        row.statusText || '',
+        Array.isArray(row.files) ? row.files.length : 0,
+        row.graded ? 'sim' : 'não',
+        row.requiresGrading || (row.submitted && !row.graded) ? 'sim' : 'não',
+      ].map(csvEscape).join(';')),
+    ].join('\n');
+
+    entries.push({ name: 'envios_pendentes/manifesto_pendencias.csv', content: '\ufeff' + manifest });
+    if (withoutFiles.length) {
+      entries.push({
+        name: 'envios_pendentes/AVISO_PENDENCIAS_SEM_ARQUIVO.txt',
+        content: [
+          'Os alunos abaixo ainda precisam de correção, mas a tabela do Moodle não apresentou um arquivo individual para download.',
+          'Isso pode ocorrer em entregas por texto online ou quando o Moodle oculta o link na listagem.',
+          'Abra a atividade no Moodle para conferir essas entregas:',
+          '',
+          ...withoutFiles.map((name) => `- ${name}`),
+        ].join('\n'),
+      });
+    }
+    if (errors.length) entries.push({ name: 'envios_pendentes/AVISO_ARQUIVOS_NAO_BAIXADOS.txt', content: errors.join('\n') });
+
+    return { entries, rows, errors, withoutFiles, totalBytes };
   }
 
   async function downloadAllForCorrection() {
@@ -187,20 +284,17 @@
         courseResourceWarning = `Não foi possível atualizar a lista de arquivos SAP do curso: ${error.message}. Os vínculos foram consultados na última análise salva.`;
       }
     }
-    MAT.ui.toast(`Preparando um pacote mestre com ${pending.length} atividade(s). Aguarde a coleta dos enunciados e envios.`);
+    MAT.ui.toast(`Preparando um pacote mestre com ${pending.length} atividade(s). Serão incluídas somente entregas ainda não avaliadas.`);
 
     for (let index = 0; index < pending.length; index += 1) {
       const assignment = pending[index];
       try {
         MAT.ui.toast(`Preparando ${index + 1} de ${pending.length}: ${assignment.name}`);
-        const [doc, gradingDoc, submissionsZip] = await Promise.all([
+        const [doc, gradingDoc, pendingSubmissions] = await Promise.all([
           fetchMoodleResource(buildAssignmentViewUrl(assignment), `Enunciado de ${assignment.name}`),
           fetchMoodleResource(buildAssignmentGradingUrl(assignment), `Escala de nota de ${assignment.name}`),
-          fetchMoodleResource(buildDownloadAllUrl(assignment), `Entregas de ${assignment.name}`, true),
+          collectPendingSubmissionEntries(assignment),
         ]);
-        if (submissionsZip.length > MAX_AI_SINGLE_ACTIVITY_BYTES) {
-          throw new Error(`${assignment.name}: os envios desta atividade ultrapassam o limite individual de 500 MB.`);
-        }
         const context = extractAssignmentContext(doc, assignment, gradingDoc);
         const attachments = await U.fetchAssignmentAttachments(doc, buildAssignmentViewUrl(assignment));
         const resources = MAT.statementResources.matchingResources(courseSections, assignment);
@@ -227,13 +321,17 @@
           `Enunciado: ${context.description ? 'texto localizado' : foundFiles ? 'arquivo associado; conteúdo deve ser conferido' : 'não localizado'}`,
           `Anexos do enunciado: ${attachments.files.length} baixado(s); ${attachments.errors.length} falha(s)`,
           `Recursos SAP da mesma UC: ${resourceFiles.length} baixado(s); ${resourceErrors.length} falha(s)`,
+          `Entregas pendentes identificadas: ${pendingSubmissions.rows.length} aluno(s)`,
+          `Arquivos pendentes baixados: ${pendingSubmissions.entries.filter((entry) => entry.bytes).length}`,
+          `Pendências sem arquivo individual: ${pendingSubmissions.withoutFiles.length}`,
+          `Falhas ao baixar arquivo pendente: ${pendingSubmissions.errors.length}`,
           ...resourceFiles.map((file) => `Arquivo SAP associado: ${file.name} (CMID ${file.cmid}); origem ${file.source}`),
           `Critérios ou rubrica: ${context.criteria ? 'localizados' : 'não localizados'}`,
           '',
           context.warnings.length || attachments.errors.length || resourceErrors.length || courseResourceWarning ? `AVISOS:\n${[...context.warnings.filter((warning) => !foundFiles || !warning.startsWith('Enunciado não localizado')), ...attachments.errors, ...resourceErrors, ...(courseResourceWarning ? [courseResourceWarning] : []), ...(resourceFiles.length ? ['Confirme que o arquivo SAP contém o enunciado desta tarefa antes de atribuir notas.'] : [])].map((warning) => `- ${warning}`).join('\n')}` : 'Nenhum aviso de contexto.',
         ].join('\n');
         const activityEntries = [
-          { name: 'envios_dos_alunos.zip', bytes: submissionsZip },
+          ...pendingSubmissions.entries,
           ...(context.description
             ? [{ name: 'enunciado_da_atividade.txt', content: context.description }]
             : [{ name: 'AVISO_ENUNCIADO_EM_ANEXO_OU_NAO_LOCALIZADO.txt', content: `O texto do enunciado não foi localizado nas páginas acessíveis desta tarefa. ${foundFiles ? `${foundFiles} arquivo(s) associado(s) foram incluídos em anexos_do_enunciado ou arquivos_sap_da_uc. Confira qual contém o enunciado.` : 'Nenhum arquivo de enunciado pôde ser baixado.'} Abra ${buildAssignmentViewUrl(assignment)} antes de usar IA para atribuir notas. Não corrija sem conferir o enunciado.` }]),
