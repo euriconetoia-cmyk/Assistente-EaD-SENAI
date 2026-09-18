@@ -9,7 +9,7 @@ ef7dd3ab3522f331746aaa9624d77674c48281914b97f7cb452ab9b51b85d2c2  ./background/s
 42a9a1a54ef3360f370ec8996ec03af07c65e30a4cd43ad5d29b88142aacf0e5  ./CHANGELOG.md
 927d9a75b0e57a5804b476ec33bc8a5cd34a1da2e058fe648baace991fc2761c  ./content/adapters.js
 57bfb956ec52629f290c2351dbd45cba5d886523d9d5b8f912a6a321ce94562a  ./content/assisted-grading.js
-3ebb0ea9e4b98fd013d088719335836424822d8d3cd390343e340950be77eb2d  ./content/batch-grading.js
+603b553f40d542ab86d8a87be2cfd55f14ecbc9757edd11421e34277aab00a7f  ./content/batch-grading.js
 e51efdb75ae5a0ce819bd451a9f32308b7b7c56a8bbb47180c08ae0c5a9ecfa1  ./content/collectors.js
 28cff294ad4359d66fd17723585e21842f452200d61395bac149078c418d298b  ./content/communications.js
 c18e3ab7dc7943eccab7465dd4b79262462936cb0e47fdc176e0e341fe5e0ead  ./content/exporters.js
@@ -18,15 +18,15 @@ c18e3ab7dc7943eccab7465dd4b79262462936cb0e47fdc176e0e341fe5e0ead  ./content/expo
 9583c4c80e470f5e0194bb60d11f379f3fe827377123a38234d39ecdd0eb15e0  ./content/importer/README.md
 7773f70779c6ea12df3fb0ef760595b7e9251fdbb0a913a462ef4957f008b086  ./content/journey.js
 da41a59af6cd458375e61425fa9d6b396eb716f30e29309010c1e49c3948c1d3  ./content/language.js
-a76105f324cfbc658312cf9d55a599098853bf2b6bf4c9f3cc7e04b02fb81689  ./content/main.js
+bcf9e05e889ce8c4a419ad5dd7fcf623cff58630ed2f44029c65d6cfa1120e6c  ./content/main.js
 ae1b4c914eb8413ec91b7841038b2ffdae80d14198d47039f9176ba76979a743  ./content/namespace.js
 0de54bf491e79d86f6be62e018f8eb8cd66a878430095c631178435e759229dd  ./content/page-layout.css
 9c82d15d41cd2213dcc336d399525a32bba196b29758bea9e43dc7f216257be2  ./content/rules.js
 9bda3563e989849361298c60242d4414fa08b18920a9e527ec6497f363a89ef6  ./content/shared-validation.js
 85ad681f0735e59cfca4bb7be7c81047fb098b8537de973955134146132c45fc  ./content/statement-resources.js
 301c40244476d67e7ce749089984111e84194be635da251cbf73b3d82ea003d1  ./content/storage.js
-e419dfeba31d8378ed4e88c517a3d95e98b20da8684cb640bc79765eb92c59ee  ./content/styles.css
-90e4edc0561f5312a5d903c56e0c735aac574ebfee1ad08007028a5c9eabce95  ./content/ui.js
+481fdc6aa2f4111caf68d1635af85fff1d15b2860eb94e26060b67cb2515096b  ./content/styles.css
+4536f8cd85f6b055814e84b125f56f0c7a80abb34760909ff59b1c430c461c77  ./content/ui.js
 f5862ee7d78cfd2182208cc45420ea135dca186a1ea83a4591a1831432cae6ad  ./content/utils.js
 17cb5b5a3b214257228d24eae0eab56d3a4688731db848b1143c8e0f9265af91  ./CREDITOS.md
 95f7c076d385b3aff0465e6f37baf05cb2c58586ed436b13d5c219b08a6ede14  ./dashboard/audit-export.js
@@ -58,6 +58,7 @@ e8bffad8914f212f931ce502e552f040db92a14b47ef9d2fbfd523ac94fae6aa  ./docs/reports
 9f95d34ae116a2e7d4568b079797155501564be27beecac38219c2a3d9d97520  ./docs/reports/RELATORIO_REVISAO_GERAL_V3.7.12.md
 188ac5dae35163301e78ca3d1a259786db64077b2ec88f10bc8b2145902b4f2a  ./docs/reports/RELATORIO_REVISAO_VISUAL_V3.7.15.md
 5e4ac52f6522775115d36659efcc8481a5bd88199b71c5d8779a590ede9da06f  ./docs/reports/REVISAO_SIMPLIFICACAO_REPOSITORIO_V3.7.15.md
+6e3df17f292fcb00e5c8fb2b52ae5dc671db8128bd6cc887e8a045b4008d8866  ./docs/reports/VALIDACAO_POS_MERGE_2026-09-18.md
 2e7866ba17cfeaba190185cb9c94c18fef10b4c2a726d69150d31c286ffe4764  ./docs/specs/SPECIFICACAO_V3.7.0_RENOVACAO_VISUAL_AUDITORIA_LOCAL.md
 27f546d4854336f59e666dea706d1c64d9c44f6fd1ef7527956cefc3af46d118  ./manifest.json
 d22188ba297325d17d44f2f0a085cb2e658e8aa296b7fa0de3bb1257211d7e77  ./package.json
@@ -70,7 +71,7 @@ bfb300cee53126ce9f9b272c6f606d88a11b3c63afa18a08a33ebb2f38ad1e23  ./scripts/vali
 f30be514228baae1539cd87b2e5649a42754698c78e75918c80bfc8e467bc239  ./tests/communications.test.js
 567954e0057dcd4702a7db60cc553e3664ef4835f111ad833b7184f74369f9e9  ./tests/dashboard.test.js
 48147a847bff8befb7b6f4b4e01d531aae14042e50bba53002e9bf98620a147d  ./tests/evidence-export.test.js
-bc50fb55dbe76f39f260e47e9832206a2b879c807963363f6cafd1dc4e79c0b3  ./tests/importer-ui.test.js
+2979707cbd9996a8fbbbbe984071d5a99bc2dfd29df9a97228cfdf80a1aba1f3  ./tests/importer-ui.test.js
 f4593bbe355bc75d6aab035d41394bafe006ef8f7b282503d332bf0212f50bab  ./tests/journey.test.js
 b20f879f4d27b9c5d75927c710860265cbd9d34cd841c17fce61e342ce757971  ./tests/package-structure.test.js
 50c4fe718609b24910e7ee697ce081a33feda51e077f82de6975bfcc4cc75a8a  ./tests/pending-confirmation.test.js
