@@ -284,12 +284,14 @@ test('pacote de correção inclui somente alunos pendentes e exclui avaliados', 
   assert.match(batchSource, /row\.requiresGrading \|\| \(row\.submitted && !row\.graded\)/);
   assert.match(batchSource, /envios_pendentes\/manifesto_pendencias\.csv/);
   assert.match(batchSource, /Alunos já avaliados não são incluídos/);
-  assert.match(batchSource, /collectPendingSubmissionEntries\(assignment\)/);
+  assert.match(batchSource, /collectPendingSubmissionEntries\(assignment, gradingDoc\)/);
   assert.doesNotMatch(batchSource, /fetchMoodleResource\(buildDownloadAllUrl\(assignment\)[\s\S]{0,180}true\)/);
 });
 
 test('pacote pendente bloqueia fallback inseguro quando a análise não identifica os alunos', () => {
-  assert.match(batchSource, /a atividade está marcada como pendente, mas a análise não identificou individualmente quais alunos ainda precisam de correção/);
+  assert.match(batchSource, /não foi possível identificar individualmente quais alunos precisam de correção nem na análise salva nem na tela de avaliação consultada agora/);
+  assert.match(batchSource, /extractAssignmentGradingRows\(gradingDoc, assignment\)/);
+  assert.match(batchSource, /perpage', '500'/);
   assert.match(batchSource, /AVISO_PENDENCIAS_SEM_ARQUIVO\.txt/);
   assert.match(batchSource, /AVISO_ARQUIVOS_NAO_BAIXADOS\.txt/);
 });
