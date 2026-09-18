@@ -9,7 +9,7 @@ ef7dd3ab3522f331746aaa9624d77674c48281914b97f7cb452ab9b51b85d2c2  ./background/s
 42a9a1a54ef3360f370ec8996ec03af07c65e30a4cd43ad5d29b88142aacf0e5  ./CHANGELOG.md
 927d9a75b0e57a5804b476ec33bc8a5cd34a1da2e058fe648baace991fc2761c  ./content/adapters.js
 57bfb956ec52629f290c2351dbd45cba5d886523d9d5b8f912a6a321ce94562a  ./content/assisted-grading.js
-603b553f40d542ab86d8a87be2cfd55f14ecbc9757edd11421e34277aab00a7f  ./content/batch-grading.js
+113c0b5aac2f148a2e53abff587b2865f038e253dc384a1006cfa2a34816fdfa  ./content/batch-grading.js
 e51efdb75ae5a0ce819bd451a9f32308b7b7c56a8bbb47180c08ae0c5a9ecfa1  ./content/collectors.js
 28cff294ad4359d66fd17723585e21842f452200d61395bac149078c418d298b  ./content/communications.js
 c18e3ab7dc7943eccab7465dd4b79262462936cb0e47fdc176e0e341fe5e0ead  ./content/exporters.js
@@ -71,7 +71,7 @@ bfb300cee53126ce9f9b272c6f606d88a11b3c63afa18a08a33ebb2f38ad1e23  ./scripts/vali
 f30be514228baae1539cd87b2e5649a42754698c78e75918c80bfc8e467bc239  ./tests/communications.test.js
 567954e0057dcd4702a7db60cc553e3664ef4835f111ad833b7184f74369f9e9  ./tests/dashboard.test.js
 48147a847bff8befb7b6f4b4e01d531aae14042e50bba53002e9bf98620a147d  ./tests/evidence-export.test.js
-2979707cbd9996a8fbbbbe984071d5a99bc2dfd29df9a97228cfdf80a1aba1f3  ./tests/importer-ui.test.js
+916ec09f86800ea70febaa0e82c1e506065204520a6c49c21688c7eea96136cc  ./tests/importer-ui.test.js
 f4593bbe355bc75d6aab035d41394bafe006ef8f7b282503d332bf0212f50bab  ./tests/journey.test.js
 b20f879f4d27b9c5d75927c710860265cbd9d34cd841c17fce61e342ce757971  ./tests/package-structure.test.js
 50c4fe718609b24910e7ee697ce081a33feda51e077f82de6975bfcc4cc75a8a  ./tests/pending-confirmation.test.js
