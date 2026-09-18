@@ -58,16 +58,52 @@
     const descriptionNode = doc.querySelector(descriptionSelector) || gradingDoc?.querySelector(descriptionSelector);
     const criteriaNodes = [...doc.querySelectorAll('[data-region="gradingform_rubric"], .gradingform_rubric, .rubric_criteria, .criterion, .criteria')];
     const body = safeText(doc.body, 100000);
-    const pageGradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
-      || body.match(/(?:nota m[aá]xima|maximum grade)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
+    const parseMaximumCandidate = (value) => {
+      const match = String(value || '').match(/\d+(?:[.,]\d+)?/);
+      if (!match) return '';
+      const parsed = S.parseGrade(match[0]);
+      return parsed.valid && parsed.number > 0 ? match[0] : '';
+    };
+    const pageGradeText = labeledValue(doc, [
+      'nota máxima', 'nota maxíma', 'maximum grade', 'grade out of',
+      'valor máximo', 'pontuação máxima', 'pontos possíveis', 'nota'
+    ])
+      || body.match(/(?:nota m[aá]xima|maximum grade|grade out of|valor m[aá]ximo|pontua[cç][aã]o m[aá]xima|pontos poss[ií]veis)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
+      || body.match(/\bnota\b[^\n]{0,80}?(?:\/|de)\s*(\d+(?:[.,]\d+)?)/i)?.[1]
       || '';
-    const inputGradeText = [...(gradingDoc || doc).querySelectorAll('input[max]')]
-      .map((input) => String(input.getAttribute('max') || '').trim())
-      .find((value) => /^\d+(?:[.,]\d+)?$/.test(value) && Number(value.replace(',', '.')) > 0) || '';
+
+    const gradeDocs = [gradingDoc, doc].filter((candidate, index, list) => candidate && list.indexOf(candidate) === index);
+    const gradeControls = gradeDocs.flatMap((candidate) => [...candidate.querySelectorAll([
+      'input[name*="grade"][max]',
+      'input[id*="grade"][max]',
+      'input[name*="grade"][aria-valuemax]',
+      'input[id*="grade"][aria-valuemax]',
+      'input[name*="grade"][data-maxgrade]',
+      'input[id*="grade"][data-maxgrade]',
+      '[data-region*="grade"] input[max]',
+      '[data-region*="grade"] input[aria-valuemax]',
+      '[data-region*="grade"] [data-maxgrade]'
+    ].join(', '))]);
+
+    const inputGradeText = gradeControls
+      .map((node) => node.getAttribute('max') || node.getAttribute('aria-valuemax') || node.getAttribute('data-maxgrade') || '')
+      .map(parseMaximumCandidate)
+      .find(Boolean) || '';
+
+    const gradeContextText = gradeControls
+      .map((node) => node.closest('.form-group, .mb-3, .fitem, [data-region*="grade"], td, .row') || node.parentElement)
+      .map((node) => safeText(node, 1200))
+      .filter(Boolean)
+      .map((text) => text.match(/\b(?:nota|grade)\b[^\n]{0,120}?(?:\/|de|out of)\s*(\d+(?:[.,]\d+)?)/i)?.[1]
+        || text.match(/(?:nota m[aá]xima|maximum grade|pontua[cç][aã]o m[aá]xima|valor m[aá]ximo)\s*:?\s*(\d+(?:[.,]\d+)?)/i)?.[1]
+        || '')
+      .map(parseMaximumCandidate)
+      .find(Boolean) || '';
+
     const snapshotGradeText = String(assignment.maxGrade ?? assignment.gradeMax ?? assignment.metrics?.maxGrade ?? '').trim();
     const gradeSources = [
       ['página da atividade', pageGradeText],
-      ['campo de nota do Moodle', inputGradeText],
+      ['campo de nota do Moodle', inputGradeText || gradeContextText],
       ['análise local', snapshotGradeText],
     ].filter(([, value]) => value && S.parseGrade(value).valid && S.parseGrade(value).number > 0);
     const distinctGrades = [...new Set(gradeSources.map(([, value]) => S.parseGrade(value).number))];

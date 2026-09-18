@@ -256,3 +256,13 @@ test('resultado do lote diferencia falhas de um processamento integralmente conc
   assert.match(batchSource, /dataset\.action === 'review-results'/);
   assert.match(batchSource, /type: 'conferencia_lote'/);
 });
+
+
+test('detecção da nota máxima cobre atributos e texto contextual do campo de nota do Moodle', () => {
+  assert.match(batchSource, /input\[name\*="grade"\]\[max\]/);
+  assert.match(batchSource, /aria-valuemax/);
+  assert.match(batchSource, /data-maxgrade/);
+  assert.match(batchSource, /gradeContextText/);
+  assert.match(batchSource, /out of/);
+  assert.match(batchSource, /pontos poss/i);
+});
