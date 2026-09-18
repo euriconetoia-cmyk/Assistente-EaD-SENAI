@@ -139,9 +139,10 @@
   gap: 10px;
 }
 
-.mat-brand { min-width: 0; }
-.mat-brand-name { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; opacity: .86; }
-.mat-course-name { margin: 3px 0 0; font-size: 17px; line-height: 1.24; font-weight: 800; color: white; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.mat-brand { min-width: 0; flex: 1 1 auto; }
+.mat-brand-name { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; opacity: .82; }
+.mat-course-name { margin: 2px 0 0; font-size: 17px; line-height: 1.24; font-weight: 800; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mat-course-status { margin-top: 4px; font-size: 11px; line-height: 1.2; opacity: .82; }
 .mat-meta-line { margin-top: 7px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 12px; }
 .mat-env-badge, .mat-readonly-badge { padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.15); font-weight: 700; }
 .mat-readonly-badge { background: rgba(255, 241, 205, .2); }
@@ -211,6 +212,10 @@
   box-shadow: var(--mat-shadow);
 }
 .mat-header-menu label { display: block; margin-bottom: 6px; color: var(--mat-muted); font-size: 12px; font-weight: 700; }
+.mat-header-context { display: grid; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--mat-border); }
+.mat-header-context > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.mat-header-context span { color: var(--mat-muted); }
+.mat-header-context strong { color: var(--mat-ink); text-align: right; }
 .mat-header-menu .mat-mode-select { width: 100%; background: var(--mat-white); color: var(--mat-ink); border-color: var(--mat-border); }
 .mat-menu-action { width: 100%; margin-top: 8px; padding: 9px; border: 0; border-radius: 8px; background: var(--mat-blue-soft); color: var(--mat-blue-dark); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
 
@@ -674,7 +679,8 @@
 @container (max-width: 430px) {
   .mat-header { padding: 10px 12px; }
   .mat-brand-name { font-size: 11px; }
-  .mat-course-name { font-size: 16px; -webkit-line-clamp: 1; }
+  .mat-course-name { font-size: 16px; }
+  .mat-course-status { margin-top: 3px; }
   .mat-meta-line { margin-top: 4px; }
   .mat-workspace { flex-direction: column-reverse; }
   .mat-side-nav, #mat-panel.mat-nav-expanded .mat-side-nav {
