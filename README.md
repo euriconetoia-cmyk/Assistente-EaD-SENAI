@@ -1,4 +1,4 @@
-# Assistente EaD SENAI 3.7.15
+# Assistente EaD SENAI 3.7.16
 
 Extensão Chrome Manifest V3 para acompanhamento da tutoria nos ambientes Moodle autorizados do SENAI e da FIEG.
 
@@ -39,7 +39,7 @@ Na página do curso, cada atividade consultada sem correções pendentes recebe 
 2. Ative o modo do desenvolvedor.
 3. Clique em **Carregar sem compactação**.
 4. Selecione esta pasta.
-5. Confira se a versão exibida é `3.7.15`. Como este ajuste mantém o mesmo número de versão, substitua os arquivos da instalação anterior pelo novo pacote, clique em **Recarregar** em `chrome://extensions` e atualize as abas do Moodle.
+5. Confira se a versão exibida é `3.7.16`. Substitua os arquivos da instalação anterior pelo novo pacote, clique em **Recarregar** em `chrome://extensions` e atualize as abas do Moodle.
 6. Valide primeiro em curso de homologação, com uma atividade e um aluno de teste.
 
 ## Operações que alteram o Moodle
@@ -95,4 +95,4 @@ npm run validate
 
 ## Integridade e colaboração
 
-Após alterar arquivos, execute `npm test`, `npm run validate` e `npm run integrity`. O arquivo `CHECKSUMS.sha256` identifica o conteúdo versionado; ao preparar uma atualização, execute `npm run checksums` e repita a verificação. As contribuições devem manter os créditos em [CREDITOS.md](CREDITOS.md) e descrever alterações em [CHANGELOG.md](CHANGELOG.md). O projeto permanece na versão 3.7.15 nesta reorganização.
+Após alterar arquivos, execute `npm test`, `npm run validate` e `npm run integrity`. O arquivo `CHECKSUMS.sha256` identifica o conteúdo versionado; ao preparar uma atualização, execute `npm run checksums` e repita a verificação. As contribuições devem manter os créditos em [CREDITOS.md](CREDITOS.md) e descrever alterações em [CHANGELOG.md](CHANGELOG.md). A versão atual do projeto é 3.7.16.
