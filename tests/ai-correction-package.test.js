@@ -154,7 +154,7 @@ test('pacote mestre inclui o PDF SAP ao lado dos envios quando a tarefa não tem
   utils: null };
   MAT.state.adapter = {
     extractSections: () => [{ id: 'section-1', name: 'Cabeamento Estruturado', activities: [{ cmid: 336353, name: 'SAP 01', moduleType: 'resource', url: 'https://ead.senai.br/mod/resource/view.php?id=336353' }] }],
-    extractAssignmentGradingRows: () => ({ rows: [{ studentName: 'Aluno Pendente', studentKey: 'id:10', submitted: true, graded: false, requiresGrading: true, missing: false, statusText: 'Enviado para avaliação', files: [{ name: 'resposta.pdf', url: 'https://ead.senai.br/pluginfile.php/999/assignsubmission_file/submission_files/1/resposta.pdf' }] }] })
+    extractAssignmentGradingRows: () => ({ rows: [{ studentName: 'Aluno Pendente', studentKey: 'id:10', submitted: true, graded: true, requiresGrading: false, missing: false, grade: 100, statusText: 'Enviado para avaliação', files: [{ name: 'resposta.pdf', url: 'https://ead.senai.br/pluginfile.php/999/assignsubmission_file/submission_files/1/resposta.pdf' }] }] })
   };
   const doc = { body: { textContent: 'Nota máxima: 100' }, querySelector: () => null, querySelectorAll: () => [] };
   const context = vm.createContext({ globalThis: null, MAT, URL, Blob, TextEncoder, TextDecoder, Uint8Array, AbortController, setTimeout, clearTimeout, location,
@@ -179,6 +179,14 @@ test('pacote mestre inclui o PDF SAP ao lado dos envios quando a tarefa não tem
   assert.match(zip, /arquivos_sap_da_uc\/1_336353_SAP 01\.pdf/);
   assert.match(zip, /envios_pendentes\/Aluno Pendente\/1_resposta\.pdf/);
   assert.match(zip, /envios_pendentes\/manifesto_pendencias\.csv/);
-  assert.match(zip, /tela de avaliação consultada agora/);
+  assert.match(zip, /filtro oficial do Moodle: requer correção/);
   assert.match(zip, /arquivo associado, conferir/);
+});
+
+
+test('filtro requiregrading prevalece sobre classificação local de nota', () => {
+  assert.match(batchSource, /status', 'requiregrading'/);
+  assert.match(batchSource, /pendingSource: 'moodle_requiregrading'/);
+  assert.match(batchSource, /submitted: true,[\s\S]{0,120}graded: false,[\s\S]{0,120}requiresGrading: true/);
+  assert.match(batchSource, /filtro oficial do Moodle: requer correção/);
 });

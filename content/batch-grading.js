@@ -180,9 +180,22 @@
       const parsed = MAT.state.adapter.extractAssignmentGradingRows(gradingDoc, assignment);
       const liveRows = Array.isArray(parsed?.rows) ? parsed.rows : [];
       if (liveRows.length) {
+        // Esta página foi solicitada com status=requiregrading. Portanto, a presença
+        // de uma linha nela é a evidência autoritativa do próprio Moodle de que
+        // aquela entrega requer avaliação, mesmo que a heurística local interprete
+        // incorretamente uma célula de nota como já avaliada.
+        const serverFilteredRows = liveRows
+          .filter((row) => !row.missing)
+          .map((row) => ({
+            ...row,
+            submitted: true,
+            graded: false,
+            requiresGrading: true,
+            pendingSource: 'moodle_requiregrading',
+          }));
         return {
-          rows: liveRows.filter(isPendingGradingRow),
-          source: 'tela de avaliação consultada agora',
+          rows: serverFilteredRows,
+          source: 'filtro oficial do Moodle: requer correção',
           parsedRows: liveRows.length,
         };
       }
@@ -221,7 +234,7 @@
     const rows = resolution.rows;
     if (!rows.length) {
       if (resolution.parsedRows > 0) {
-        throw new Error('a tela de avaliação foi consultada agora, mas nenhum aluno ainda pendente foi encontrado. Atualize a análise do curso para sincronizar o indicador.');
+        throw new Error('o Moodle retornou linhas na tela filtrada por requer correção, mas nenhuma linha válida de aluno pôde ser preparada. Confira se a atividade usa um formato de entrega não reconhecido.');
       }
       throw new Error('a atividade está marcada como pendente, mas não foi possível identificar individualmente quais alunos precisam de correção nem na análise salva nem na tela de avaliação consultada agora.');
     }
