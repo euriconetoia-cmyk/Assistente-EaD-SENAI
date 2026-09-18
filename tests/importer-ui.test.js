@@ -86,6 +86,17 @@ test('conferência mostra nota máxima, origem e estado de confirmação', () =>
   assert.match(batchSource, /Requer conferência/);
 });
 
+test('quando a escala não é identificada o tutor pode informar a nota máxima manualmente', () => {
+  assert.match(batchSource, /Informar nota máxima manualmente/);
+  assert.match(batchSource, /data-apply-manual-max-grade/);
+  assert.match(batchSource, /function applyManualMaximum/);
+  assert.match(batchSource, /informada manualmente pelo tutor/);
+  assert.match(batchSource, /confirmada_manual/);
+  assert.match(batchSource, /handleBatchPreviewKeydown/);
+  assert.match(appStyles, /\.mat-manual-max-grade/);
+  assert.match(appStyles, /\.mat-manual-max-grade__control/);
+});
+
 test('lote confirma automaticamente a nota máxima no Moodle antes de converter desempenho', () => {
   assert.match(batchSource, /async function resolveAssignmentMaximum/);
   assert.match(batchSource, /async function ensureMaximumsForFiles/);
