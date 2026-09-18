@@ -1,0 +1,26 @@
+name: Build downloadable V3.7.16
+
+on:
+  push:
+    branches:
+      - delivery/v3.7.16
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare extension package
+        run: |
+          rm -rf build
+          mkdir -p build/Assistente-EaD-SENAI-V3.7.16
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'build' ./ build/Assistente-EaD-SENAI-V3.7.16/
+          cd build
+          zip -qr Assistente-EaD-SENAI-V3.7.16.zip Assistente-EaD-SENAI-V3.7.16
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Assistente-EaD-SENAI-V3.7.16
+          path: build/Assistente-EaD-SENAI-V3.7.16.zip
+          if-no-files-found: error
+          retention-days: 7
