@@ -1,5 +1,66 @@
 # Alterações
 
+## 3.7.15, homologação
+
+### Organização do repositório e simplificação da navegação
+
+- Retira da visão inicial quatro atalhos repetidos, mantendo as ações no cabeçalho e no menu lateral.
+- Agrupa relatórios, planos e especificações históricos em `docs/`, sem excluir documentos ou créditos.
+- Inclui verificação de integridade reproduzível e validação automática em pull requests.
+- Mantém versão, operações acadêmicas e conferência de notas sem alteração.
+
+### Ajuste de 17/09/2026: nota proporcional e pendências confirmadas
+
+- Permite que a IA informe `desempenho_0_100`, converte para a nota máxima confirmada e exibe o cálculo ao lado da nota final editável antes do envio.
+- Mantém CSVs com `nota` já calculada sem conversão; recusa linhas que preencham ambos os campos, escala divergente ou desempenho fora de 0 a 100.
+- Aplica nota em branco com feedback para desempenho zero ou atividade incorreta e mantém a regra própria de SENAI Play.
+- Mostra check verde para cada atividade sem correções confirmadas e para o resumo somente quando a consulta estiver completa. Leituras inconclusivas permanecem em aviso amarelo.
+
+
+### Ajuste de 17/09/2026: recurso SAP
+
+- Inclui no pacote de correção os recursos Moodle do tipo Arquivo chamados SAP, quando correspondem pelo identificador da SAP à tarefa de envio e aparecem na mesma seção da UC.
+- Lê a página atual do curso uma vez por lote; se estiver indisponível, consulta as seções da análise salva e registra o aviso.
+- Suporta arquivo servido diretamente por `/mod/resource/view.php`, vínculo `/pluginfile.php/.../mod_resource/content/` e link de redirecionamento do próprio recurso.
+- Separa o material em `arquivos_sap_da_uc`, mantendo anexos do professor e envios dos alunos em pastas próprias; avisa quando não conseguir baixar ou confirmar o enunciado.
+- Limita cada recurso SAP a 25 MB e rejeita login expirado, HTML devolvido como arquivo e redirecionamento para outra origem.
+- Mantém os créditos e as proteções de conferência e lançamento já presentes na 3.7.15.
+
+### Jornada do tutor
+
+- Organiza a Visão geral como “Minha jornada”, com seis etapas e atalhos às áreas já existentes.
+- Mostra até três próximas ações e mantém uma fila completa, com motivo, fonte e horário da informação.
+- Prioriza lançamentos não confirmados antes de fechamento, correções e acompanhamento individual.
+- Registra o resultado da conferência por atividade; divergências permanecem pendentes até nova conferência bem-sucedida ou declaração explícita do tutor após consulta ao Moodle.
+- Mantém ficha do aluno, mensagem editável, importador e auditoria integrados ao fluxo, sem novos domínios nem permissões.
+- Corrige a documentação sobre o armazenamento local do texto das mensagens nas instalações novas.
+- Testes de regras da jornada, regressão e validação estrutural; homologação autenticada no Moodle ainda pendente.
+
+## 3.7.14
+
+- Ajuste da mesma versão: remove “Baixar atividades” do resumo da página do curso e elimina o gerador ZIP duplicado. O pacote para correção permanece na aba Correções do painel.
+- Mantém a faixa do curso com pendências, importação contextual e atualização da contagem.
+- Ativa por padrão em novas instalações o botão lateral, a guarda local do texto das mensagens, as varreduras de atividades e categorias e a solicitação do Moodle em português.
+- Mantém a abertura automática do painel desativada.
+- Faz varredura e idioma lerem os mesmos padrões exibidos no painel, mesmo antes do primeiro salvamento.
+- Preserva opções já salvas, inclusive as que o usuário desativou manualmente.
+- Atualiza a descrição da guarda de mensagens e a documentação de privacidade.
+
+## 3.7.13
+
+- Busca arquivos anexados pelo professor na área da atividade e os inclui no ZIP separados dos envios dos alunos.
+- Não confunde envios de alunos com enunciados, mesmo quando os arquivos têm nomes iguais ou parecidos.
+- Consulta também a tela de avaliação quando a tela principal não apresenta texto do enunciado.
+- Mantém o download com aviso e link para conferência quando o texto ou o anexo do enunciado não for encontrado.
+- Restringe origem e tamanho dos anexos e mostra falhas individuais.
+
+## 3.7.12
+
+- O botão “Baixar atividades” inclui o enunciado e os dados de origem em uma pasta por atividade no ZIP do curso.
+- Ambos os downloads deixam visível quando o enunciado não está disponível e impedem que a atividade seja tratada como pronta para correção com IA.
+- O resumo do curso anuncia início do download ou falha com mensagem acessível; o painel esclarece que pacotes grandes podem ser divididos.
+- Imagens e anexos incorporados ao enunciado continuam exigindo conferência na página do Moodle.
+
 ## 3.7.11
 
 - Corrige a convenção decimal usada em páginas Moodle em português quando todos os campos de nota ainda estão vazios.

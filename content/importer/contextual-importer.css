@@ -652,6 +652,11 @@ tr.mqi-status-muted { outline: 2px solid rgba(108, 117, 125, .28) !important; }
   background: #dc3545;
 }
 
+.mqi-pending-badge--empty {
+  background: #198754;
+  color: #fff;
+}
+
 .mqi-pending-badge--loading {
   background: #6c757d;
   color: #fff;
@@ -1036,7 +1041,7 @@ li.mqi-assignment-has-pending > .activity-item {
   }
 }
 
-/* Downloads de pendências organizados por curso e categoria (v0.8.1) */
+/* Ações de acompanhamento na página do curso */
 .mqi-course-pending-summary__actions {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1044,7 +1049,6 @@ li.mqi-assignment-has-pending > .activity-item {
   gap: 8px;
 }
 
-.mqi-course-pending-summary__download,
 .mqi-course-pending-summary__import {
   min-height: 30px;
   display: inline-flex;
@@ -1054,21 +1058,13 @@ li.mqi-assignment-has-pending > .activity-item {
   padding: 5px 10px;
   border: 1px solid #0f6cbf;
   border-radius: 6px;
-  background: #0f6cbf;
-  color: #fff;
+  background: #fff;
+  color: #0f6cbf;
   font: 600 12px/1.2 Arial, sans-serif;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.mqi-course-pending-summary__import {
-  border-color: #0f6cbf;
-  background: #fff;
-  color: #0f6cbf;
-}
-
-.mqi-course-pending-summary__download:hover,
-.mqi-course-pending-summary__download:focus,
 .mqi-course-pending-summary__import:hover,
 .mqi-course-pending-summary__import:focus {
   border-color: #0b579b;
@@ -1076,8 +1072,6 @@ li.mqi-assignment-has-pending > .activity-item {
   color: #fff;
 }
 
-.mqi-course-pending-summary__download:disabled,
-.mqi-course-pending-summary__download.is-busy,
 .mqi-course-pending-summary__import:disabled {
   border-color: #7f9db7;
   background: #7f9db7;
@@ -1118,7 +1112,6 @@ li.mqi-assignment-has-pending > .activity-item {
 
 #mqi-modal button,
 .mqi-my-courses-dashboard button,
-.mqi-course-pending-summary__download,
 .mqi-course-pending-summary__import {
   min-height: 40px;
   border-radius: 9px;

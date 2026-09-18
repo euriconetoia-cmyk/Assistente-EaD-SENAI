@@ -1,11 +1,13 @@
 {
   "name": "assistente-ead-senai",
-  "version": "3.7.11",
+  "version": "3.7.15",
   "private": true,
   "description": "Validação local da extensão Assistente EaD SENAI",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "validate": "node scripts/validate-extension.js"
+    "validate": "node scripts/validate-extension.js",
+    "checksums": "node scripts/checksums.js --write",
+    "integrity": "node scripts/checksums.js"
   },
   "engines": {
     "node": ">=18"

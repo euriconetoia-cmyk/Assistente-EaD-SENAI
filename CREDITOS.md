@@ -1,6 +1,6 @@
 # Créditos
 
-Assistente EaD SENAI 3.7.11
+Assistente EaD SENAI 3.7.15
 
 ## Desenvolvimento, especificação e integração
 

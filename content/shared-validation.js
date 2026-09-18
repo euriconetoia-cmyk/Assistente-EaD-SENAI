@@ -87,6 +87,7 @@
     studentId: ['student_id', 'student id', 'id do aluno', 'id aluno', 'id do estudante'],
     nome: ['nome', 'aluno', 'estudante', 'discente', 'nome do aluno', 'nome completo'],
     nota: ['nota', 'grade', 'pontuacao', 'pontuação', 'score'],
+    desempenho: ['desempenho_0_100', 'desempenho 0 100', 'avaliacao_0_100', 'avaliação 0 100'],
     feedback: ['feedback', 'comentario', 'comentário', 'comentarios', 'comentários', 'observacao', 'observação', 'retorno', 'devolutiva'],
     situacao: ['situacao', 'situação', 'status', 'tag', 'classificacao', 'classificação'],
     notaMaxima: ['nota_maxima', 'nota máxima', 'valor da atividade', 'valor_atividade', 'max_grade', 'maximum grade'],
@@ -127,6 +128,21 @@
       maximumFractionDigits: fractionDigits,
       useGrouping: false,
     });
+  };
+
+  const proportionalGrade = (score, maximum) => {
+    const parsedScore = parseGrade(score);
+    const parsedMaximum = parseGrade(maximum);
+    if (!parsedScore.valid || parsedScore.number === null || parsedScore.number > 100) return { error: 'O desempenho deve estar entre 0 e 100.' };
+    if (!parsedMaximum.valid || parsedMaximum.number === null || parsedMaximum.number <= 0) return { error: 'Confirme a nota máxima da atividade antes de converter o desempenho.' };
+    const number = Math.round((parsedScore.number * parsedMaximum.number / 100 + Number.EPSILON) * 100) / 100;
+    return { number, grade: formatGradePtBr(number) };
+  };
+
+  const pendingReadingState = ({ expected = 0, received = 0, pending = 0, unverified = 0, errors = 0, loading = false } = {}) => {
+    if (loading) return 'loading';
+    if (pending > 0) return 'pending';
+    return expected > 0 && received === expected && unverified === 0 && errors === 0 ? 'clear' : 'verify';
   };
 
   const normalizeComparableFeedback = (value) => String(value ?? '')
@@ -199,8 +215,8 @@
       throw new Error('Inclua a coluna cmid ou atividade.');
     }
     if (indexes.nome === -1 && indexes.studentId === -1) throw new Error('Inclua a coluna nome ou student_id.');
-    if (indexes.nota === -1 && indexes.feedback === -1 && indexes.situacao === -1) {
-      throw new Error('Inclua ao menos uma coluna de ação: nota, feedback ou situacao.');
+    if (indexes.nota === -1 && indexes.desempenho === -1 && indexes.feedback === -1 && indexes.situacao === -1) {
+      throw new Error('Inclua ao menos uma coluna de ação: nota, desempenho_0_100, feedback ou situacao.');
     }
 
     const records = [];
@@ -221,6 +237,7 @@
         studentId: read('studentId'),
         nome: read('nome'),
         nota: read('nota'),
+        desempenho: read('desempenho'),
         feedback: read('feedback'),
         situacaoRaw: read('situacao'),
         notaMaxima: read('notaMaxima'),
@@ -236,8 +253,17 @@
         errors.push(`Linha ${rowNumber}: informe student_id ou nome.`);
         return;
       }
-      if (!record.nota && !record.feedback && !record.situacaoRaw) {
-        errors.push(`Linha ${rowNumber}: informe nota, feedback ou situacao.`);
+      if (!record.nota && !record.desempenho && !record.feedback && !record.situacaoRaw) {
+        errors.push(`Linha ${rowNumber}: informe nota, desempenho_0_100, feedback ou situacao.`);
+        return;
+      }
+      if (record.nota && record.desempenho) {
+        errors.push(`Linha ${rowNumber}: informe nota ou desempenho_0_100, nunca os dois.`);
+        return;
+      }
+      const score = parseGrade(record.desempenho);
+      if (!score.valid || (score.number !== null && score.number > 100)) {
+        errors.push(`Linha ${rowNumber}: desempenho_0_100 deve estar entre 0 e 100.`);
         return;
       }
       const grade = parseGrade(record.nota);
@@ -253,12 +279,14 @@
         return;
       }
       identifiers.set(identifier, rowNumber);
-      if (grade.number === 0) {
+      if (grade.number === 0 || score.number === 0) {
         if (!record.feedback) {
-          errors.push(`Linha ${rowNumber}: nota zero exige feedback e deve permanecer em branco.`);
+          errors.push(`Linha ${rowNumber}: desempenho ou nota zero exige feedback e deve permanecer em branco.`);
           return;
         }
         record.nota = '';
+        record.desempenho = '';
+        record.avaliacaoZero = true;
         warnings.push(`Linha ${rowNumber}: nota zero removida; somente o feedback será enviado.`);
       } else if (grade.number !== null) {
         record.nota = formatGradePtBr(grade.number);
@@ -338,8 +366,25 @@
     const situation = normalizeSituationCode(next.situacaoRaw || next.situacao || '');
     const activityText = normalizeText(`${assignment.name || next.atividade || ''} ${next.tipoAtividade || ''}`);
     const isSenaiPlay = /senai\s*play/.test(activityText);
-    const parsedMax = parseGrade(next.notaMaxima || assignment.maxGrade || assignment.gradeMax || '');
+    const parsedMax = parseGrade(next.notaMaxima || assignment.maxGrade || assignment.gradeMax || assignment.metrics?.maxGrade || '');
     const maxGrade = parsedMax.valid && parsedMax.number > 0 ? parsedMax.number : null;
+    const declaredMax = parseGrade(next.notaMaxima);
+    const moodleMax = parseGrade(assignment.maxGrade ?? assignment.gradeMax ?? assignment.metrics?.maxGrade);
+    const unsafeStatus = /conflito|insuficiente|nao localizada|não localizada/i.test(next.notaMaximaStatus || '');
+    const maxGradeConflict = unsafeStatus || (declaredMax.number !== null && moodleMax.number !== null && !gradesEquivalent(declaredMax.number, moodleMax.number));
+
+    if (String(next.desempenho || '').trim() && !isSenaiPlay && !FEEDBACK_ONLY_SITUATIONS.has(situation) && !situation.includes('atividade_incorreta')) {
+      if (maxGradeConflict || (moodleMax.number === null && declaredMax.number !== null && !/alta|confirmad/i.test(next.notaMaximaStatus || ''))) {
+        errors.push('A nota máxima declarada está em conflito ou requer conferência; não foi feita a conversão.');
+      } else {
+      const conversion = proportionalGrade(next.desempenho, maxGrade);
+      if (conversion.error) errors.push(conversion.error);
+      else {
+        next.nota = conversion.grade;
+        next.notaNumero = conversion.number;
+      }
+      }
+    }
 
     if (FEEDBACK_ONLY_SITUATIONS.has(situation) || situation.includes('atividade_incorreta')) {
       if (String(next.nota || '').trim()) warnings.push('A situação exige somente feedback; a nota foi deixada em branco.');
@@ -350,10 +395,17 @@
 
     if (isSenaiPlay) {
       const validated = situation === 'senai_play_validado' || situation === 'validado' || situation === 'corrigido';
-      if (!validated) {
+      if (next.avaliacaoZero) {
+        next.nota = '';
+        next.notaNumero = null;
+      } else if (!validated) {
         next.nota = '';
         next.notaNumero = null;
         errors.push('SENAI Play exige a situação "SENAI Play validado" antes do lançamento.');
+      } else if (maxGradeConflict) {
+        next.nota = '';
+        next.notaNumero = null;
+        errors.push('SENAI Play: nota máxima em conflito ou marcada como insuficiente. Confira a atividade.');
       } else if (maxGrade !== null) {
         next.nota = formatGradePtBr(maxGrade);
         next.notaNumero = maxGrade;
@@ -388,6 +440,8 @@
     detectDelimiter,
     parseDelimitedText,
     parseGrade,
+    proportionalGrade,
+    pendingReadingState,
     formatGradePtBr,
     normalizeComparableFeedback,
     gradesEquivalent,

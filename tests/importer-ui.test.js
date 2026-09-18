@@ -10,11 +10,12 @@ const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch
 const styles = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.css'), 'utf8');
 const appStyles = fs.readFileSync(path.join(__dirname, '..', 'content', 'styles.css'), 'utf8');
 
-test('resumo do curso mantém Importar notas ao lado de Baixar atividades', () => {
-  const download = source.indexOf('mqi-course-pending-summary__download');
+test('resumo do curso mantém indicadores e importação, sem download duplicado', () => {
   const importer = source.indexOf('mqi-course-pending-summary__import');
   const refresh = source.indexOf('mqi-course-pending-summary__refresh');
-  assert.ok(download >= 0 && importer > download && refresh > importer);
+  assert.ok(importer >= 0 && refresh > importer);
+  assert.doesNotMatch(source, /mqi-course-pending-summary__download|downloadCoursePendingFiles|atividades_pendentes_curso_/);
+  assert.match(batchSource, /downloadAllForCorrection/);
   assert.match(source, /MAT\.batchGrading\.openModal\(\)/);
 });
 
@@ -83,7 +84,7 @@ test('nota máxima aceita formatos reais do Moodle e CSV legado quando a página
 test('categoria mostra quantidades em todas as UCs sem limites silenciosos', () => {
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 8\)/);
   assert.doesNotMatch(source, /return \[\.\.\.found\.values\(\)\]\.slice\(0, 20\)/);
-  assert.match(source, /badge\.textContent = '0 pendências'/);
+  assert.match(source, /badge\.textContent = '✓ 0 pendências'/);
   assert.match(source, /\? 'pendência' : 'pendências'/);
   assert.match(styles, /\.mqi-category-course-has-pending\.dashboard-card/);
   assert.match(styles, /border-color: #dc3545 !important/);

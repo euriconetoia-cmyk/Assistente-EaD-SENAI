@@ -438,6 +438,16 @@
 .mat-quality-details p { margin: 6px 0; font-size: 13px; line-height: 1.45; }
 
 .mat-priority-hero { padding: 15px; border: 1px solid #b9d5ee; border-radius: 14px; background: linear-gradient(145deg, var(--mat-white), var(--mat-blue-soft)); box-shadow: 0 8px 24px rgba(11, 92, 173, .08); }
+.mat-journey { margin-bottom: 12px; }
+.mat-journey .mat-section-head { align-items: flex-start; }
+.mat-journey-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; gap: 8px; padding: 0; margin: 14px 0 10px; }
+.mat-journey-steps button { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 43px; padding: 8px; border: 1px solid var(--mat-border); border-radius: 9px; background: var(--mat-white); color: var(--mat-ink); font: inherit; text-align: left; cursor: pointer; }
+.mat-journey-steps button:hover, .mat-journey-steps button:focus-visible { border-color: var(--mat-blue); background: var(--mat-blue-soft); }
+.mat-journey-steps button span { display: grid; place-items: center; flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--mat-blue-soft); color: var(--mat-blue-dark); font-weight: 700; }
+.mat-journey-steps button strong { font-size: 12px; line-height: 1.3; }
+.mat-journey-explanation { color: var(--mat-muted); font-size: 13px; margin: 0; }
+.mat-journey-priorities { display: grid; gap: 8px; }
+.mat-next-action small { display: block; margin-top: 6px; color: var(--mat-muted); }
 .mat-eyebrow { display: block; margin-bottom: 3px; color: var(--mat-accent); font-size: 11px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
 .mat-priority-hero .mat-section-head h3 { font-size: 18px; }
 .mat-next-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 12px; border: 1px solid var(--mat-border); border-radius: 12px; background: var(--mat-white); }
@@ -445,8 +455,6 @@
 .mat-next-action h4 { margin: 4px 0; color: var(--mat-ink); font-size: 15px; }
 .mat-next-action p { margin: 0; color: var(--mat-muted); font-size: 13px; line-height: 1.4; }
 .mat-next-action .mat-task-actions { justify-content: flex-end; align-content: center; max-width: 190px; margin: 0; }
-.mat-quick-actions { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; }
-.mat-quick-actions button { flex: 0 0 auto; min-height: 36px; border: 1px solid var(--mat-border); border-radius: 9px; background: var(--mat-white); color: var(--mat-blue-dark); padding: 7px 10px; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
 .mat-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
 .mat-situation-card { padding: 0; overflow: hidden; }
 .mat-situation-card summary { border-bottom: 1px solid transparent; }
@@ -467,6 +475,7 @@
 .mat-activity-event time { color: var(--mat-muted); font-size: 11px; white-space: nowrap; }
 .mat-work-queue { padding: 0; overflow: hidden; }
 .mat-work-queue .mat-task-list { padding: 0 12px 12px; }
+@container (max-width: 430px) { .mat-journey-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .mat-timeline-item { position: relative; padding: 0 0 14px 20px; border-left: 2px solid #dce7f2; margin-left: 6px; }
 .mat-timeline-item::before { content: ''; position: absolute; left: -6px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--mat-blue); }

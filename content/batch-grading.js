@@ -43,6 +43,7 @@
   };
 
   const safeText = (node, limit = 50000) => U.cleanText(node?.textContent || '').slice(0, limit);
+  const descriptionSelector = '#intro .no-overflow, #intro, [data-region="activity-description"], .activity-description, .mod_introbox, [data-region="activity-intro"], .mod_intro';
   const labeledValue = (doc, labels) => {
     const accepted = labels.map((label) => U.normalizeText(label));
     for (const row of doc.querySelectorAll('tr, .row, [data-region="activity-dates"] > div')) {
@@ -54,7 +55,7 @@
   };
 
   const extractAssignmentContext = (doc, assignment, gradingDoc = null) => {
-    const descriptionNode = doc.querySelector('#intro .no-overflow, #intro, [data-region="activity-description"], .activity-description, .mod_introbox');
+    const descriptionNode = doc.querySelector(descriptionSelector) || gradingDoc?.querySelector(descriptionSelector);
     const criteriaNodes = [...doc.querySelectorAll('[data-region="gradingform_rubric"], .gradingform_rubric, .rubric_criteria, .criterion, .criteria')];
     const body = safeText(doc.body, 100000);
     const pageGradeText = labeledValue(doc, ['nota máxima', 'nota maxíma', 'maximum grade', 'nota'])
@@ -117,7 +118,7 @@
     return [
       { name: 'manifesto_atividade.csv', content: manifestCsv },
       { name: 'agente-corretor-moodle-universal.md', content: `${MAT.assistedGrading?.AGENT_MARKDOWN || ''}\n` },
-      { name: 'LEIA-ME.txt', content: 'Este pacote corresponde a uma única atividade e a um único curso. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno. Se a entrega for de outra atividade ou a nota calculada for zero, deixe nota em branco e gere somente feedback. Em SENAI Play, valide a evidência; quando a atividade for pontuada e a nota máxima estiver confirmada, use a nota máxima. Se houver conflito ou dado não localizado, não invente essa informação e solicite conferência humana.' },
+      { name: 'LEIA-ME.txt', content: 'Este pacote corresponde a uma única atividade e a um único curso. Procure o enunciado em enunciado_da_atividade.txt, anexos_do_enunciado e arquivos_sap_da_uc. Um arquivo SAP é associado por nome da atividade e seção da UC, mas seu conteúdo ainda requer conferência do tutor. Se houver AVISO_ENUNCIADO_EM_ANEXO_OU_NAO_LOCALIZADO.txt, verifique esses arquivos e a página do Moodle antes de corrigir. Não atribua nota por IA sem o enunciado confirmado. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno. Nas atividades regulares, a IA avalia desempenho_0_100 e deixa nota vazia; a extensão calcula a nota proporcional antes de enviar. Se a entrega for de outra atividade ou o resultado for zero, deixe ambos vazios e gere somente feedback. Em SENAI Play, valide a evidência e informe a situação; quando pontuada, a extensão aplica a nota máxima confirmada. Se houver conflito ou dado não localizado, não invente essa informação e solicite conferência humana.' },
       ...activityEntries,
     ];
   }
@@ -148,7 +149,7 @@
       `Parte ${partIndex + 1} de ${partCount}.`,
       `Atividades nesta parte: ${part.bundles.length}.`,
       '',
-      'Cada pasta corresponde a uma única atividade e contém os envios, o enunciado, os critérios, os dados e as instruções próprias.',
+      'Cada pasta corresponde a uma única atividade e contém os envios, o contexto encontrado e as instruções próprias. Se houver aviso sobre enunciado ou anexos, confira a página do Moodle antes de corrigir.',
       'Não misture resultados entre pastas. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno.',
     ].join('\n');
     return [
@@ -171,6 +172,21 @@
     const courseSlug = slug(snapshot.course?.name);
     const bundles = [];
     const failures = [];
+    const missingStatements = [];
+    const attachedStatements = [];
+    let courseSections = snapshot.course?.sections || [];
+    let courseResourceWarning = '';
+    if (snapshot.course?.id && MAT.state.adapter?.extractSections) {
+      try {
+        const courseUrl = `${location.origin}/course/view.php?id=${encodeURIComponent(snapshot.course.id)}`;
+        const courseDoc = await fetchMoodleResource(courseUrl, 'Recursos SAP da página do curso');
+        const liveSections = MAT.state.adapter.extractSections(courseDoc);
+        if (liveSections.length) courseSections = liveSections;
+        else courseResourceWarning = 'A página do curso não apresentou seções; os vínculos dos recursos SAP foram consultados na última análise salva.';
+      } catch (error) {
+        courseResourceWarning = `Não foi possível atualizar a lista de arquivos SAP do curso: ${error.message}. Os vínculos foram consultados na última análise salva.`;
+      }
+    }
     MAT.ui.toast(`Preparando um pacote mestre com ${pending.length} atividade(s). Aguarde a coleta dos enunciados e envios.`);
 
     for (let index = 0; index < pending.length; index += 1) {
@@ -186,6 +202,17 @@
           throw new Error(`${assignment.name}: os envios desta atividade ultrapassam o limite individual de 500 MB.`);
         }
         const context = extractAssignmentContext(doc, assignment, gradingDoc);
+        const attachments = await U.fetchAssignmentAttachments(doc, buildAssignmentViewUrl(assignment));
+        const resources = MAT.statementResources.matchingResources(courseSections, assignment);
+        const resourceFiles = [];
+        const resourceErrors = [];
+        for (const resource of resources) {
+          try { resourceFiles.push({ ...await MAT.statementResources.fetchStatementResource(resource), cmid: resource.cmid }); }
+          catch (error) { resourceErrors.push(`Arquivo SAP ${resource.name} (CMID ${resource.cmid}): ${error.message}`); }
+        }
+        const foundFiles = attachments.files.length + resourceFiles.length;
+        if (!context.description && !foundFiles) missingStatements.push(`${assignment.name} (CMID ${assignment.cmid})`);
+        else if (!context.description) attachedStatements.push(`${assignment.name} (CMID ${assignment.cmid})`);
         const activityType = /senai\s*play/i.test(`${assignment.name} ${context.description}`) ? 'senai_play' : 'atividade_regular';
         const metadata = [
           `Curso ou UC: ${snapshot.course?.name || 'Não identificado'}`,
@@ -197,21 +224,30 @@
           `Fonte da nota máxima: ${context.gradeSource}`,
           `Tipo da atividade: ${activityType}`,
           `URL: ${buildAssignmentViewUrl(assignment)}`,
-          `Enunciado: ${context.description ? 'localizado' : 'não localizado'}`,
+          `Enunciado: ${context.description ? 'texto localizado' : foundFiles ? 'arquivo associado; conteúdo deve ser conferido' : 'não localizado'}`,
+          `Anexos do enunciado: ${attachments.files.length} baixado(s); ${attachments.errors.length} falha(s)`,
+          `Recursos SAP da mesma UC: ${resourceFiles.length} baixado(s); ${resourceErrors.length} falha(s)`,
+          ...resourceFiles.map((file) => `Arquivo SAP associado: ${file.name} (CMID ${file.cmid}); origem ${file.source}`),
           `Critérios ou rubrica: ${context.criteria ? 'localizados' : 'não localizados'}`,
           '',
-          context.warnings.length ? `AVISOS:\n${context.warnings.map((warning) => `- ${warning}`).join('\n')}` : 'Nenhum aviso de contexto.',
+          context.warnings.length || attachments.errors.length || resourceErrors.length || courseResourceWarning ? `AVISOS:\n${[...context.warnings.filter((warning) => !foundFiles || !warning.startsWith('Enunciado não localizado')), ...attachments.errors, ...resourceErrors, ...(courseResourceWarning ? [courseResourceWarning] : []), ...(resourceFiles.length ? ['Confirme que o arquivo SAP contém o enunciado desta tarefa antes de atribuir notas.'] : [])].map((warning) => `- ${warning}`).join('\n')}` : 'Nenhum aviso de contexto.',
         ].join('\n');
         const activityEntries = [
           { name: 'envios_dos_alunos.zip', bytes: submissionsZip },
-          { name: 'enunciado_da_atividade.txt', content: context.description || 'Enunciado não localizado automaticamente. Consulte o link informado em dados_da_atividade.txt antes de corrigir.' },
+          ...(context.description
+            ? [{ name: 'enunciado_da_atividade.txt', content: context.description }]
+            : [{ name: 'AVISO_ENUNCIADO_EM_ANEXO_OU_NAO_LOCALIZADO.txt', content: `O texto do enunciado não foi localizado nas páginas acessíveis desta tarefa. ${foundFiles ? `${foundFiles} arquivo(s) associado(s) foram incluídos em anexos_do_enunciado ou arquivos_sap_da_uc. Confira qual contém o enunciado.` : 'Nenhum arquivo de enunciado pôde ser baixado.'} Abra ${buildAssignmentViewUrl(assignment)} antes de usar IA para atribuir notas. Não corrija sem conferir o enunciado.` }]),
+          ...attachments.files.map((file, fileIndex) => ({ name: `anexos_do_enunciado/${fileIndex + 1}_${file.name}`, bytes: file.bytes })),
+          ...resourceFiles.map((file, fileIndex) => ({ name: `arquivos_sap_da_uc/${fileIndex + 1}_${file.cmid}_${file.name}`, bytes: file.bytes })),
+          ...(attachments.errors.length ? [{ name: 'AVISO_ANEXOS_NAO_BAIXADOS.txt', content: attachments.errors.join('\n') }] : []),
+          ...(resourceErrors.length || courseResourceWarning ? [{ name: 'AVISO_RECURSOS_SAP.txt', content: [...resourceErrors, courseResourceWarning].filter(Boolean).join('\n') }] : []),
           { name: 'criterios_de_avaliacao.txt', content: context.criteria || 'Critérios ou rubrica não localizados automaticamente. Não presuma critérios que não estejam presentes nos materiais fornecidos.' },
           { name: 'dados_da_atividade.txt', content: metadata },
           { name: 'criterios_de_pontuacao.txt', content: context.gradeText
-            ? `NOTA MÁXIMA CONFIRMADA: ${context.gradeText}\nESCALA PERMITIDA: de 0 a ${context.gradeText}.\nA nota deve ser proporcional aos critérios e nunca pode ultrapassar ${context.gradeText}.\nSe o resultado calculado for zero, deixe a nota vazia e gere somente feedback.\nEm atividade SENAI Play pontuada e validada, utilize exatamente ${context.gradeText}.`
+            ? `NOTA MÁXIMA CONFIRMADA: ${context.gradeText}\nAvalie o desempenho em 0 a 100 e preencha somente desempenho_0_100 no CSV. Deixe nota vazia: a extensão converterá proporcionalmente para a escala da atividade (desempenho ÷ 100 × ${context.gradeText}), com duas casas decimais.\nResultado zero exige feedback e nota vazia.\nEm SENAI Play validado, informe a situação e o feedback; a extensão aplicará a nota máxima confirmada.`
             : 'A nota máxima não foi confirmada ou apresenta conflito. Não atribua nota automaticamente. Gere feedback e solicite conferência humana.' },
         ];
-        const manifestRow = [location.hostname, snapshot.course?.id || '', snapshot.course?.name || '', assignment.cmid, assignment.name, activityType, context.dueText, context.gradeText, context.gradeConfidence, context.gradeSource, context.description ? 'localizado' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
+        const manifestRow = [location.hostname, snapshot.course?.id || '', snapshot.course?.name || '', assignment.cmid, assignment.name, activityType, context.dueText, context.gradeText, context.gradeConfidence, context.gradeSource, context.description ? 'texto localizado' : foundFiles ? 'arquivo associado, conferir' : 'não localizado', context.criteria ? 'localizados' : 'não localizados', buildAssignmentViewUrl(assignment)];
         const entries = buildAiActivityPackageEntries(activityEntries, manifestRow);
         bundles.push({
           folder: `${String(index + 1).padStart(2, '0')}_${assignment.cmid}_${slug(assignment.name)}`,
@@ -236,7 +272,11 @@
       U.downloadBlob(U.makeZipBlob(buildMasterPackageEntries(part, index, parts.length)), filename, 'application/zip');
     });
     if (failures.length) {
-      MAT.ui.toast(`${bundles.length} atividade(s) incluída(s) em ${parts.length} arquivo(s) e ${failures.length} com falha. ${failures.slice(0, 2).join(' ')}`, 'error');
+      MAT.ui.toast(`${bundles.length} atividade(s) incluída(s) em ${parts.length} arquivo(s) e ${failures.length} com falha. ${missingStatements.length ? `Enunciado não localizado em ${missingStatements.length} atividade(s). ` : ''}${attachedStatements.length ? `${attachedStatements.length} atividade(s) com enunciado possivelmente em anexo. ` : ''}${failures.slice(0, 2).join(' ')}`, 'error');
+      return;
+    }
+    if (missingStatements.length || attachedStatements.length) {
+      MAT.ui.toast(`Pacote preparado com ${bundles.length} atividade(s). ${attachedStatements.length ? `Material em anexo para ${attachedStatements.slice(0, 2).join('; ')}. ` : ''}${missingStatements.length ? `Enunciado não localizado em ${missingStatements.slice(0, 2).join('; ')}. ` : ''}Confira antes de corrigir.`, 'error');
       return;
     }
     MAT.ui.toast(parts.length === 1
@@ -271,6 +311,7 @@
         studentId: record.studentId,
         nome: record.nome,
         nota: policy.record.nota,
+        desempenho: policy.record.desempenho,
         feedback: policy.record.feedback,
         situacaoRaw: policy.record.situacaoRaw,
         notaMaxima: policy.record.notaMaxima,
@@ -319,7 +360,7 @@
       overwriteFeedback: $id('mat-batch-overwrite-feedback')?.checked ?? false,
       groups: STATE.groups.map((group) => ({
         cmid: String(group.assignment.cmid),
-        records: group.records.map((record) => [record.studentId || '', record.nome, record.nota, record.notaMaxima, record.notaMaximaStatus, record.feedback]),
+        records: group.records.map((record) => [record.studentId || '', record.nome, record.desempenho, record.nota, record.notaMaxima, record.notaMaximaStatus, record.feedback]),
       })),
     });
   }
@@ -517,6 +558,7 @@
       const studentLabel = U.escapeHtml(record.nome || record.studentId || 'aluno');
       const grade = `<div class="mat-inline-grade-editor">
         <label for="mat-inline-grade-${groupIndex}-${recordIndex}">Nota a enviar</label>
+        ${record.desempenho ? `<span class="mat-inline-grade-help">Avaliação da IA: ${U.escapeHtml(S.formatGradePtBr(record.desempenho))}/100. Cálculo: ${U.escapeHtml(S.formatGradePtBr(record.desempenho))} ÷ 100 × ${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))} = ${U.escapeHtml(S.formatGradePtBr(record.nota))}.</span>` : ''}
         <div class="mat-inline-grade-control">
           <input class="mat-input mat-change-grade-input" id="mat-inline-grade-${groupIndex}-${recordIndex}" data-inline-grade="${recordKey}" type="text" inputmode="decimal" value="${hasGrade ? U.escapeHtml(S.formatGradePtBr(record.nota)) : ''}" placeholder="Sem nota" aria-describedby="mat-inline-grade-help-${groupIndex}-${recordIndex}" />
           <button class="mat-btn mat-btn-primary mat-btn-sm" type="button" data-save-grade="${recordKey}" aria-label="Salvar nova nota de ${studentLabel}">Aplicar</button>
@@ -588,6 +630,7 @@
       }
       record.nota = parsedGrade.number === null || parsedGrade.number === 0 ? '' : S.formatGradePtBr(parsedGrade.number);
       record.notaNumero = parsedGrade.number === null || parsedGrade.number === 0 ? null : parsedGrade.number;
+      record.desempenho = '';
       STATE.previewAccepted = false;
       STATE.previewSignature = '';
       const confirmInput = $id('mat-batch-confirm');
@@ -628,6 +671,12 @@
       gradeInput?.focus();
       return;
     }
+    const editedMaximum = confirmedRecordMaxGrade(STATE.groups[groupIndex], record);
+    if (parsedGrade.number !== null && editedMaximum !== null && parsedGrade.number > editedMaximum) {
+      if (errorBox) errorBox.textContent = `A nota não pode ultrapassar ${S.formatGradePtBr(editedMaximum)}.`;
+      gradeInput?.focus();
+      return;
+    }
     if (parsedGrade.number === 0 && !feedback) {
       if (errorBox) errorBox.textContent = 'Nota zero não é lançada automaticamente. Escreva o feedback e deixe a nota em branco.';
       feedbackInput?.focus();
@@ -640,6 +689,7 @@
     }
     record.nota = parsedGrade.number === 0 ? '' : S.formatGradePtBr(parsedGrade.number);
     record.notaNumero = parsedGrade.number === 0 ? null : parsedGrade.number;
+    record.desempenho = '';
     record.feedback = feedback;
     STATE.editingRecordKey = '';
     invalidateChangePreview();
@@ -840,10 +890,26 @@
     await MAT.storage.addAction({
       type: 'conferencia_lote',
       title: 'Conferência de correções em lote',
+      status: totals.pending || totals.divergent || failedActivities ? 'parcial' : 'confirmada',
       note: `${STATE.results.length} atividade(s) processada(s). ${totals.total} registro(s) relido(s): ${totals.confirmed} confirmado(s), ${totals.divergent} divergente(s) e ${totals.pending} pendente(s) de conferência. ${failedActivities} atividade(s) sem salvamento confirmado.`,
     }, MAT.state.course.id);
+    for (const result of STATE.results) {
+      if (!result.cmid || !['sucesso', 'erro', 'divergente', 'nao_verificado'].includes(result.outcome)) continue;
+      const checked = result.verification?.items || [];
+      const confirmed = result.outcome === 'sucesso' && checked.length > 0 && checked.every((item) => item.status === 'confirmed');
+      await MAT.storage.addAction({
+        type: 'conferencia_atividade',
+        title: `Conferência de ${result.activityName || `atividade ${result.cmid}`}`,
+        assignmentId: String(result.cmid),
+        activityName: result.activityName || '',
+        outcome: confirmed ? 'sucesso' : result.outcome === 'divergente' ? 'divergente' : 'nao_verificado',
+        status: confirmed ? 'confirmada' : 'aguardando_conferencia',
+        note: confirmed ? 'Nota e feedback conferidos no Moodle.' : 'Confira nota e feedback no Moodle antes de considerar a correção concluída.'
+      }, MAT.state.course.id);
+    }
     MAT.state.actions = await MAT.storage.loadActions(MAT.state.course.id);
     MAT.ui.renderView?.('historico');
+    MAT.ui.renderView?.('hoje');
     STATE.historyRecordedBatchId = STATE.batchId;
   }
 

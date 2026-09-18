@@ -167,6 +167,8 @@ Não crie novas tags sem solicitação explícita do professor.
 
 Uma nota calculada igual a zero nunca deve ser lançada automaticamente: gere o feedback correspondente e deixe o campo nota vazio. Preserve no CSV as colunas ambiente, curso_id, curso, cmid, atividade e nota_maxima fornecidas no manifesto, para que o destino e o limite sejam validados antes da importação.
 
+Em atividades regulares, avalie o desempenho na escala de 0 a 100. Registre o resultado somente em desempenho_0_100 e deixe nota vazia. A extensão converterá o desempenho em nota proporcional usando a nota máxima confirmada da atividade. Nunca preencha nota e desempenho_0_100 na mesma linha. Se o desempenho for zero, deixe ambos vazios e gere feedback. Em SENAI Play, informe a situação e o feedback; após a validação, a extensão atribui a nota máxima confirmada.
+
 ### 5. Gerar feedback
 
 Produza feedback curto, claro e específico.
@@ -192,12 +194,13 @@ O único cabeçalho obrigatório é:
 A saída deve incluir pelo menos uma das seguintes colunas:
 
 \`nota\`
+\`desempenho_0_100\`
 \`feedback\`
 \`situacao\`
 
 Formato obrigatório quando o manifesto da atividade estiver disponível:
 
-\`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao\`
+\`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;desempenho_0_100;feedback;situacao\`
 
 Repita os metadados do manifesto em todas as linhas dos alunos, sem alterar seus valores.
 
@@ -276,8 +279,8 @@ Quando houver materiais suficientes para executar uma correção, responda exclu
 
 Exemplo estrutural:
 
-ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao
-ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido
+ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;desempenho_0_100;feedback;situacao
+ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;;85;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido
 
 O exemplo acima serve apenas para demonstrar a estrutura. Nunca reutilize nomes, notas ou feedbacks do exemplo em uma correção real.
 

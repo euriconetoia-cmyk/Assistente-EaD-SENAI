@@ -1,6 +1,6 @@
 # Privacidade e tratamento local de dados
 
-Versão: 3.7.11
+Versão: 3.7.15
 
 ## Finalidade
 
@@ -14,7 +14,7 @@ A extensão pode processar nomes, e-mails, identificadores internos do Moodle, a
 
 Retratos, notas separadas, configurações, checklist e histórico ficam no `chrome.storage.local`. A retenção padrão é de 90 dias e pode ser ajustada entre 7 e 365 dias. Registros expirados são removidos na inicialização e ao salvar configurações. O usuário pode limpar os dados do curso no painel.
 
-O conteúdo de mensagens não é armazenado por padrão. Quando essa opção permanece desativada, o histórico registra apenas que uma mensagem foi preparada.
+O armazenamento local do conteúdo das mensagens fica ativado por padrão, conforme a configuração inicial escolhida para a extensão. O usuário pode desativá-lo em Diagnóstico; nessa situação, o histórico registra apenas que uma mensagem foi preparada. O conteúdo salvo segue o prazo de retenção configurado.
 
 O estado temporário de um lote, incluindo o plano de conferência, fica em `chrome.storage.session` somente para permitir retomada segura após suspensão do service worker e é removido ao concluir o processo. O resultado detalhado da conferência permanece no modal até seu fechamento e pode ser baixado pelo tutor, sem persistência automática adicional.
 
@@ -24,7 +24,7 @@ A Auditoria Local registra por padrão apenas tipo da ação, data, ambiente, cu
 
 ## Pasta de evidências
 
-A versão 3.7.11 permite escolher uma pasta do computador pelo seletor nativo do Chrome. A extensão recebe acesso somente à pasta escolhida e apenas depois da autorização do usuário. A referência da pasta pode ser mantida no IndexedDB da extensão para facilitar exportações posteriores. O Chrome pode solicitar nova autorização e o usuário pode negar ou revogar o acesso.
+A versão 3.7.15 permite escolher uma pasta do computador pelo seletor nativo do Chrome. A extensão recebe acesso somente à pasta escolhida e apenas depois da autorização do usuário. A referência da pasta pode ser mantida no IndexedDB da extensão para facilitar exportações posteriores. O Chrome pode solicitar nova autorização e o usuário pode negar ou revogar o acesso.
 
 Se a autorização estiver ausente, negada ou indisponível, a extensão oferece download convencional em ZIP. Nenhum mecanismo tenta contornar a decisão do usuário.
 
@@ -38,7 +38,7 @@ A extensão limita suas consultas automáticas a `ead.senai.br` e `ead.fieg.com.
 
 - habilitar ou desabilitar armazenamento do conteúdo das mensagens;
 - definir retenção local;
-- manter varreduras automáticas desativadas;
+- habilitar ou desabilitar varreduras automáticas;
 - exportar os próprios relatórios;
 - remover todos os dados locais do curso com confirmação em duas etapas.
 

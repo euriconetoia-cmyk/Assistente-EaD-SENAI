@@ -36,6 +36,6 @@
   MAT.language = { PORTUGUESE_LANGUAGE, getPortugueseUrl, pageUsesEnglish, hasPortugueseRequest, requestPortuguese };
   chrome.storage.local.get(['mat_global_settings'], (data) => {
     if (chrome.runtime.lastError) return;
-    if (data?.mat_global_settings?.forcePortuguese === true) requestPortuguese();
+    if (MAT.storage.normalizeSettings(data?.mat_global_settings || {}).forcePortuguese === true) requestPortuguese();
   });
 })();

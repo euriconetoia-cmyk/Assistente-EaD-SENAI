@@ -26,10 +26,10 @@
     panelBehavior: 'overlay',
     navigationExpanded: false,
     retentionDays: 90,
-    storeMessageContent: false,
-    enableAutomaticCourseScan: false,
-    enableAutomaticCategoryScan: false,
-    forcePortuguese: false
+    storeMessageContent: true,
+    enableAutomaticCourseScan: true,
+    enableAutomaticCategoryScan: true,
+    forcePortuguese: true
   };
 
   const AUDIT_KEY = 'mat_audit_log_v1';
@@ -117,10 +117,10 @@
       panelBehavior: ['overlay', 'push'].includes(settings.panelBehavior) ? settings.panelBehavior : DEFAULT_SETTINGS.panelBehavior,
       navigationExpanded: Boolean(settings.navigationExpanded),
       retentionDays: Math.round(boundedNumber(settings.retentionDays, DEFAULT_SETTINGS.retentionDays, 7, 365)),
-      storeMessageContent: Boolean(settings.storeMessageContent),
-      enableAutomaticCourseScan: Boolean(settings.enableAutomaticCourseScan),
-      enableAutomaticCategoryScan: Boolean(settings.enableAutomaticCategoryScan),
-      forcePortuguese: Boolean(settings.forcePortuguese),
+      storeMessageContent: settings.storeMessageContent === undefined ? DEFAULT_SETTINGS.storeMessageContent : Boolean(settings.storeMessageContent),
+      enableAutomaticCourseScan: settings.enableAutomaticCourseScan === undefined ? DEFAULT_SETTINGS.enableAutomaticCourseScan : Boolean(settings.enableAutomaticCourseScan),
+      enableAutomaticCategoryScan: settings.enableAutomaticCategoryScan === undefined ? DEFAULT_SETTINGS.enableAutomaticCategoryScan : Boolean(settings.enableAutomaticCategoryScan),
+      forcePortuguese: settings.forcePortuguese === undefined ? DEFAULT_SETTINGS.forcePortuguese : Boolean(settings.forcePortuguese),
       activeUcName: '',
       activeUcSectionId: '',
       activeUcEndDate: ''
@@ -269,13 +269,17 @@
     await saveActions(actions, courseId);
     const eventType = action?.type === 'conferencia_lote'
       ? 'grade.verify.completed'
+      : action?.type === 'conferencia_atividade'
+        ? 'grade.verify.activity'
       : action?.type === 'comunicacao'
         ? 'message.opened'
         : 'action.recorded';
     await addAuditEvent({
       eventType,
       courseId,
-      result: action?.status === 'erro' ? 'error' : 'success',
+      activityId: action?.assignmentId || '',
+      activityName: action?.activityName || '',
+      result: action?.type === 'conferencia_atividade' && action?.outcome !== 'sucesso' || action?.status === 'parcial' ? 'partial' : action?.status === 'erro' ? 'error' : 'success',
       source: action?.type || 'history',
       message: action?.title || 'Ação registrada no histórico.'
     });

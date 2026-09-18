@@ -1,18 +1,65 @@
-# Validação da versão 3.7.11
+# Validação da versão 3.7.15, homologação
 
-Data: 15/09/2026
+Data: 17/09/2026
+
+- A conversão proporcional foi testada com escalas de 30 e 50 pontos, notas brasileiras com duas casas, CSV anterior, zero, atividade incorreta, SENAI Play e limite de 100.
+- O estado verde exige todas as leituras concluídas, sem pendências, erros ou atividade não verificada. Avisos inconclusivos não recebem check de conclusão.
+- 94 testes automatizados passaram; o validador conferiu 25 referências e 67 arquivos, sem falhas estruturais.
+
+## Validação anterior do recurso SAP na mesma versão
+
+Data: 17/09/2026
+
+- O recurso `SAP 01` (CMID 336353) do tipo Arquivo foi vinculado somente à tarefa `Envio da SAP 01` (CMID 335663) quando pertence à mesma seção da UC.
+- Testes cobrem PDF direto, arquivo DOCX referenciado em página HTML, rejeição de redirecionamento externo e montagem do ZIP com o recurso SAP e os envios.
+- 88 testes automatizados passaram; o validador conferiu 25 referências e 66 arquivos, sem falhas estruturais.
+- O enunciado textual e os anexos da tarefa continuam no pacote, quando encontrados. Arquivos associados por nome exigem conferência do tutor.
+- Teste autenticado nos dois ambientes Moodle continua pendente. A página real do recurso SAP específico pode apresentar um formato distinto dos casos simulados.
+
+## Validação anterior da jornada na mesma versão
+
+Data: 16/09/2026
+
+- 84 testes automatizados aprovados, 0 falhas.
+- 24 referências do manifesto e 63 arquivos de código e documentação conferidos pelo validador.
+- Sintaxe JavaScript, chaves CSS e `git diff --check` sem falhas.
+- Nova ordenação testada para lançamento não verificado, fechamento com pendências, prazo conhecido, sucesso posterior e confirmação manual.
+- Preservadas as barreiras de prévia, associação de atividade, nota máxima e releitura de nota e feedback do importador.
+- Não foi possível executar login e conferir alunos, notas e feedbacks em turmas reais. Validar a jornada e o lote em curso de homologação nos dois ambientes antes de usar com turmas em produção.
+
+## Histórico da validação da versão 3.7.14
+
+Data: 16/09/2026
 
 ## Resultado automatizado
 
-- 75 testes automatizados aprovados.
+- 79 testes automatizados aprovados.
 - 0 testes reprovados.
-- 55 arquivos verificados pela auditoria estrutural.
+- 60 arquivos verificados pela auditoria estrutural.
 - 23 referências do manifesto confirmadas.
 - 0 falhas de sintaxe JavaScript.
 - 0 desequilíbrios de estrutura CSS.
 - 0 violações críticas, altas ou médias identificadas na varredura local.
 
-## Novas verificações da versão 3.7.11
+## Novas verificações da versão 3.7.14
+
+- Ajuste da mesma versão remove o botão de download e a segunda implementação de ZIP do resumo do curso.
+- O botão do painel continua disponível e os testes de enunciados e anexos foram preservados.
+- Os cinco controles marcados na tela possuem os mesmos valores iniciais exibidos e aplicados pelas rotinas automáticas.
+- A abertura automática do painel permanece desativada.
+- Preferências anteriormente salvas como desativadas são preservadas.
+- O texto de comunicação é salvo com o novo padrão e deixa de ser salvo quando a opção é desativada.
+
+## Verificações preservadas da versão 3.7.13
+
+- Arquivo anexado pelo professor entra no pacote da atividade.
+- Envio de aluno com nome igual ao do anexo não entra na coleta do enunciado.
+- A tela de avaliação serve de fonte secundária para o texto do enunciado.
+- Quando o enunciado não está acessível, os envios continuam disponíveis com aviso explícito, sem supor conteúdo inexistente.
+- O limite de anexos é 25 MB por atividade; endereços fora do ambiente Moodle são recusados.
+- A validação não incluiu login em Moodle real; a identificação de materiais específicos exige homologação.
+
+## Verificações preservadas da versão 3.7.11
 
 - Interface Moodle em português usa vírgula como separador quando os campos vazios não oferecem uma amostra confiável.
 - Cada nota autorizada é procurada novamente no aluno correspondente antes do envio.
@@ -102,7 +149,7 @@ Data: 15/09/2026
 
 ## Auditoria visual
 
-O relatório [AUDITORIA_VISUAL_V3.7.0.md](AUDITORIA_VISUAL_V3.7.0.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
+O relatório [AUDITORIA_VISUAL_V3.7.0.md](docs/reports/AUDITORIA_VISUAL_V3.7.0.md) registra tokens, contrastes, responsividade, foco, tema escuro e estados acessíveis.
 
 ## Comandos executados
 

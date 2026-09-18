@@ -26,8 +26,28 @@ test('configurações inseguras são normalizadas para limites conservadores', (
   assert.equal(settings.maxAssignments, 200);
   assert.equal(settings.retentionDays, 7);
   assert.equal(settings.theme, 'system');
-  assert.equal(settings.enableAutomaticCourseScan, false);
-  assert.equal(settings.storeMessageContent, false);
+  assert.equal(settings.showFloatingButton, true);
+  assert.equal(settings.autoOpenPanel, false);
+  assert.equal(settings.enableAutomaticCourseScan, true);
+  assert.equal(settings.enableAutomaticCategoryScan, true);
+  assert.equal(settings.storeMessageContent, true);
+  assert.equal(settings.forcePortuguese, true);
+});
+
+test('preferências já salvas prevalecem sobre os novos padrões', async () => {
+  const previous = await MAT.storage.saveSettings({
+    enableAutomaticCourseScan: false,
+    enableAutomaticCategoryScan: false,
+    storeMessageContent: false,
+    forcePortuguese: false,
+  });
+  assert.equal(previous.enableAutomaticCourseScan, false);
+  assert.equal(previous.enableAutomaticCategoryScan, false);
+  assert.equal(previous.storeMessageContent, false);
+  assert.equal(previous.forcePortuguese, false);
+  const recovered = await MAT.storage.loadSettings();
+  assert.equal(recovered.enableAutomaticCourseScan, false);
+  assert.equal(recovered.storeMessageContent, false);
 });
 
 test('snapshot não duplica o livro de notas no armazenamento', async () => {
@@ -37,11 +57,18 @@ test('snapshot não duplica o livro de notas no armazenamento', async () => {
   assert.equal('gradebook' in snapshot, false);
 });
 
-test('texto de comunicação não é persistido por padrão', async () => {
+test('texto de comunicação é armazenado localmente no novo padrão', async () => {
+  MAT.state.settings = MAT.storage.normalizeSettings({});
+  await MAT.storage.addAction({ type: 'comunicacao', note: 'Mensagem preparada para envio' }, 701);
+  const actions = await MAT.storage.loadActions(701);
+  assert.equal(actions[0].note, 'Mensagem preparada para envio');
+});
+
+test('texto de comunicação não é persistido quando o usuário desativa a opção', async () => {
   MAT.state.settings = MAT.storage.normalizeSettings({ storeMessageContent: false });
   await MAT.storage.addAction({ type: 'comunicacao', note: 'Dado pessoal sensível' }, 7);
-  const actions = Object.values(values).find(Array.isArray);
-  assert.equal(actions[0].note, 'Mensagem preparada. Conteúdo não armazenado.');
+  const actions = await MAT.storage.loadActions(7);
+  assert.equal(actions.at(-1).note, 'Mensagem preparada. Conteúdo não armazenado.');
 });
 
 test('rascunho do Moodle pode ser recuperado mesmo quando a rota usa id de conversa', async () => {
