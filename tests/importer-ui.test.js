@@ -302,3 +302,10 @@ test('pacote consulta o Moodle com filtro oficial de requer correção', () => {
   assert.match(batchSource, /url\.searchParams\.set\('perpage', '500'\)/);
   assert.doesNotMatch(batchSource, /url\.searchParams\.set\('status', 'all'\)/);
 });
+
+
+test('leitura da avaliação não confunde denominador da nota com nota lançada', () => {
+  assert.match(adaptersSource, /const slashGrade = !gradeInput && gradeText\.match/);
+  assert.match(adaptersSource, /U\.parseGrade\(slashGrade\[1\]\)/);
+  assert.match(adaptersSource, /gradeInput[\s\S]{0,120}\? \(gradeInput\.value \|\| selectedText \|\| ''\)/);
+});
