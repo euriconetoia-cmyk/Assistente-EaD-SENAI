@@ -343,6 +343,7 @@
     results: [],
     onlyVerificationIssues: false,
     historyRecordedBatchId: null,
+    gradeResolution: {},
     returnFocus: null,
     keyHandler: null,
   };
@@ -464,7 +465,7 @@
       <tr>
         <td><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
         <td>${group.records.length}</td>
-        <td><span class="mat-badge mat-badge-success">Correspondência exata</span></td>
+        <td><span class="mat-badge mat-badge-success">Correspondência exata</span>${maximumResolutionLabel(group.assignment)}</td>
       </tr>`).join('');
 
     const unmatchedRows = STATE.unmatched.length
@@ -547,6 +548,149 @@
     if (recordMaxGrade.valid && recordMaxGrade.number > 0) return recordMaxGrade.number;
     if (assignmentMaxGrade.valid && assignmentMaxGrade.number > 0) return assignmentMaxGrade.number;
     return null;
+  }
+
+  function assignmentMaximum(assignment) {
+    const parsed = S.parseGrade(assignment?.maxGrade ?? assignment?.gradeMax ?? assignment?.metrics?.maxGrade ?? '');
+    return parsed.valid && parsed.number > 0 ? parsed.number : null;
+  }
+
+  function recordNeedsMaximum(record, assignment) {
+    if (String(record?.desempenho || '').trim()) return true;
+    const situation = S.normalizeSituationCode(record?.situacaoRaw || record?.situacao || '');
+    const activityText = U.normalizeText(`${assignment?.name || record?.atividade || ''} ${record?.tipoAtividade || ''}`);
+    const isSenaiPlay = /senai\s*play/.test(activityText);
+    return isSenaiPlay && ['senai_play_validado', 'validado', 'corrigido'].includes(situation);
+  }
+
+  function maximumResolutionLabel(assignment) {
+    const key = String(assignment?.cmid || '');
+    const resolution = STATE.gradeResolution[key];
+    const maximum = assignmentMaximum(assignment);
+    if (resolution?.status === 'loading') {
+      return '<div class="mat-footer-note">Confirmando a nota máxima no Moodle...</div>';
+    }
+    if (resolution?.status === 'conflict') {
+      return `<div class="mat-footer-note mat-text-danger">Nota máxima com conflito: ${U.escapeHtml(resolution.message || 'confira a atividade antes de continuar.')}</div>`;
+    }
+    if (resolution?.status === 'missing' || resolution?.status === 'error') {
+      return `<div class="mat-footer-note mat-text-danger">Nota máxima não confirmada: ${U.escapeHtml(resolution.message || 'não foi possível identificar a escala da atividade.')}</div>`;
+    }
+    if (maximum !== null) {
+      const source = String(assignment.maxGradeSource || resolution?.source || 'Moodle').trim();
+      return `<div class="mat-footer-note">Nota máxima: <strong>${U.escapeHtml(S.formatGradePtBr(maximum))}</strong>. Fonte: ${U.escapeHtml(source)}.</div>`;
+    }
+    return '<div class="mat-footer-note">Nota máxima ainda não identificada.</div>';
+  }
+
+  function updateAssignmentMaximum(assignment, maximum, source, status = 'alta') {
+    assignment.maxGrade = maximum;
+    assignment.maxGradeSource = source || 'Moodle';
+    assignment.maxGradeStatus = status || 'alta';
+    const snapshotAssignments = MAT.state.snapshot?.activityPanorama?.assignments || MAT.state.snapshot?.assignments || [];
+    const snapshotAssignment = snapshotAssignments.find((item) => String(item.cmid) === String(assignment.cmid));
+    if (snapshotAssignment && snapshotAssignment !== assignment) {
+      snapshotAssignment.maxGrade = maximum;
+      snapshotAssignment.maxGradeSource = assignment.maxGradeSource;
+      snapshotAssignment.maxGradeStatus = assignment.maxGradeStatus;
+    }
+  }
+
+  async function resolveAssignmentMaximum(assignment) {
+    if (!assignment?.cmid) return null;
+    const key = String(assignment.cmid);
+    const current = assignmentMaximum(assignment);
+    if (current !== null) {
+      STATE.gradeResolution[key] = { status: 'confirmed', maximum: current, source: assignment.maxGradeSource || 'análise local' };
+      return current;
+    }
+    STATE.gradeResolution[key] = { status: 'loading', maximum: null, source: '' };
+
+    try {
+      const [viewResult, gradingResult] = await Promise.allSettled([
+        fetchMoodleResource(buildAssignmentViewUrl(assignment), `Atividade ${assignment.name}`),
+        fetchMoodleResource(buildAssignmentGradingUrl(assignment), `Escala de nota de ${assignment.name}`),
+      ]);
+      const viewDoc = viewResult.status === 'fulfilled' ? viewResult.value : null;
+      const gradingDoc = gradingResult.status === 'fulfilled' ? gradingResult.value : null;
+      const primaryDoc = viewDoc || gradingDoc;
+      if (!primaryDoc) {
+        const messages = [viewResult, gradingResult]
+          .filter((result) => result.status === 'rejected')
+          .map((result) => result.reason?.message)
+          .filter(Boolean);
+        throw new Error(messages.join(' ') || 'As páginas da atividade não puderam ser consultadas.');
+      }
+
+      const context = extractAssignmentContext(primaryDoc, assignment, gradingDoc || primaryDoc);
+      if (context.gradeConflict) {
+        STATE.gradeResolution[key] = {
+          status: 'conflict',
+          maximum: null,
+          source: context.gradeSource,
+          message: context.warnings.find((warning) => /conflito na nota máxima/i.test(warning)) || 'As fontes do Moodle apresentam valores diferentes.',
+        };
+        return null;
+      }
+
+      const parsed = S.parseGrade(context.gradeText);
+      if (!parsed.valid || parsed.number === null || parsed.number <= 0) {
+        STATE.gradeResolution[key] = {
+          status: 'missing',
+          maximum: null,
+          source: context.gradeSource,
+          message: 'A escala não apareceu nem na atividade nem na tela de avaliação.',
+        };
+        return null;
+      }
+
+      updateAssignmentMaximum(assignment, parsed.number, context.gradeSource, context.gradeConfidence);
+      STATE.gradeResolution[key] = {
+        status: 'confirmed',
+        maximum: parsed.number,
+        source: context.gradeSource,
+        confidence: context.gradeConfidence,
+      };
+      return parsed.number;
+    } catch (error) {
+      STATE.gradeResolution[key] = {
+        status: 'error',
+        maximum: null,
+        source: '',
+        message: error?.message || 'Falha ao consultar a escala da atividade.',
+      };
+      return null;
+    }
+  }
+
+  async function ensureMaximumsForFiles(assignments) {
+    const targets = new Map();
+    for (const item of STATE.files) {
+      if (item.error || !item.parsed?.records?.length) continue;
+      if (!item.embeddedActivity && item.selectedCmid) {
+        const assignment = assignments.find((candidate) => String(candidate.cmid) === String(item.selectedCmid));
+        if (assignment && item.parsed.records.some((record) => recordNeedsMaximum(record, assignment)) && assignmentMaximum(assignment) === null) {
+          targets.set(String(assignment.cmid), assignment);
+        }
+        continue;
+      }
+      if (item.embeddedActivity) {
+        for (const record of item.parsed.records) {
+          const match = S.matchActivity(record, assignments);
+          const assignment = match.status === 'exact' ? match.assignment : null;
+          if (assignment && recordNeedsMaximum(record, assignment) && assignmentMaximum(assignment) === null) {
+            targets.set(String(assignment.cmid), assignment);
+          }
+        }
+      }
+    }
+
+    if (!targets.size) return;
+    targets.forEach((assignment) => {
+      STATE.gradeResolution[String(assignment.cmid)] = { status: 'loading', maximum: null, source: '' };
+    });
+    MAT.ui.toast(`Confirmando a nota máxima de ${targets.size} atividade(s) diretamente no Moodle...`);
+    await Promise.all([...targets.values()].map((assignment) => resolveAssignmentMaximum(assignment)));
   }
 
   function renderChangePreview() {
@@ -750,6 +894,7 @@
         }
       }));
       invalidateChangePreview();
+      await ensureMaximumsForFiles(assignments);
       rebuildBatchState(assignments);
       renderPreview();
       updateBatchControls();
@@ -769,17 +914,29 @@
     }
   }
 
-  function handleFileMappingChange(event) {
+  async function handleFileMappingChange(event) {
     const select = event.target.closest('[data-batch-file-index]');
     if (!select) return;
     const item = STATE.files[Number(select.dataset.batchFileIndex)];
     if (!item || item.embeddedActivity) return;
     item.selectedCmid = select.value;
     invalidateChangePreview();
-    rebuildBatchState();
-    renderPreview();
-    updateBatchControls();
-    $id(`mat-batch-file-map-${select.dataset.batchFileIndex}`)?.focus({ preventScroll: true });
+    const assignments = pendingAssignments(MAT.state.snapshot);
+    select.disabled = true;
+    select.setAttribute('aria-busy', 'true');
+    try {
+      await ensureMaximumsForFiles(assignments);
+      rebuildBatchState(assignments);
+      renderPreview();
+      updateBatchControls();
+      $id(`mat-batch-file-map-${select.dataset.batchFileIndex}`)?.focus({ preventScroll: true });
+    } finally {
+      const current = $id(`mat-batch-file-map-${select.dataset.batchFileIndex}`);
+      if (current) {
+        current.disabled = false;
+        current.removeAttribute('aria-busy');
+      }
+    }
   }
 
   function renderProgressRow(activityName, phase, result) {
@@ -1097,6 +1254,7 @@
     STATE.results = [];
     STATE.onlyVerificationIssues = false;
     STATE.historyRecordedBatchId = null;
+    STATE.gradeResolution = {};
     STATE.returnFocus = MAT.dom.ensureHost().activeElement;
     const snapshot = MAT.state.snapshot;
     const pendingCount = pendingAssignments(snapshot).length;
