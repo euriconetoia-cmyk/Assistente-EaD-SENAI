@@ -8,6 +8,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.js'), 'utf8');
 const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch-grading.js'), 'utf8');
+const adaptersSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'adapters.js'), 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.css'), 'utf8');
 const appStyles = fs.readFileSync(path.join(__dirname, '..', 'content', 'styles.css'), 'utf8');
 
@@ -83,6 +84,26 @@ test('conferência mostra nota máxima, origem e estado de confirmação', () =>
   assert.match(batchSource, /Fonte:/);
   assert.match(batchSource, /Não confirmada/);
   assert.match(batchSource, /Requer conferência/);
+});
+
+test('lote confirma automaticamente a nota máxima no Moodle antes de converter desempenho', () => {
+  assert.match(batchSource, /async function resolveAssignmentMaximum/);
+  assert.match(batchSource, /async function ensureMaximumsForFiles/);
+  assert.match(batchSource, /buildAssignmentViewUrl\(assignment\)/);
+  assert.match(batchSource, /buildAssignmentGradingUrl\(assignment\)/);
+  assert.match(batchSource, /Promise\.allSettled/);
+  assert.match(batchSource, /await ensureMaximumsForFiles\(assignments\)/);
+  assert.match(batchSource, /Confirmando a nota máxima de/);
+  assert.match(batchSource, /Nota máxima: <strong>/);
+  assert.match(batchSource, /aria-busy/);
+});
+
+test('resumo da atividade preserva nota máxima e origem quando o Moodle já expõe a escala', () => {
+  assert.match(adaptersSource, /input\[max\], input\[aria-valuemax\], \[data-maxgrade\]/);
+  assert.match(adaptersSource, /summaryMaxGradeText/);
+  assert.match(adaptersSource, /maxGradeSource/);
+  assert.match(adaptersSource, /campo de nota do Moodle/);
+  assert.match(adaptersSource, /resumo da atividade/);
 });
 
 test('lançamento bloqueia somente divergência confirmada entre a nota máxima do CSV e do Moodle', () => {

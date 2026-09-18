@@ -419,6 +419,32 @@
           : null;
       const participants = participantsFromValue !== null ? participantsFromValue : participantsResult.value;
 
+      const summaryMaxGradeText = findValue(
+        'nota maxima',
+        'maximum grade',
+        'grade out of',
+        'valor maximo',
+        'pontuacao maxima'
+      );
+      const summaryInputMaxGrade = [...doc.querySelectorAll('input[max], input[aria-valuemax], [data-maxgrade]')]
+        .map((node) => node.getAttribute('max') || node.getAttribute('aria-valuemax') || node.getAttribute('data-maxgrade') || '')
+        .map((value) => String(value).trim())
+        .find((value) => /^\d+(?:[.,]\d+)?$/.test(value) && Number(value.replace(',', '.')) > 0) || '';
+      const parseSummaryMaximum = (value) => {
+        const match = String(value || '').match(/\d+(?:[.,]\d+)?/);
+        if (!match) return null;
+        const number = Number(match[0].replace(',', '.'));
+        return Number.isFinite(number) && number > 0 ? number : null;
+      };
+      const maxGradeFromInput = parseSummaryMaximum(summaryInputMaxGrade);
+      const maxGradeFromSummary = parseSummaryMaximum(summaryMaxGradeText);
+      const maxGrade = maxGradeFromInput ?? maxGradeFromSummary;
+      const maxGradeSource = maxGradeFromInput !== null
+        ? 'campo de nota do Moodle'
+        : maxGradeFromSummary !== null
+          ? 'resumo da atividade'
+          : '';
+
       return {
         ...seed,
         name: title || seed.name,
@@ -428,6 +454,8 @@
         needsGrading,
         submitted,
         participants,
+        maxGrade,
+        maxGradeSource,
         summaryCounts: {
           needsGrading,
           submitted,
