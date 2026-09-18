@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.11';
+  const VERSION = globalThis.chrome?.runtime?.getManifest?.().version || '3.7.15';
   const S = globalThis.MAT_SHARED;
   const auditEvent = (event) => globalThis.MAT?.storage?.addAuditEvent?.({
     source: 'grade-importer',
@@ -22,15 +22,10 @@
   const MAX_IMPORT_CELLS = 50000;
 
   const COURSE_BADGE_CACHE_TTL = 15 * 60 * 1000;
-  const MAX_BATCH_PENDING_FILES = 200;
-  const MAX_BATCH_PENDING_BYTES = 50 * 1024 * 1024;
   const COURSE_BADGE_STATE = {
     results: new Map(),
     inFlight: new Map(),
     scanTimer: null,
-    lastAssignments: [],
-    isDownloading: false,
-    downloadError: '',
   };
 
   const PENDING_EVALUATION_LABELS = [
@@ -114,9 +109,9 @@
     '',
     'Retorne somente o conteúdo do CSV, sem Markdown e sem texto adicional.',
     'Use ponto e vírgula como separador.',
-    'O único cabeçalho obrigatório é nome. Inclua ao menos uma destas colunas: nota, feedback ou situacao.',
+    'O único cabeçalho obrigatório é nome. Inclua ao menos uma destas colunas: desempenho_0_100, nota, feedback ou situacao.',
     'Formato completo recomendado:',
-    'nome;nota;feedback;situacao',
+    'nome;desempenho_0_100;feedback;situacao',
     'Quando não houver nota, também é aceito:',
     'nome;feedback;situacao',
     '',
@@ -136,7 +131,7 @@
     '- Não invente alunos ausentes na lista de envios.',
     '- Avalie somente com base nas evidências presentes na entrega do aluno e nas orientações fornecidas.',
     '- Quando não houver conteúdo suficiente para avaliação, sinalize isso em situacao.',
-    '- Use nota numérica quando houver avaliação. Se não for adequado lançar nota, a coluna nota pode ficar vazia.',
+    '- Avalie o desempenho em escala de 0 a 100 na coluna desempenho_0_100. A extensão converte para a nota máxima confirmada da atividade. Não preencha nota e desempenho_0_100 juntos.',
     '- Se o resultado calculado for zero ou o aluno enviar a atividade errada, gere somente feedback e deixe a nota vazia.',
     '- Em SENAI Play, valide a evidência. Se a atividade for pontuada e a nota máxima estiver confirmada, atribua exatamente a nota máxima; caso contrário, deixe a nota vazia.',
     '- O feedback deve ser curto, claro, acolhedor e individualizado.',
@@ -316,7 +311,7 @@
     '',
     'Não crie novas tags sem solicitação explícita do professor.',
     '',
-    'Uma nota calculada igual a zero nunca deve ser lançada automaticamente: gere feedback e deixe a nota vazia. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno para validação do destino.',
+    'Um desempenho igual a zero nunca deve ser lançado automaticamente: gere feedback e deixe nota e desempenho_0_100 vazios. Preserve ambiente, curso_id, curso, cmid, atividade e nota_maxima no CSV de retorno para validação do destino.',
     '',
     '### 5. Gerar feedback',
     '',
@@ -348,7 +343,7 @@
     '',
     'Formato obrigatório quando o manifesto estiver disponível:',
     '',
-    '`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao`',
+    '`ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;desempenho_0_100;feedback;situacao`',
     '',
     'Repita os metadados do manifesto em todas as linhas dos alunos, sem alterar seus valores.',
     '',
@@ -427,8 +422,8 @@
     '',
     'Exemplo estrutural:',
     '',
-    'ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;feedback;situacao',
-    'ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;8.5;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido',
+    'ambiente;curso_id;curso;cmid;atividade;tipo_atividade;nota_maxima;nota_maxima_status;nota_maxima_fonte;nome;nota;desempenho_0_100;feedback;situacao',
+    'ead.senai.br;123;Curso Exemplo;456;SAP 01;atividade_regular;10;alta;campo de nota do Moodle;Aluno Exemplo;;85;Você desenvolveu corretamente os pontos principais e precisa detalhar melhor a conclusão;Corrigido',
     '',
     'O exemplo acima serve apenas para demonstrar a estrutura. Nunca reutilize nomes, notas ou feedbacks do exemplo em uma correção real.',
     '',
@@ -1033,6 +1028,9 @@
       studentId: findHeaderIndex(headers, ['student_id', 'student id', 'id do aluno', 'id aluno', 'id do estudante']),
       nome: findHeaderIndex(headers, COLUMN_ALIASES.nome),
       nota: findHeaderIndex(headers, COLUMN_ALIASES.nota),
+      desempenho: findHeaderIndex(headers, ['desempenho_0_100', 'avaliacao_0_100']),
+      notaMaxima: findHeaderIndex(headers, ['nota_maxima', 'nota maxima', 'max_grade']),
+      notaMaximaStatus: findHeaderIndex(headers, ['nota_maxima_status', 'status da nota maxima', 'max_grade_status']),
       feedback: findHeaderIndex(headers, COLUMN_ALIASES.feedback),
       situacao: findHeaderIndex(headers, COLUMN_ALIASES.situacao),
     };
@@ -1041,20 +1039,24 @@
       throw new Error('Cabeçalho obrigatório não encontrado: nome ou student_id.');
     }
 
-    if (indexes.nota === -1 && indexes.feedback === -1 && indexes.situacao === -1) {
-      throw new Error('Inclua ao menos uma coluna de ação: nota, feedback ou situacao.');
+    if (indexes.nota === -1 && indexes.desempenho === -1 && indexes.feedback === -1 && indexes.situacao === -1) {
+      throw new Error('Inclua ao menos uma coluna de ação: nota, desempenho_0_100, feedback ou situacao.');
     }
 
     const records = [];
     const warnings = [];
     const errors = [];
     const identifiers = new Map();
+    const pageMaximum = extractPageMaxGradeNumber();
 
     rows.slice(1).forEach((row, index) => {
       const rowNumber = index + 2;
       const studentId = indexes.studentId !== -1 ? String(row[indexes.studentId] ?? '').trim() : '';
       const nome = String(row[indexes.nome] ?? '').trim();
       let nota = indexes.nota !== -1 ? String(row[indexes.nota] ?? '').trim() : '';
+      const desempenho = indexes.desempenho !== -1 ? String(row[indexes.desempenho] ?? '').trim() : '';
+      const declaredMaximum = indexes.notaMaxima !== -1 ? String(row[indexes.notaMaxima] ?? '').trim() : '';
+      const maximumStatus = indexes.notaMaximaStatus !== -1 ? String(row[indexes.notaMaximaStatus] ?? '').trim() : '';
       const feedback = indexes.feedback !== -1 ? String(row[indexes.feedback] ?? '').trim() : '';
       const situacaoRaw = indexes.situacao !== -1 ? String(row[indexes.situacao] ?? '').trim() : '';
       const situacao = normalizeSituation(situacaoRaw);
@@ -1065,8 +1067,17 @@
         errors.push(`Linha ${rowNumber}: informe nome ou student_id.`);
         return;
       }
-      if (!nota && !feedback && !situacao) {
-        errors.push(`Linha ${rowNumber}: informe nota, feedback ou situacao.`);
+      if (!nota && !desempenho && !feedback && !situacao) {
+        errors.push(`Linha ${rowNumber}: informe nota, desempenho_0_100, feedback ou situacao.`);
+        return;
+      }
+      if (nota && desempenho) {
+        errors.push(`Linha ${rowNumber}: informe nota ou desempenho_0_100, nunca os dois.`);
+        return;
+      }
+      const parsedScore = S.parseGrade(desempenho);
+      if (!parsedScore.valid || (parsedScore.number !== null && parsedScore.number > 100)) {
+        errors.push(`Linha ${rowNumber}: desempenho_0_100 deve estar entre 0 e 100.`);
         return;
       }
       if (nota && !isValidImportedGrade(nota)) {
@@ -1075,14 +1086,37 @@
       }
       const parsedGrade = S.parseGrade(nota);
       const feedbackOnly = ['atividade_incorreta', 'erro_arquivo', 'sem_conteudo_relevante', 'sem_envio_valido', 'sem_participacao_forum', 'senai_play_nao_comprovado'].includes(situacao);
-      if ((parsedGrade.valid && parsedGrade.number === 0) || feedbackOnly) {
+      if (desempenho && !feedbackOnly && parsedScore.number !== 0) {
+        const declared = S.parseGrade(declaredMaximum);
+        if (pageMaximum === null && !/alta|confirmad/i.test(maximumStatus)) {
+          errors.push(`Linha ${rowNumber}: confirme a nota máxima na página do Moodle ou no manifesto da atividade antes de converter o desempenho.`);
+          return;
+        }
+        if (declaredMaximum && (!declared.valid || declared.number === null || declared.number <= 0 || (pageMaximum !== null && !S.gradesEquivalent(declared.number, pageMaximum)))) {
+          errors.push(`Linha ${rowNumber}: nota máxima do CSV inválida ou diferente da escala do Moodle.`);
+          return;
+        }
+        if (situacao === 'senai_play_validado') {
+          const maximum = S.parseGrade(pageMaximum ?? declared.number);
+          if (!maximum.valid || maximum.number === null || maximum.number <= 0) {
+            errors.push(`Linha ${rowNumber}: confirme a nota máxima para SENAI Play validado.`);
+            return;
+          }
+          nota = S.formatGradePtBr(maximum.number);
+        } else {
+          const conversion = S.proportionalGrade(desempenho, pageMaximum ?? declared.number);
+          if (conversion.error) { errors.push(`Linha ${rowNumber}: ${conversion.error}`); return; }
+          nota = conversion.grade;
+        }
+      }
+      if ((parsedGrade.valid && parsedGrade.number === 0) || parsedScore.number === 0 || feedbackOnly) {
         if (!feedback) {
           errors.push(`Linha ${rowNumber}: nota zero ou situação sem avaliação exige feedback e nota em branco.`);
           return;
         }
         if (nota) warnings.push(`Linha ${rowNumber}: a nota foi removida; somente o feedback será preenchido.`);
         nota = '';
-      } else if (parsedGrade.number !== null) {
+      } else if (parsedGrade.number !== null && !desempenho) {
         nota = S.formatGradePtBr(parsedGrade.number);
       }
       if (situacaoRaw && !situacao) {
@@ -2231,15 +2265,6 @@
 
     let badge = assignment.card.querySelector(`.mqi-pending-badge[data-assignment-id="${CSS.escape(assignmentId)}"]`);
 
-    if (state === 'empty') {
-      badge?.remove();
-      badgeHost.classList.remove('mqi-pending-badge-layer');
-      iconHost?.classList?.remove('mqi-pending-icon-reference');
-      assignment.card.classList.remove('mqi-assignment-has-pending');
-      delete assignment.card.dataset.mqiPendingCount;
-      return null;
-    }
-
     if (!badge) {
       badge = document.createElement('span');
       badge.className = 'mqi-pending-badge';
@@ -2249,6 +2274,7 @@
     if (badge.parentElement !== badgeHost) badgeHost.appendChild(badge);
 
     badge.className = `mqi-pending-badge mqi-pending-badge--${state}`;
+    badge.setAttribute('aria-hidden', state === 'empty' ? 'false' : 'true');
     if (state === 'pending') {
       const label = count > 99 ? '99+' : String(count);
       badge.textContent = label;
@@ -2263,6 +2289,12 @@
     } else if (state === 'error') {
       badge.textContent = '!';
       badge.title = message || `Não foi possível consultar ${name}`;
+      assignment.card.classList.remove('mqi-assignment-has-pending');
+      delete assignment.card.dataset.mqiPendingCount;
+    } else if (state === 'empty') {
+      badge.textContent = '✓';
+      badge.title = `${name}: consulta concluída, nenhuma correção pendente confirmada.`;
+      badge.setAttribute('aria-label', badge.title);
       assignment.card.classList.remove('mqi-assignment-has-pending');
       delete assignment.card.dataset.mqiPendingCount;
     } else {
@@ -2316,6 +2348,43 @@
     return null;
   }
 
+  async function confirmNoPendingInGradingPages(assignment, maxPages = 5) {
+    const url = new URL(assignment.link.href, window.location.href);
+    url.searchParams.set('action', 'grading');
+    url.searchParams.set('quickgrading', '1');
+    url.searchParams.set('filter', '-1');
+    url.searchParams.set('status', 'all');
+    url.searchParams.set('perpage', '100');
+    let lastPage = 0;
+    let recognizedStudents = 0;
+    const seen = new Set();
+    for (let page = 0; page <= lastPage; page += 1) {
+      if (page >= maxPages) return false;
+      url.searchParams.set('page', String(page));
+      const { doc } = await fetchHtmlDocument(url.href, `Conferência de ${assignment.name}`);
+      const rows = getMoodleRows(doc);
+      if (!rows.length) return false;
+      lastPage = Math.max(lastPage, paginationPages(doc));
+      if (page === 0 && rows.length >= 96 && lastPage === 0) return false;
+      const beforePage = seen.size;
+      for (const row of rows) {
+        const identity = row.userId ? `id:${row.userId}` : `nome:${row.normalizedName}`;
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        recognizedStudents += 1;
+        const status = row.statusCell?.textContent || '';
+        if (S.isPendingSubmission({
+          status,
+          fileCount: row.hasSubmission ? 1 : 0,
+          hasGrade: Boolean(row.gradeInput?.value?.trim()),
+          hasFeedback: Boolean(row.feedbackTextarea?.value?.trim()),
+        })) return false;
+      }
+      if (page > 0 && seen.size === beforePage) return false;
+    }
+    return recognizedStudents > 0;
+  }
+
   async function fetchPendingEvaluationCount(assignment, { force = false } = {}) {
     const cached = force ? null : readCourseBadgeCache(assignment.assignmentId);
     if (cached !== null) return cached;
@@ -2352,7 +2421,15 @@
         const count = parsePendingEvaluationCount(html);
         if (count === null) throw new Error('Campo “Precisa de avaliação” não encontrado');
 
-        const result = { count, requiresVerification: count === 0 };
+        let requiresVerification = false;
+        if (count === 0) {
+          try { requiresVerification = !(await confirmNoPendingInGradingPages(assignment)); }
+          catch (error) {
+            requiresVerification = true;
+            console.warn(`Não foi possível confirmar individualmente a ausência de pendências em ${assignment.assignmentId}.`, error);
+          }
+        }
+        const result = { count, requiresVerification };
         writeCourseBadgeCache(assignment.assignmentId, result);
         return result;
       } finally {
@@ -2392,224 +2469,6 @@
     return url.href;
   }
 
-  function pendingSubmissionRows(doc) {
-    const rows = [...doc.querySelectorAll('table#submissions tbody tr, tr[id^="mod_assign_grading-"]')];
-    return rows.map((row) => {
-      const fileLinks = [...row.querySelectorAll('a[href*="assignsubmission_file"], a[href*="pluginfile.php"]')]
-        .filter((link) => {
-          try { return new URL(link.href, window.location.href).origin === currentMoodleOrigin(); } catch { return false; }
-        });
-      const nameCell = row.querySelector('td.username, td[class~="username"], .cell.username');
-      const name = sanitizeDownloadPathSegment(extractStudentName(nameCell), 'Aluno sem identificação');
-      const statusNodes = [...row.querySelectorAll('td.status, td[class~="status"], td.submissionstatus, td[class*="submissionstatus"], .cell.status, [data-region="submission-status"]')];
-      const status = normalizeText((statusNodes.length ? statusNodes : [row]).map((node) => node.textContent || '').join(' '));
-      const hasGrade = getGradeInputs(row).some((input) => {
-        const value = String(input.value || '').trim();
-        return value && value !== '-1' && value !== '-';
-      });
-      const hasFeedback = getFeedbackTextareas(row).some((field) => String(field.value || '').trim());
-      return {
-        name,
-        fileLinks,
-        pending: S.isPendingSubmission({ status, fileCount: fileLinks.length, hasGrade, hasFeedback }),
-      };
-    }).filter((row) => row.pending);
-  }
-
-  async function collectAssignmentPendingFiles(assignment, expectedPending) {
-    const students = [];
-    const seen = new Set();
-    const pageSize = 500;
-    const pages = Math.max(1, Math.ceil(expectedPending / pageSize));
-    let sawAnyGradingField = false;
-    for (let page = 0; page < pages; page += 1) {
-      const { doc } = await fetchHtmlDocument(buildAssignmentGradingUrl(assignment, page, pageSize), `Avaliação ${assignment.name}`);
-      if (!sawAnyGradingField) {
-        sawAnyGradingField = doc.querySelectorAll('input[id^="quickgrade_"], input[name^="quickgrade_"], textarea[id^="quickgrade_comments_"], textarea[name^="quickgrade_comments_"]').length > 0;
-      }
-      const rows = pendingSubmissionRows(doc);
-      rows.forEach((row, index) => {
-        const key = `${row.name}:${index}:${row.fileLinks.map((link) => link.href).join('|')}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          students.push(row);
-        }
-      });
-      if (rows.length < pageSize) break;
-    }
-    if (expectedPending > 0 && !sawAnyGradingField) {
-      throw new Error(`${assignment.name}: não foi possível habilitar a "Avaliação rápida" automaticamente ao consultar esta atividade, então a contagem de pendências não pôde ser confirmada com segurança. Abra a atividade, marque "Avaliação rápida" manualmente e tente novamente.`);
-    }
-    if (students.length !== expectedPending) {
-      throw new Error(`${assignment.name}: a tela de avaliação retornou ${students.length} pendência(s), mas o resumo informa ${expectedPending}. Atualize a análise e confira a atividade.`);
-    }
-    if (students.some((student) => !student.fileLinks.length)) {
-      throw new Error(`${assignment.name}: há entrega pendente sem arquivo para baixar. Abra a atividade para conferir.`);
-    }
-    return students.flatMap((student) => student.fileLinks.map((link, index) => ({
-      assignment: sanitizeDownloadPathSegment(assignment.name, `Atividade ${assignment.assignmentId}`),
-      student: student.name,
-      index,
-      link,
-    })));
-  }
-
-  const crcTable = (() => {
-    const table = new Uint32Array(256);
-    for (let index = 0; index < 256; index += 1) {
-      let value = index;
-      for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
-      table[index] = value >>> 0;
-    }
-    return table;
-  })();
-
-  function crc32(bytes) {
-    let value = 0xffffffff;
-    for (const byte of bytes) value = (value >>> 8) ^ crcTable[(value ^ byte) & 0xff];
-    return (value ^ 0xffffffff) >>> 0;
-  }
-
-  function writeUint16(target, offset, value) {
-    target[offset] = value & 0xff;
-    target[offset + 1] = (value >>> 8) & 0xff;
-  }
-
-  function writeUint32(target, offset, value) {
-    writeUint16(target, offset, value & 0xffff);
-    writeUint16(target, offset + 2, value >>> 16);
-  }
-
-  function zipDateTime(date = new Date()) {
-    const year = Math.max(1980, date.getFullYear());
-    return {
-      date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
-      time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
-    };
-  }
-
-  function makeZipParts(entries) {
-    const encoder = new TextEncoder();
-    const stamp = zipDateTime();
-    let offset = 0;
-    const local = [];
-    const central = [];
-    entries.forEach((entry) => {
-      const name = encoder.encode(entry.name);
-      const checksum = crc32(entry.bytes);
-      const header = new Uint8Array(30 + name.length);
-      writeUint32(header, 0, 0x04034b50);
-      writeUint16(header, 4, 20);
-      writeUint16(header, 6, 0x0800);
-      writeUint16(header, 8, 0);
-      writeUint16(header, 10, stamp.time);
-      writeUint16(header, 12, stamp.date);
-      writeUint32(header, 14, checksum);
-      writeUint32(header, 18, entry.bytes.length);
-      writeUint32(header, 22, entry.bytes.length);
-      writeUint16(header, 26, name.length);
-      header.set(name, 30);
-      local.push(header, entry.bytes);
-
-      const directory = new Uint8Array(46 + name.length);
-      writeUint32(directory, 0, 0x02014b50);
-      writeUint16(directory, 4, 20);
-      writeUint16(directory, 6, 20);
-      writeUint16(directory, 8, 0x0800);
-      writeUint16(directory, 10, 0);
-      writeUint16(directory, 12, stamp.time);
-      writeUint16(directory, 14, stamp.date);
-      writeUint32(directory, 16, checksum);
-      writeUint32(directory, 20, entry.bytes.length);
-      writeUint32(directory, 24, entry.bytes.length);
-      writeUint16(directory, 28, name.length);
-      writeUint32(directory, 42, offset);
-      directory.set(name, 46);
-      central.push(directory);
-      offset += header.length + entry.bytes.length;
-    });
-    const centralLength = central.reduce((sum, entry) => sum + entry.length, 0);
-    const end = new Uint8Array(22);
-    writeUint32(end, 0, 0x06054b50);
-    writeUint16(end, 8, entries.length);
-    writeUint16(end, 10, entries.length);
-    writeUint32(end, 12, centralLength);
-    writeUint32(end, 16, offset);
-    return [...local, ...central, end];
-  }
-
-  async function fetchPendingFileBytes(file) {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 120000);
-    try {
-      const response = await fetch(file.link.href, {
-        credentials: 'include',
-        cache: 'no-store',
-        redirect: 'follow',
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error(`Não foi possível baixar um arquivo de ${file.student} (HTTP ${response.status}).`);
-      const finalUrl = new URL(response.url, window.location.href);
-      if (finalUrl.origin !== currentMoodleOrigin() || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado ao baixar arquivos.');
-      return new Uint8Array(await response.arrayBuffer());
-    } catch (error) {
-      if (error?.name === 'AbortError') throw new Error(`O download de um arquivo de ${file.student} excedeu 2 minutos.`);
-      throw error;
-    } finally {
-      window.clearTimeout(timeout);
-    }
-  }
-
-  async function downloadCoursePendingFiles() {
-    if (COURSE_BADGE_STATE.isDownloading) return;
-    const pendingAssignments = COURSE_BADGE_STATE.lastAssignments
-      .map((assignment) => ({ assignment, result: COURSE_BADGE_STATE.results.get(assignment.assignmentId) }))
-      .filter(({ result }) => Number.isFinite(result?.count) && result.count > 0);
-    if (!pendingAssignments.length) return;
-
-    COURSE_BADGE_STATE.isDownloading = true;
-    COURSE_BADGE_STATE.downloadError = '';
-    updateCoursePendingSummary(COURSE_BADGE_STATE.lastAssignments);
-    try {
-      const files = [];
-      for (const { assignment, result } of pendingAssignments) {
-        const found = await collectAssignmentPendingFiles(assignment, result.count);
-        files.push(...found);
-      }
-      if (files.length > MAX_BATCH_PENDING_FILES) throw new Error(`O pacote tem ${files.length} arquivos; o limite seguro é ${MAX_BATCH_PENDING_FILES}. Baixe por atividade.`);
-
-      let downloadedBytes = 0;
-      const entries = [];
-      const usedNames = new Set();
-      for (const file of files) {
-        const bytes = await fetchPendingFileBytes(file);
-        downloadedBytes += bytes.length;
-        if (downloadedBytes > MAX_BATCH_PENDING_BYTES) throw new Error('O pacote excede o limite seguro de 50 MB. Baixe por atividade.');
-        const originalName = sanitizeDownloadPathSegment(file.link.textContent || `arquivo-${file.index + 1}`, `arquivo-${file.index + 1}`);
-        let name = `${file.assignment}/${file.student}${file.index ? ` - ${file.index + 1}` : ''} - ${originalName}`;
-        let duplicate = 2;
-        while (usedNames.has(name)) name = `${file.assignment}/${file.student} - ${duplicate++} - ${originalName}`;
-        usedNames.add(name);
-        entries.push({ name, bytes });
-      }
-
-      const courseId = new URL(window.location.href).searchParams.get('id') || 'curso';
-      const objectUrl = URL.createObjectURL(new Blob(makeZipParts(entries), { type: 'application/zip' }));
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `atividades_pendentes_curso_${courseId}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
-    } catch (error) {
-      COURSE_BADGE_STATE.downloadError = error?.message || 'Não foi possível preparar o pacote de atividades pendentes.';
-    } finally {
-      COURSE_BADGE_STATE.isDownloading = false;
-      updateCoursePendingSummary(COURSE_BADGE_STATE.lastAssignments);
-    }
-  }
-
   function ensureCoursePendingSummary() {
     let summary = document.getElementById('mqi-course-pending-summary');
     if (summary) return summary;
@@ -2620,8 +2479,8 @@
     summary.className = 'mqi-course-pending-summary is-loading';
     summary.innerHTML = `
       <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
-      <span class="mqi-course-pending-summary__text">Consultando atividades que precisam de avaliação…</span>
-        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__download" title="Baixar arquivos das pendências confirmadas" aria-label="Baixar arquivos das pendências confirmadas" disabled>Baixar atividades</button><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens">↻</button></span>
+      <span class="mqi-course-pending-summary__text" role="status" aria-live="polite">Consultando atividades que precisam de avaliação…</span>
+        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens">↻</button></span>
     `;
 
     placePendingSummaryAtTop(main, summary);
@@ -2630,7 +2489,6 @@
       clearCourseBadgeCache();
       scanCoursePendingCorrections({ force: true });
     });
-    summary.querySelector('.mqi-course-pending-summary__download')?.addEventListener('click', downloadCoursePendingFiles);
     summary.querySelector('.mqi-course-pending-summary__import')?.addEventListener('click', () => {
       if (!globalThis.MAT?.state?.snapshot) {
         globalThis.MAT?.ui?.openPanel?.();
@@ -2649,9 +2507,8 @@
   function updateCoursePendingSummary(assignments, errorCount = 0) {
     const summary = ensureCoursePendingSummary();
     const text = summary.querySelector('.mqi-course-pending-summary__text');
-    const downloadButton = summary.querySelector('.mqi-course-pending-summary__download');
     const importButton = summary.querySelector('.mqi-course-pending-summary__import');
-    COURSE_BADGE_STATE.lastAssignments = assignments;
+    const icon = summary.querySelector('.mqi-course-pending-summary__icon');
     const results = assignments
       .map(item => COURSE_BADGE_STATE.results.get(item.assignmentId))
       .filter(result => Number.isFinite(result?.count));
@@ -2666,17 +2523,12 @@
 
     summary.classList.toggle('is-loading', stillLoading);
     summary.classList.toggle('has-pending', totalPending > 0);
-    summary.classList.toggle('is-clear', !stillLoading && totalPending === 0 && errorCount === 0 && activitiesUnverified === 0);
-    summary.classList.toggle('has-error', errorCount > 0 || activitiesUnverified > 0 || Boolean(COURSE_BADGE_STATE.downloadError));
-    if (downloadButton) {
-      downloadButton.disabled = stillLoading || totalPending === 0 || COURSE_BADGE_STATE.isDownloading;
-      downloadButton.classList.toggle('is-busy', COURSE_BADGE_STATE.isDownloading);
-      downloadButton.textContent = COURSE_BADGE_STATE.isDownloading ? 'Preparando ZIP…' : 'Baixar atividades';
-      downloadButton.title = totalPending > 0
-        ? `Baixar os arquivos de ${totalPending} ${totalPending === 1 ? 'envio pendente confirmado' : 'envios pendentes confirmados'} em ZIP`
-        : 'Não há pendências confirmadas para baixar';
-      downloadButton.setAttribute('aria-label', downloadButton.title);
-    }
+    const readComplete = results.length === assignments.length && errorCount === 0;
+    const needsReview = errorCount > 0 || activitiesUnverified > 0 || (!stillLoading && !readComplete);
+    const isClear = S.pendingReadingState({ expected: assignments.length, received: results.length, pending: totalPending, unverified: activitiesUnverified, errors: errorCount, loading: stillLoading }) === 'clear';
+    summary.classList.toggle('is-clear', isClear);
+    summary.classList.toggle('has-error', needsReview);
+    if (icon) icon.textContent = stillLoading ? '…' : isClear ? '✓' : totalPending > 0 ? '!' : '?';
     if (importButton) {
       const importerAvailable = typeof globalThis.MAT?.batchGrading?.openModal === 'function';
       importButton.disabled = !importerAvailable;
@@ -2691,19 +2543,15 @@
       return;
     }
 
-    if (COURSE_BADGE_STATE.downloadError) {
-      text.textContent = `Verificar: ${COURSE_BADGE_STATE.downloadError}`;
-      return;
-    }
-
     if (totalPending > 0) {
       text.innerHTML = `<strong>${totalPending}</strong> ${totalPending === 1 ? 'envio pendente' : 'envios pendentes'} em <strong>${activitiesPending}</strong> ${activitiesPending === 1 ? 'atividade' : 'atividades'}.`;
     } else if (activitiesUnverified > 0) {
       text.textContent = `Verificar: ${activitiesUnverified} ${activitiesUnverified === 1 ? 'atividade informa' : 'atividades informam'} zero pendências no resumo, mas a ausência de correções não foi confirmada individualmente.`;
-    } else if (errorCount > 0) {
-      text.textContent = `Nenhuma pendência identificada. ${errorCount} ${errorCount === 1 ? 'atividade não pôde' : 'atividades não puderam'} ser consultada${errorCount === 1 ? '' : 's'}.`;
+    } else if (needsReview) {
+      const incompleteCount = errorCount || assignments.length - results.length;
+      text.textContent = `Nenhuma pendência confirmada. ${incompleteCount} ${incompleteCount === 1 ? 'atividade precisa' : 'atividades precisam'} de conferência.`;
     } else {
-      text.textContent = 'Nenhuma atividade precisa de avaliação neste momento.';
+      text.textContent = `Tudo certo. Nenhuma correção pendente confirmada em ${assignments.length} ${assignments.length === 1 ? 'atividade consultada' : 'atividades consultadas'}.`;
     }
   }
 
@@ -3063,7 +2911,7 @@
       course.container.dataset.mqiPendingCount = String(total);
     } else if (state === 'clear') {
       const assignmentCount = Number(result?.assignmentCount) || 0;
-      badge.textContent = '0 pendências';
+      badge.textContent = '✓ 0 pendências';
       badge.title = assignmentCount > 0
         ? `${course.name} foi verificada: nenhuma correção pendente em ${assignmentCount} ${assignmentCount === 1 ? 'atividade consultada' : 'atividades consultadas'}.`
         : `${course.name} foi verificada: nenhuma atividade do tipo Tarefa foi encontrada.`;
@@ -3248,6 +3096,7 @@
   function updateCategoryPendingSummary(courses, errorCount = 0) {
     const summary = ensureCategoryPendingSummary();
     const text = summary.querySelector('.mqi-course-pending-summary__text');
+    const icon = summary.querySelector('.mqi-course-pending-summary__icon');
     const currentCourses = courses.filter(course => !course.notYetCurrent);
     const excludedCount = courses.length - currentCourses.length;
     const primaryCourses = courses.filter(course => course.vigency === 'current');
@@ -3263,8 +3112,11 @@
 
     summary.classList.toggle('is-loading', stillLoading);
     summary.classList.toggle('has-pending', totalPending > 0);
-    summary.classList.toggle('is-clear', !stillLoading && totalPending === 0 && errorCount === 0 && activitiesUnverified === 0);
-    summary.classList.toggle('has-error', errorCount > 0 || activitiesUnverified > 0);
+    const readComplete = results.length === currentCourses.length && errorCount === 0 && results.every(result => !result.errors);
+    const isClear = S.pendingReadingState({ expected: currentCourses.length, received: results.length, pending: totalPending, unverified: activitiesUnverified, errors: errorCount + results.filter(result => result.errors).length, loading: stillLoading }) === 'clear';
+    summary.classList.toggle('is-clear', isClear);
+    summary.classList.toggle('has-error', errorCount > 0 || activitiesUnverified > 0 || (!stillLoading && !readComplete));
+    if (icon) icon.textContent = stillLoading ? '…' : isClear ? '✓' : totalPending > 0 ? '!' : '?';
 
     if (!currentCourses.length) {
       text.textContent = 'Nenhuma UC vigente para verificar. ' + excludedCount + (excludedCount === 1 ? ' UC ainda não vigente foi ignorada.' : ' UCs ainda não vigentes foram ignoradas.');
@@ -3274,10 +3126,11 @@
       text.innerHTML = `<strong>${totalPending}</strong> ${totalPending === 1 ? 'envio pendente' : 'envios pendentes'} em <strong>${activitiesPending}</strong> ${activitiesPending === 1 ? 'atividade' : 'atividades'} de <strong>${coursesPending}</strong> ${coursesPending === 1 ? 'curso' : 'cursos'}.`;
     } else if (activitiesUnverified > 0) {
       text.textContent = `Verificar: ${activitiesUnverified} ${activitiesUnverified === 1 ? 'atividade requer' : 'atividades requerem'} conferência individual antes de confirmar ausência de correções pendentes.`;
-    } else if (errorCount > 0) {
-      text.textContent = `Nenhuma pendência confirmada. ${errorCount} ${errorCount === 1 ? 'curso teve' : 'cursos tiveram'} leitura parcial.`;
+    } else if (errorCount > 0 || !readComplete) {
+      const incompleteCount = errorCount || results.filter(result => result.errors).length || currentCourses.length - results.length;
+      text.textContent = `Nenhuma pendência confirmada. ${incompleteCount} ${incompleteCount === 1 ? 'curso teve' : 'cursos tiveram'} leitura parcial.`;
     } else {
-      text.textContent = 'Nenhuma correção pendente nos cursos exibidos nesta categoria.';
+      text.textContent = `Tudo certo. Nenhuma correção pendente confirmada em ${currentCourses.length} ${currentCourses.length === 1 ? 'curso consultado' : 'cursos consultados'}.`;
     }
 
     if (!stillLoading && primaryCourses.length) {
@@ -3646,15 +3499,6 @@
     return id ? `Categoria ${id}` : 'Categoria Moodle';
   }
 
-  function sanitizeDownloadPathSegment(value, fallback = 'Sem nome') {
-    const sanitized = sanitizeFileName(value)
-      .replace(/^\.+/, '')
-      .replace(/[\/\\]+/g, ' - ')
-      .trim()
-      .slice(0, 90);
-    return sanitized || fallback;
-  }
-
   function buildAssignmentGradingUrl(assignment, page = 0, perPage = 500) {
     const url = new URL(assignment.link.href, window.location.href);
     url.search = '';
@@ -3942,7 +3786,7 @@
   installMyCoursesDashboard();
   chrome.storage.local.get(['mat_global_settings'], (data) => {
     if (chrome.runtime.lastError) return;
-    const settings = data?.mat_global_settings || {};
+    const settings = globalThis.MAT?.storage?.normalizeSettings(data?.mat_global_settings || {}) || data?.mat_global_settings || {};
     if (settings.enableAutomaticCourseScan === true) installCoursePendingObserver();
     if (settings.enableAutomaticCategoryScan === true) installCategoryPendingObserver();
   });

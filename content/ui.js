@@ -487,23 +487,23 @@
     const summary = s.summary;
     const panorama = s.activityPanorama;
     const metrics = panorama.metrics;
-    const tasks = s.tasks || [];
+    const tasks = MAT.journey.buildQueue(s, MAT.state.actions);
     const dataPartial = Boolean(metrics.activitiesUnverified || s.meta?.warnings?.length || panorama.dataMode !== 'detalhado');
     const correctionValue = metrics.pendingGradingMinimum > 0 ? `≥${metrics.pendingGradingMinimum}` : metrics.activitiesUnverified ? null : metrics.pendingGrading;
     const correctionState = dataState(correctionValue, Boolean(metrics.activitiesUnverified));
     const attentionStudents = Number(summary.riskImmediate || 0) + Number(summary.riskHigh || 0);
     const nextTask = tasks[0];
+    const journeySteps = MAT.journey.steps;
     view.innerHTML = `
       ${warningsHtml(s)}
+      <section class="mat-card mat-journey" aria-labelledby="mat-journey-title">
+        <div class="mat-section-head"><div><span class="mat-eyebrow">Minha jornada</span><h3 id="mat-journey-title">O que preciso fazer agora?</h3><p>Curso: ${U.escapeHtml(s.course?.name || MAT.state.course?.name || 'Curso não identificado')} · UC: ${U.escapeHtml(s.activityPanorama?.scope?.label || 'Verificar')}</p></div><span class="mat-badge mat-badge-neutral">${s.meta?.collectedAt ? `Lido em ${U.escapeHtml(U.formatDate(s.meta.collectedAt, true))}` : 'Leitura sem horário'}</span></div>
+        <ol class="mat-journey-steps">${journeySteps.map((step, index) => `<li><button type="button" data-action="journey-step" data-step="${step.id}" aria-label="Etapa ${index + 1}: ${U.escapeHtml(step.title)}. ${U.escapeHtml(step.detail)}"><span>${index + 1}</span><strong>${U.escapeHtml(step.title)}</strong></button></li>`).join('')}</ol>
+        <p class="mat-journey-explanation" id="mat-journey-explanation">${U.escapeHtml(journeySteps[0].detail)}</p>
+      </section>
       <section class="mat-priority-hero" aria-labelledby="mat-priority-title">
-        <div class="mat-section-head"><div><span class="mat-eyebrow">Central operacional</span><h3 id="mat-priority-title">Prioridades de hoje</h3><p>O que exige atenção primeiro nesta UC.</p></div><span class="mat-badge ${dataPartial ? 'mat-risk-atencao' : 'mat-risk-regular'}">${dataPartial ? 'Leitura parcial' : 'Dados confirmados'}</span></div>
-        ${nextTask ? `<article class="mat-next-action"><div><span class="mat-next-label">Próxima ação recomendada</span><h4>${U.escapeHtml(nextTask.title)}</h4><p>${U.escapeHtml(nextTask.description || nextTask.action || '')}</p></div><div class="mat-task-actions">${nextTask.url ? `<button class="mat-btn mat-btn-sm" data-action="open-url" data-url="${U.escapeHtml(nextTask.url)}" type="button">Abrir origem</button>` : ''}${nextTask.studentKey ? `<button class="mat-btn mat-btn-sm" data-action="student-detail" data-student-key="${U.escapeHtml(nextTask.studentKey)}" type="button">Ver aluno</button>` : ''}<button class="mat-btn mat-btn-sm mat-btn-primary" data-action="register-task" data-task-id="${U.escapeHtml(nextTask.id)}" type="button">Registrar ação</button></div></article>` : '<div class="mat-info">Nenhuma ação prioritária foi identificada com os dados disponíveis.</div>'}
-        <div class="mat-quick-actions" aria-label="Ações rápidas">
-          <button data-action="refresh" type="button">Atualizar</button>
-          <button data-action="tab" data-tab="correcoes" type="button">Correções</button>
-          <button data-action="tab" data-tab="notas" type="button">Importar notas</button>
-          <button data-action="export-evidence-package" type="button">Exportar evidências</button>
-        </div>
+        <div class="mat-section-head"><div><span class="mat-eyebrow">Central operacional</span><h3 id="mat-priority-title">Próximas ações</h3><p>Até três tarefas desta UC, ordenadas pelo tipo de cuidado e pelo prazo confirmado.</p></div><span class="mat-badge ${dataPartial ? 'mat-risk-atencao' : 'mat-risk-regular'}">${dataPartial ? 'Leitura parcial' : 'Leitura detalhada'}</span></div>
+        ${nextTask ? `<div class="mat-journey-priorities">${tasks.slice(0, 3).map((task, index) => `<article class="mat-next-action"><div><span class="mat-next-label">${index === 0 ? 'Próxima ação' : `Prioridade ${index + 1}`}: ${U.escapeHtml(task.source)}</span><h4>${U.escapeHtml(task.title)}</h4><p>${U.escapeHtml(task.description || task.action || '')}</p><small>${task.collectedAt ? `Referência: ${U.escapeHtml(U.formatDate(task.collectedAt, true))}` : 'Horário não confirmado'}</small></div><div class="mat-task-actions"><button class="mat-btn mat-btn-sm mat-btn-primary" data-action="journey-open-task" data-task-id="${U.escapeHtml(task.id)}" type="button">${task.type === 'conferencia_lote' ? 'Conferir no Moodle' : task.type === 'aluno' ? 'Ver aluno' : task.type === 'correcao' ? 'Abrir correções' : 'Ver tarefa'}</button>${task.type === 'conferencia_lote' ? `<button class="mat-btn mat-btn-sm" data-action="journey-confirm-manual" data-action-id="${U.escapeHtml(task.actionId)}" type="button">Registrar conferência manual</button>` : ''}</div></article>`).join('')}</div>` : '<div class="mat-info">Nenhuma ação prioritária foi identificada com os dados disponíveis.</div>'}
       </section>
       <div class="mat-grid mat-overview-grid">
         ${metricCard('Atividades avaliativas', metrics.evaluativeActivities, 'Tarefas acompanhadas nesta UC')}
@@ -529,7 +529,7 @@
         </div>
         <div class="mat-activity-timeline">${operationalTimelineHtml(s)}</div>
       </div>
-      ${tasks.length > 1 ? `<details class="mat-card mat-work-queue"><summary><span><strong>Fila completa de trabalho</strong><small>${tasks.length} ações ordenadas por risco e prazo</small></span><span class="mat-quality-action">Expandir</span></summary><div class="mat-task-list">${tasks.slice(1, 30).map(taskHtml).join('')}</div></details>` : ''}
+      ${tasks.length > 3 ? `<details class="mat-card mat-work-queue"><summary><span><strong>Fila completa de trabalho</strong><small>${tasks.length} ações, das quais três estão em destaque</small></span><span class="mat-quality-action">Expandir</span></summary><div class="mat-task-list">${tasks.slice(3).map(taskHtml).join('')}</div></details>` : ''}
     `;
   };
 
@@ -545,7 +545,8 @@
         ${task.url ? `<button class="mat-btn mat-btn-sm" data-action="open-url" data-url="${U.escapeHtml(task.url)}" type="button">Abrir origem</button>` : ''}
         ${task.studentKey ? `<button class="mat-btn mat-btn-sm" data-action="student-detail" data-student-key="${U.escapeHtml(task.studentKey)}" type="button">Ver aluno</button>` : ''}
         ${task.type === 'fechamento' ? '<button class="mat-btn mat-btn-sm" data-action="tab" data-tab="fechamento" type="button">Checklist</button>' : ''}
-        <button class="mat-btn mat-btn-sm mat-btn-primary" data-action="register-task" data-task-id="${U.escapeHtml(task.id)}" type="button">Registrar ação</button>
+        <button class="mat-btn mat-btn-sm mat-btn-primary" data-action="journey-open-task" data-task-id="${U.escapeHtml(task.id)}" type="button">Abrir ação</button>
+        ${task.type === 'conferencia_lote' ? `<button class="mat-btn mat-btn-sm" data-action="journey-confirm-manual" data-action-id="${U.escapeHtml(task.actionId)}" type="button">Registrar conferência manual</button>` : `<button class="mat-btn mat-btn-sm" data-action="register-task" data-task-id="${U.escapeHtml(task.id)}" type="button">Registrar ação</button>`}
       </div>
     </article>`;
 
@@ -736,7 +737,7 @@
           <button class="mat-btn mat-btn-sm" data-action="batch-download-all" type="button">1. Baixar pacote para correção com IA</button>
           <button class="mat-btn mat-btn-sm mat-btn-primary" data-action="batch-open-launch" type="button">2. Lançar tudo</button>
         </div>
-        <div class="mat-footer-note">O passo 1 gera um único ZIP com uma pasta por atividade, os envios dos alunos, enunciado, critérios disponíveis, nota máxima, manifesto e agente de correção. O passo 2 recebe o CSV único que a IA devolver e lança nota, feedback e situação em cada atividade.</div>
+        <div class="mat-footer-note">O passo 1 gera um ZIP com uma pasta por atividade e divide o download em partes quando necessário. Cada pasta reúne envios, critérios disponíveis, nota máxima, manifesto e agente de correção. O enunciado pode vir da tarefa, de um anexo do professor ou do recurso Arquivo “SAP” da mesma UC. Confira o conteúdo do arquivo SAP antes de atribuir notas; se algo não puder ser baixado, o ZIP contém um aviso. O passo 2 recebe o CSV revisado e lança nota, feedback e situação.</div>
       </div>
       <div class="mat-card">
         <div class="mat-section-head"><div><h3>Composição da UC</h3><p>Quantidade de itens por tipo de recurso ou atividade.</p></div><span class="mat-badge mat-badge-neutral">${metrics.totalActivities}</span></div>
@@ -987,7 +988,7 @@
         </div>
         <div class="mat-form-row">
           <div><label class="mat-label" for="mat-setting-retention">Retenção local, dias</label><input class="mat-input" id="mat-setting-retention" data-setting="retentionDays" type="number" min="7" max="365" value="${settings.retentionDays}"></div>
-          <label class="mat-check-item"><input data-setting="storeMessageContent" type="checkbox" ${settings.storeMessageContent ? 'checked' : ''}><span><span class="mat-check-label">Guardar texto das mensagens</span><span class="mat-check-detail">Desativado por padrão para reduzir dados pessoais armazenados.</span></span></label>
+          <label class="mat-check-item"><input data-setting="storeMessageContent" type="checkbox" ${settings.storeMessageContent ? 'checked' : ''}><span><span class="mat-check-label">Guardar texto das mensagens</span><span class="mat-check-detail">Ativado por padrão. O texto é guardado localmente pelo prazo de retenção configurado.</span></span></label>
         </div>
         <div class="mat-form-row">
           <label class="mat-check-item"><input data-setting="enableAutomaticCourseScan" type="checkbox" ${settings.enableAutomaticCourseScan ? 'checked' : ''}><span><span class="mat-check-label">Varrer atividades automaticamente</span><span class="mat-check-detail">Pode aumentar as consultas ao Moodle.</span></span></label>
@@ -1010,7 +1011,7 @@
           <button class="mat-btn mat-btn-danger" data-action="clear-course" type="button">Limpar dados locais</button>
         </div>
       </div>
-      <div class="mat-footer-note">Privacidade: a extensão não armazena senha nem token. As consultas automáticas ficam nos domínios autorizados. Retratos e registros permanecem no navegador pelo período configurado; mensagens não são guardadas por padrão.</div>
+      <div class="mat-footer-note">Privacidade: a extensão não armazena senha nem token. As consultas automáticas ficam nos domínios autorizados. Retratos e registros permanecem no navegador pelo período configurado; o texto das mensagens fica guardado localmente quando a opção acima estiver ativa.</div>
     `;
   };
 
@@ -1178,7 +1179,7 @@
   };
 
   const registerTask = async (taskId) => {
-    const task = MAT.state.snapshot?.tasks.find((item) => item.id === taskId);
+    const task = MAT.journey.buildQueue(MAT.state.snapshot, MAT.state.actions).find((item) => item.id === taskId);
     if (!task) return;
     const note = prompt('Registre o que foi feito ou o próximo encaminhamento:', task.action || '');
     if (note === null) return;
@@ -1198,6 +1199,33 @@
     if (action === 'generate-grades-excel') return MAT.main?.refreshGrades('excel');
     if (action === 'generate-grades-csv') return MAT.main?.refreshGrades('csv');
     if (action === 'tab') return setTab(target.dataset.tab);
+    if (action === 'journey-step') {
+      const step = MAT.journey.steps.find((item) => item.id === target.dataset.step);
+      if (!step) return;
+      const note = document.getElementById('mat-journey-explanation');
+      if (note) note.textContent = `${step.title}: ${step.detail}`;
+      if (step.id !== 'analisar') return setTab(step.tab);
+      return;
+    }
+    if (action === 'journey-open-task') {
+      const task = MAT.journey.buildQueue(MAT.state.snapshot, MAT.state.actions).find((item) => item.id === target.dataset.taskId);
+      if (!task) return toast('Atualize a análise para localizar esta tarefa.');
+      if (task.type === 'aluno') { setTab('alunos'); return openStudentDetail(task.studentKey); }
+      if (task.type === 'fechamento') return setTab('fechamento');
+      if (task.type === 'correcao') return setTab('correcoes');
+      if (task.url) return openApprovedUrl(task.url);
+      return setTab(task.type === 'conferencia_lote' ? 'correcoes' : 'diagnostico');
+    }
+    if (action === 'journey-confirm-manual') {
+      const item = MAT.state.actions.find((entry) => entry.id === target.dataset.actionId && entry.type === 'conferencia_atividade');
+      if (!item || item.outcome === 'sucesso') return toast('Registro de conferência não encontrado.');
+      if (!window.confirm('Você conferiu no Moodle a nota e o feedback de todos os alunos desta atividade? Registre somente após essa conferência.')) return;
+      await MAT.storage.updateAction(item.id, { status: 'conferida_manualmente', note: `${item.note || ''} Conferência manual da nota e do feedback declarada pelo tutor.` }, MAT.state.course.id);
+      await MAT.storage.addAuditEvent({ eventType: 'grade.verify.manual', activityId: item.assignmentId, activityName: item.activityName, result: 'info', source: 'tutor', message: 'Tutor declarou ter conferido nota e feedback no Moodle.' });
+      MAT.state.actions = await MAT.storage.loadActions(MAT.state.course.id);
+      renderHoje();
+      return toast('Conferência manual registrada. A verificação foi declarada pelo tutor.');
+    }
     if (action === 'open-url') return openApprovedUrl(target.dataset.url);
     if (action === 'student-detail') return openStudentDetail(target.dataset.studentKey);
     if (action === 'assignment-detail') return openAssignmentDetail(target.dataset.assignmentId);

@@ -407,6 +407,75 @@
     return new Blob([...localParts, ...directoryParts, end], { type: 'application/zip' });
   };
 
+  const findAssignmentAttachments = (doc, pageUrl) => {
+    const page = new URL(pageUrl, location.href);
+    const anchors = [...doc.querySelectorAll('a[href]')];
+    const found = new Map();
+    for (const anchor of anchors) {
+      let url;
+      try { url = new URL(anchor.getAttribute('href'), page); } catch { continue; }
+      if (url.origin !== page.origin || url.protocol !== 'https:') continue;
+      let decodedPath;
+      try { decodedPath = decodeURIComponent(url.pathname); } catch { continue; }
+      const teacherArea = /\/mod_assign\/intro(?:attachment)?\//i.test(decodedPath);
+      const inIntro = Boolean(anchor.closest('#intro, [data-region="activity-description"], .activity-description, .mod_introbox, [data-region="activity-intro"], .mod_intro, .assignintroattachments'));
+      const linkedMaterial = inIntro && /\/pluginfile\.php\//i.test(url.pathname) && !/assignsubmission_|assignfeedback_/i.test(url.pathname);
+      if (!teacherArea && !linkedMaterial) continue;
+      const rawName = decodedPath.split('/').filter(Boolean).pop() || 'anexo';
+      const name = rawName.replace(/[\\/\x00-\x1f:*?"<>|]/g, '_').slice(0, 100) || 'anexo';
+      found.set(url.href, { url: url.href, name, source: teacherArea ? 'anexo da atividade' : 'arquivo vinculado à descrição' });
+      if (found.size >= 15) break;
+    }
+    return [...found.values()];
+  };
+
+  const fetchAssignmentAttachments = async (doc, pageUrl, maxTotalBytes = 25 * 1024 * 1024) => {
+    const candidates = findAssignmentAttachments(doc, pageUrl);
+    const files = [];
+    const errors = [];
+    let total = 0;
+    for (const candidate of candidates) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      try {
+        const response = await fetch(candidate.url, { credentials: 'include', cache: 'no-store', redirect: 'follow', signal: controller.signal });
+        const finalUrl = new URL(response.url, pageUrl);
+        if (!response.ok || finalUrl.origin !== new URL(pageUrl).origin || /\/login\//.test(finalUrl.pathname)) throw new Error('arquivo indisponível ou sessão expirada');
+        if (/text\/html/i.test(response.headers.get('content-type') || '')) throw new Error('o Moodle devolveu HTML em vez de um arquivo');
+        const contentLength = Number(response.headers.get('content-length'));
+        if (Number.isFinite(contentLength) && contentLength > maxTotalBytes - total) throw new Error('anexo excede o limite de 25 MB');
+        const chunks = [];
+        let size = 0;
+        if (response.body?.getReader) {
+          const reader = response.body.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              size += value.length;
+              if (total + size > maxTotalBytes) throw new Error('anexos excedem o limite de 25 MB');
+              chunks.push(value);
+            }
+          } finally { reader.releaseLock(); }
+        } else {
+          const value = new Uint8Array(await response.arrayBuffer());
+          size = value.length;
+          if (total + size > maxTotalBytes) throw new Error('anexos excedem o limite de 25 MB');
+          chunks.push(value);
+        }
+        if (!size) throw new Error('arquivo anexado vazio');
+        const bytes = new Uint8Array(size);
+        let offset = 0;
+        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+        files.push({ ...candidate, bytes });
+        total += size;
+      } catch (error) {
+        errors.push(`${candidate.name}: ${error?.message || 'falha no download'}`);
+      } finally { clearTimeout(timer); }
+    }
+    return { files, errors, candidates };
+  };
+
   MAT.utils = {
     normalizeText,
     cleanText,
@@ -434,6 +503,8 @@
     mapWithConcurrency,
     hash,
     downloadBlob,
-    makeZipBlob
+    makeZipBlob,
+    findAssignmentAttachments,
+    fetchAssignmentAttachments
   };
 })();

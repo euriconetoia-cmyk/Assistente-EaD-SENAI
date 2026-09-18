@@ -9,8 +9,8 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.7.11', () => {
-  assert.equal(manifest.version, '3.7.11');
+test('manifesto usa metadados e permissões mínimas da versão 3.7.15', () => {
+  assert.equal(manifest.version, '3.7.15');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
@@ -72,7 +72,7 @@ test('interface isolada e acessível contém menu híbrido no painel', () => {
   assert.match(ui, /Visão geral/);
   assert.match(ui, /Auditoria/);
   assert.match(ui, /Central operacional/);
-  assert.match(ui, /Prioridades de hoje/);
+  assert.match(ui, /Próximas ações/);
   assert.match(ui, /Qualidade da leitura/);
   assert.match(ui, /Dados indisponíveis/);
   assert.match(ui, /aria-live/);

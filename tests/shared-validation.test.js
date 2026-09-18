@@ -127,3 +127,47 @@ test('política acadêmica bloqueia nota para atividade incorreta e automatiza S
   assert.equal(play.record.nota, '10,00');
   assert.equal(play.errors.length, 0);
 });
+
+test('desempenho de 0 a 100 converte uma única vez para a nota máxima da atividade', () => {
+  const parsed = S.parseBatchCsv('cmid;nome;desempenho_0_100;nota_maxima;feedback\n301;Ana;90;50;Bom trabalho');
+  assert.equal(parsed.records[0].nota, '');
+  assert.equal(parsed.records[0].desempenho, '90');
+  const evaluated = S.applyAcademicGradePolicy(parsed.records[0], { name: 'SAP 01', maxGrade: 50 });
+  assert.equal(evaluated.errors.length, 0);
+  assert.equal(evaluated.record.nota, '45,00');
+  assert.equal(S.proportionalGrade('83', 50).grade, '41,50');
+  assert.equal(S.proportionalGrade('33,33', 30).grade, '10,00');
+  assert.equal(S.proportionalGrade('100', 30).grade, '30,00');
+  const legacy = S.parseBatchCsv('cmid;nome;nota;nota_maxima\n301;Ana;45;50');
+  assert.equal(S.applyAcademicGradePolicy(legacy.records[0], { name: 'SAP 01', maxGrade: 50 }).record.nota, '45,00');
+});
+
+test('escala ausente ou divergente bloqueia conversão, sem lançar nota presumida', () => {
+  const record = S.parseBatchCsv('cmid;nome;desempenho_0_100;nota_maxima;feedback\n301;Ana;90;50;Bom trabalho').records[0];
+  assert.match(S.applyAcademicGradePolicy({ ...record, notaMaxima: '' }, { name: 'SAP 01' }).errors.join(' '), /nota máxima/i);
+  assert.match(S.applyAcademicGradePolicy(record, { name: 'SAP 01', maxGrade: 30 }).errors.join(' '), /conflito/i);
+  assert.equal(S.applyAcademicGradePolicy(record, { name: 'SAP 01', maxGrade: 30 }).record.nota, '');
+  assert.match(S.applyAcademicGradePolicy({ ...record, notaMaximaStatus: 'insuficiente' }, { name: 'SAP 01', maxGrade: 50 }).errors.join(' '), /conflito/i);
+  assert.match(S.parseBatchCsv('cmid;nome;nota;desempenho_0_100\n301;Ana;45;90\n301;Bia;40;').errors.join(' '), /nunca os dois/i);
+  assert.match(S.parseBatchCsv('cmid;nome;desempenho_0_100\n301;Ana;101\n301;Bia;90').errors.join(' '), /0 e 100/i);
+});
+
+test('zero e atividade incorreta enviam somente feedback; SENAI Play validado usa máximo', () => {
+  const zero = S.parseBatchCsv('cmid;nome;desempenho_0_100;feedback\n301;Ana;0;Revise o enunciado').records[0];
+  assert.equal(S.applyAcademicGradePolicy(zero, { name: 'SAP 01', maxGrade: 50 }).record.nota, '');
+  assert.equal(S.applyAcademicGradePolicy({ ...zero, situacaoRaw: 'SENAI Play validado' }, { name: 'SENAI Play', maxGrade: 50 }).record.nota, '');
+  const wrong = S.parseBatchCsv('cmid;nome;desempenho_0_100;feedback;situacao\n301;Ana;90;Arquivo incorreto;Atividade incorreta').records[0];
+  assert.equal(S.applyAcademicGradePolicy(wrong, { name: 'SAP 01', maxGrade: 50 }).record.nota, '');
+  assert.equal(S.applyAcademicGradePolicy({ ...wrong, situacaoRaw: 'SENAI Play validado' }, { name: 'SENAI Play', maxGrade: 50 }).record.nota, '50,00');
+  assert.match(S.applyAcademicGradePolicy({ ...wrong, situacaoRaw: 'SENAI Play validado', notaMaxima: '40' }, { name: 'SENAI Play', maxGrade: 50 }).errors.join(' '), /conflito/i);
+});
+
+test('check verde exige leitura completa sem pendências, incertezas ou erros', () => {
+  assert.equal(S.pendingReadingState({ expected: 2, received: 2 }), 'clear');
+  assert.equal(S.pendingReadingState({ expected: 2, received: 2, unverified: 2 }), 'verify');
+  assert.equal(S.pendingReadingState({ expected: 2, received: 1 }), 'verify');
+  assert.equal(S.pendingReadingState({ expected: 2, received: 2, errors: 1 }), 'verify');
+  assert.equal(S.pendingReadingState({ expected: 2, received: 2, pending: 1 }), 'pending');
+  assert.equal(S.pendingReadingState({ expected: 2, received: 2, loading: true }), 'loading');
+  assert.equal(S.pendingReadingState({ expected: 0, received: 0 }), 'verify');
+});
