@@ -49,7 +49,7 @@
     curso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg>',
     fechamento: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3"/></svg>',
     diagnostico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8m-4-4v4M7 9h4m-4 4h8"/></svg>',
-    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>',
     atualizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   }[name] || '');
   const rateBar = (value, label) => `
@@ -165,7 +165,7 @@
         <div class="mat-toolbar">
           <button class="mat-btn mat-btn-primary mat-refresh-button" id="mat-refresh" type="button">${navIcon('atualizar')}<span>Atualizar</span></button>
           <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-open-course" type="button" aria-label="Abrir curso" title="Abrir curso">${navIcon('curso')}<span class="mat-action-label">Abrir curso</span></button>
-          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('mais')}<span class="mat-sr-only">Opções de análise</span></button>
+          <button class="mat-btn mat-btn-ghost mat-icon-action" id="mat-header-options" type="button" aria-expanded="false" aria-controls="mat-header-menu" title="Opções de análise">${navIcon('menu')}<span class="mat-sr-only">Opções de análise</span></button>
           <div class="mat-header-menu" id="mat-header-menu" hidden>
             <label for="mat-analysis-mode">Modo de análise</label>
             <select class="mat-mode-select" id="mat-analysis-mode" aria-label="Modo de análise"><option value="complete">Completa</option><option value="quick">Rápida</option></select>
@@ -179,7 +179,7 @@
       </header>
       <div class="mat-workspace">
       <nav class="mat-side-nav" id="mat-primary-nav" aria-label="Seções do assistente">
-        <button class="mat-nav-toggle" id="mat-nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false">${navIcon('mais')}<span class="mat-nav-label">Recolher</span></button>
+        <button class="mat-nav-toggle" id="mat-nav-toggle" type="button" aria-label="Expandir menu" aria-expanded="false">${navIcon('menu')}<span class="mat-nav-label">Recolher</span></button>
         <div class="mat-nav-main">
           <button class="mat-nav-item mat-active" id="mat-tab-hoje" data-tab="hoje" type="button" aria-current="page" aria-controls="mat-view-hoje" title="Visão geral">${navIcon('hoje')}<span class="mat-nav-label">Visão geral</span></button>
           <button class="mat-nav-item" id="mat-tab-alunos" data-tab="alunos" type="button" aria-controls="mat-view-alunos" title="Alunos">${navIcon('alunos')}<span class="mat-nav-label">Alunos</span><span class="mat-nav-count" id="mat-nav-student-count" hidden>0</span></button>
