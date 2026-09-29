@@ -15,4 +15,4 @@ Decisão confirmada (não nova, só registrada): manter a stack sem framework, s
 ### Pendências conhecidas nesta data (não resolvidas, só registradas)
 
 - Divergência entre README e comportamento real sobre a guarda padrão do texto das mensagens (ver `task.md`, item 1) — ainda não investigada a fundo, só documentada no plano da jornada de 16/09/2026.
-- - Homologação autenticada em Moodle real (SENAI e FIEG) continua pendente desde pelo menos a versão 3.7.14; nenhuma versão até 3.7.16 foi validada com curso e aluno reais, só com testes simulados.
+- Homologação autenticada em Moodle real (SENAI e FIEG) continua pendente desde pelo menos a versão 3.7.14; nenhuma versão até 3.7.16 foi validada com curso e aluno reais, só com testes simulados.
