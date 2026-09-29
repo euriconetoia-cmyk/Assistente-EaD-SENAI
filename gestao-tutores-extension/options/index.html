@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configurações da Gestão de Tutores</title>
+  <link rel="stylesheet" href="../dashboard/styles.css">
+  <style>
+    body{max-width:900px;margin:0 auto;padding:30px}.settings-grid{display:grid;gap:16px}.settings-grid textarea{min-height:120px;resize:vertical;border:1px solid #cfd6dd;border-radius:9px;padding:12px;font:inherit}.settings-grid input{border:1px solid #cfd6dd;border-radius:9px;padding:10px 12px}.settings-actions{display:flex;gap:10px;align-items:center}.help{color:#667085;font-size:13px;line-height:1.5}.saved{color:#25613a;font-weight:700}
+  </style>
+</head>
+<body>
+  <main style="padding:0">
+    <section class="panel">
+      <p class="eyebrow">Gestão de Tutores</p>
+      <h1>Configurações de coleta</h1>
+      <p class="help">Ajuste os nomes de papéis exatamente como aparecem no Moodle. Use um termo por linha. A extensão trabalha apenas com dados que o usuário autenticado já pode visualizar.</p>
+      <div class="settings-grid">
+        <label class="field">
+          <span>Máximo de cursos por coleta</span>
+          <input id="max-courses" type="number" min="1" max="500" value="80">
+        </label>
+        <label class="field">
+          <span>Papéis considerados como tutor</span>
+          <textarea id="tutor-patterns">tutor
+tutor ead
+professor tutor
+docente tutor</textarea>
+        </label>
+        <label class="field">
+          <span>Papéis considerados como estudante</span>
+          <textarea id="student-patterns">estudante
+aluno
+student
+aprendiz</textarea>
+        </label>
+        <label class="field">
+          <span>Papéis de equipe que não devem ser contados como estudantes quando a coluna de papéis não estiver disponível</span>
+          <textarea id="staff-patterns">administrador
+manager
+coordenador
+coordenação
+professor
+teacher
+docente
+instrutor
+monitor
+tutor</textarea>
+        </label>
+        <div class="settings-actions">
+          <button id="save" class="primary" type="button">Salvar configurações</button>
+          <button id="reset" type="button">Restaurar padrão</button>
+          <span id="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

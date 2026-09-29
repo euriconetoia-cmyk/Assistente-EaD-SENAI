@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestão de Tutores Moodle SENAI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Assistente EaD SENAI</p>
+      <h1>Gestão de Tutores</h1>
+      <p id="status-text">Nenhuma coleta carregada.</p>
+    </div>
+    <div class="top-actions">
+      <button id="btn-collect" class="primary" type="button">Atualizar do Moodle</button>
+      <button id="btn-export" type="button" disabled>Exportar CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="collection-progress" class="progress-card hidden" aria-live="polite">
+      <div class="progress-header">
+        <strong id="progress-title">Coletando dados</strong>
+        <span id="progress-counter">0/0</span>
+      </div>
+      <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+      <p id="progress-course">Preparando leitura do Moodle...</p>
+    </section>
+
+    <section id="metrics" class="metrics" aria-label="Indicadores gerais"></section>
+
+    <section class="panel filters">
+      <div class="field grow">
+        <label for="filter-search">Pesquisar</label>
+        <input id="filter-search" type="search" placeholder="Tutor, curso ou turma">
+      </div>
+      <div class="field">
+        <label for="filter-modality">Modalidade</label>
+        <select id="filter-modality"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label for="filter-load">Carga</label>
+        <select id="filter-load">
+          <option value="">Todas</option>
+          <option value="Alta">Alta</option>
+          <option value="Média">Média</option>
+          <option value="Baixa">Baixa</option>
+        </select>
+      </div>
+      <button id="btn-reset" type="button">Limpar filtros</button>
+    </section>
+
+    <section class="grid-two">
+      <article class="panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Comparativo</p><h2>Carga por tutor</h2></div>
+          <span>Alunos únicos</span>
+        </div>
+        <div id="load-chart" class="load-chart empty">Sem dados.</div>
+      </article>
+      <article class="panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Distribuição</p><h2>Modalidades</h2></div>
+          <span>Turmas</span>
+        </div>
+        <div id="modality-summary" class="modality-summary empty">Sem dados.</div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading table-heading">
+        <div><p class="eyebrow">Operação</p><h2>Lista por tutor</h2><p id="result-summary">Sem dados.</p></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tutor</th><th>Turmas</th><th>Cursos</th><th>Matrículas</th><th>Alunos únicos</th><th>Modalidades</th><th>Média por turma</th><th>Carga</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tutor-table-body"><tr><td colspan="9" class="empty-cell">Execute uma coleta para começar.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Qualidade dos dados</p><h2>Diagnóstico</h2></div>
+      </div>
+      <div id="diagnostics" class="diagnostics"><p class="empty">Nenhum diagnóstico disponível.</p></div>
+    </section>
+  </main>
+
+  <dialog id="tutor-dialog">
+    <form method="dialog" class="dialog-shell">
+      <div class="dialog-header"><h2 id="dialog-title">Tutor</h2><button aria-label="Fechar">Fechar</button></div>
+      <div id="dialog-content"></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
