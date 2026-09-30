@@ -15,7 +15,7 @@ test('faixa de atualização informa escopo e disponibiliza cancelamento apenas 
   assert.match(source, /mat-request-status/);
   assert.match(source, /MAT\.requestBroker\.cancelScope/);
   assert.match(source, /status\.queued > 0/);
-  assert.match(mainSource, /requestScopeId = `course:\$\{collectedCourse\.id\}`/);
+  assert.match(mainSource, /requestScopeId = `course:\$\{collectedCourse\.id\}:\$\{analysisScope\}`/);
   assert.match(mainSource, /renderRequestStatus\?\.\(requestScopeId, 'curso atual'\)/);
   assert.match(collectorsSource, /scopeId: MAT\.state\.requestScopeId \|\| 'default'/);
   assert.match(styles, /\.mat-request-status/);
