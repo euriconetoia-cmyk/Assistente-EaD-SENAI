@@ -32,7 +32,7 @@
 
 ---
 
-## 1. Criar o broker de requisições e sua base de testes
+## Task 1: Criar o broker de requisições e sua base de testes
 
 **Files:**
 
@@ -44,7 +44,7 @@
 - Modify: `docs/contexto/memory.md`
 - Modify: `CHECKSUMS.sha256`
 
-- [ ] **Step 1: escrever testes unitários isolados para o contrato do broker.**
+- [x] **Step 1: escrever testes unitários isolados para o contrato do broker.**
 
   Em `tests/request-broker.test.js`, carregar `content/namespace.js` e `content/request-broker.js` em `vm`, injetando um `fetch` controlado. Cobrir:
 
@@ -58,7 +58,7 @@
 
   Rodar `node --test tests/request-broker.test.js` e confirmar falha inicial por módulo ausente.
 
-- [ ] **Step 2: implementar `MAT.requestBroker` sem dependências.**
+- [x] **Step 2: implementar `MAT.requestBroker` sem dependências.**
 
   Criar `content/request-broker.js` expondo, no namespace existente:
 
@@ -81,22 +81,22 @@
   - usar `AbortController` apenas para timeout/cancelamento de itens ainda não iniciados; não transformar uma leitura já concluída em sucesso acadêmico;
   - registrar somente contadores e duração agregada em memória, sem corpo de resposta ou dados de pessoas.
 
-- [ ] **Step 3: inserir o módulo na ordem correta.**
+- [x] **Step 3: inserir o módulo na ordem correta.**
 
   Adicionar `content/request-broker.js` em `manifest.json` após `content/namespace.js` e antes de `content/collectors.js`. Atualizar `tests/content-scripts.test.js` para proteger essa ordem.
 
-- [ ] **Step 4: validar e registrar a decisão.**
+- [x] **Step 4: validar e registrar a decisão.**
 
   Executar `node --test tests/request-broker.test.js tests/content-scripts.test.js`, depois a suíte completa, validação e integridade. Registrar em `memory.md` a decisão de que duas leituras é o teto global e não por componente. Marcar esta etapa no backlog sem remover as prioridades existentes.
 
-- [ ] **Step 5: criar commit.**
+- [x] **Step 5: criar commit.**
 
   ```bash
   git add content/request-broker.js manifest.json tests/request-broker.test.js tests/content-scripts.test.js docs/contexto/task.md docs/contexto/memory.md CHECKSUMS.sha256
   git commit -m "feat: adicionar broker global de requisições"
   ```
 
-## 2. Tornar as varreduras explicitamente acionadas e seguras
+## Task 2: Tornar as varreduras explicitamente acionadas e seguras
 
 **Files:**
 
@@ -109,13 +109,13 @@
 - Modify: `docs/contexto/task.md`
 - Modify: `CHECKSUMS.sha256`
 
-- [ ] **Step 1: especificar em testes os novos padrões de navegação.**
+- [x] **Step 1: especificar em testes os novos padrões de navegação.**
 
   Atualizar `tests/storage.test.js` para exigir `automaticCourseScan: false` e `automaticCategoryScan: false`. Em `tests/importer-ui.test.js`, testar que a instalação em curso, categoria e `/my/` renderiza apenas dados locais/cached e não chama `scanCoursePendingCorrections`, `scanCategoryPendingCorrections` ou `scanMyCoursesDashboard` sem clique explícito. Em `tests/main-coverage.test.js`, cobrir que uma abertura não chama `collectSnapshot` automaticamente.
 
   Rodar os três arquivos e confirmar que falham contra os comportamentos atuais.
 
-- [ ] **Step 2: alterar defaults e separar renderização de atualização.**
+- [x] **Step 2: alterar defaults e separar renderização de atualização.**
 
   Em `content/storage.js`, mudar somente os defaults das duas varreduras automáticas para `false`, mantendo as chaves para migração de perfis já existentes.
 
@@ -128,11 +128,11 @@
 
   Em `main.js`, não iniciar análise completa na carga. A primeira leitura deve ocorrer apenas por ação explícita ou por continuidade de uma operação iniciada pelo usuário.
 
-- [ ] **Step 3: preservar compatibilidade de configurações antigas.**
+- [x] **Step 3: preservar compatibilidade de configurações antigas.**
 
   Garantir que valores já gravados pelo usuário prevaleçam sobre os novos defaults e que a interface de configurações explique que atualizações automáticas são opcionais. Não eliminar os campos de configuração nesta etapa.
 
-- [ ] **Step 4: validar e criar commit.**
+- [x] **Step 4: validar e criar commit.**
 
   Rodar os testes focados, `npm test`, `npm run validate` e `npm run integrity`. Verificar manualmente em uma página estática que abrir o painel não inicia request de rede. Atualizar checksums e registrar o avanço em `task.md`.
 
@@ -141,7 +141,7 @@
   git commit -m "perf: exigir atualização explícita nas varreduras"
   ```
 
-## 3. Integrar coletores e pendências ao broker com escopos mínimos
+## Task 3: Integrar coletores e pendências ao broker com escopos mínimos
 
 **Files:**
 
@@ -209,7 +209,7 @@
   git commit -m "perf: coletar dados Moodle por escopo mínimo"
   ```
 
-## 4. Exibir progresso, cobertura e cancelamento sem poluir a navegação
+## Task 4: Exibir progresso, cobertura e cancelamento sem poluir a navegação
 
 **Files:**
 
@@ -251,7 +251,7 @@
   git commit -m "feat: informar escopo e progresso das atualizações"
   ```
 
-## 5. Remover trabalho recorrente e custo de armazenamento desnecessário
+## Task 5: Remover trabalho recorrente e custo de armazenamento desnecessário
 
 **Files:**
 
@@ -291,7 +291,7 @@
   git commit -m "perf: remover polling e leituras amplas de armazenamento"
   ```
 
-## 6. Modularizar o importador sem mudar seus contratos públicos
+## Task 6: Modularizar o importador sem mudar seus contratos públicos
 
 **Files:**
 
@@ -334,7 +334,7 @@
   git commit -m "refactor: separar importador por contexto Moodle"
   ```
 
-## 7. Fechamento, controle de regressão e homologação
+## Task 7: Fechamento, controle de regressão e homologação
 
 **Files:**
 

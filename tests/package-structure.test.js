@@ -9,11 +9,23 @@ const root = path.join(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const manifest = JSON.parse(read('manifest.json'));
 
-test('manifesto usa metadados e permissões mínimas da versão 3.7.16', () => {
-  assert.equal(manifest.version, '3.7.16');
+test('manifesto usa metadados e permissões mínimas da versão 3.7.17', () => {
+  assert.equal(manifest.version, '3.7.17');
   assert.equal(manifest.name, 'Assistente EaD SENAI');
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
   assert.ok(!manifest.permissions.includes('tabs'));
+});
+
+test('broker de requisições é carregado antes dos coletores Moodle', () => {
+  const scripts = manifest.content_scripts[0].js;
+  const brokerIndex = scripts.indexOf('content/request-broker.js');
+  const collectorsIndex = scripts.indexOf('content/collectors.js');
+  assert.ok(brokerIndex > scripts.indexOf('content/namespace.js'));
+  assert.ok(brokerIndex < collectorsIndex);
+});
+
+test('checksum ignora a área temporária de execução dos planos', () => {
+  assert.match(read('scripts/checksums.js'), /'\.superpowers'/);
 });
 
 test('mensagem do aluno é editável e enviada pelo AVA sem botão do WhatsApp', () => {
@@ -56,10 +68,62 @@ test('dashboard executivo usa arquivos locais e mantém a CSP', () => {
 });
 
 test('página inicial recebe a visão geral de cursos sem ampliar permissões', () => {
-  const importerEntry = manifest.content_scripts.find(entry => (entry.js || []).includes('content/importer/contextual-importer.js'));
+  const importerEntry = manifest.content_scripts.find(entry => (entry.js || []).includes('content/importer/routes/my-courses.js'));
   assert.ok(importerEntry.matches.includes('https://ead.senai.br/my/*'));
   assert.ok(importerEntry.matches.includes('https://ead.fieg.com.br/my/*'));
   assert.deepEqual(manifest.permissions.sort(), ['alarms', 'storage']);
+});
+
+test('importador contextual inicia cada recurso somente pela rota correspondente', () => {
+  const importerEntries = manifest.content_scripts
+    .filter(entry => (entry.js || []).includes('content/importer/contextual-importer.js'));
+  const entryFor = (script) => importerEntries.find(entry => (entry.js || []).includes(script));
+
+  const quickGrading = entryFor('content/importer/routes/quick-grading.js');
+  const coursePending = entryFor('content/importer/routes/course-pending.js');
+  const categoryPending = entryFor('content/importer/routes/category-pending.js');
+  const myCourses = entryFor('content/importer/routes/my-courses.js');
+
+  assert.deepEqual(quickGrading.matches.sort(), [
+    'https://ead.fieg.com.br/mod/assign/view.php*',
+    'https://ead.senai.br/mod/assign/view.php*'
+  ]);
+  assert.deepEqual(coursePending.matches.sort(), [
+    'https://ead.fieg.com.br/course/view.php*',
+    'https://ead.senai.br/course/view.php*'
+  ]);
+  assert.deepEqual(categoryPending.matches.sort(), [
+    'https://ead.fieg.com.br/course/index.php*',
+    'https://ead.senai.br/course/index.php*'
+  ]);
+  assert.deepEqual(myCourses.matches.sort(), [
+    'https://ead.fieg.com.br/my/*',
+    'https://ead.senai.br/my/*'
+  ]);
+
+  for (const entry of [quickGrading, coursePending, categoryPending, myCourses]) {
+    assert.ok(entry);
+    assert.ok(!entry.js.includes('content/shared-validation.js'));
+    assert.ok(entry.js.indexOf('content/importer/contextual-importer.js') < entry.js.length - 1);
+  }
+  for (const entry of [coursePending, categoryPending]) {
+    assert.ok(entry.js.indexOf('content/importer/routes/settings.js') < entry.js.findIndex(script => script.endsWith('pending.js')));
+  }
+
+  const importer = read('content/importer/contextual-importer.js');
+  assert.match(importer, /MAT\.importer/);
+  assert.doesNotMatch(importer, /\n  createUI\(\);\n  installMyCoursesDashboard\(\);/);
+  assert.match(read('content/importer/routes/quick-grading.js'), /quickGrading\?\.mount/);
+  assert.match(read('content/importer/routes/course-pending.js'), /coursePending\?\.mountSummary/);
+  assert.match(read('content/importer/routes/category-pending.js'), /categoryPending\?\.mountSummary/);
+  assert.match(read('content/importer/routes/my-courses.js'), /myCourses\?\.mount/);
+  assert.match(read('content/importer/routes/settings.js'), /normalizeSettings/);
+  assert.ok(myCourses.js.indexOf('content/importer/routes/my-courses-state.js') < myCourses.js.indexOf('content/importer/contextual-importer.js'));
+  assert.ok(myCourses.js.indexOf('content/importer/routes/my-courses-view.js') < myCourses.js.indexOf('content/importer/contextual-importer.js'));
+  assert.ok(coursePending.js.indexOf('content/importer/routes/course-pending-state.js') < coursePending.js.indexOf('content/importer/contextual-importer.js'));
+  assert.ok(!categoryPending.js.includes('content/importer/routes/my-courses-state.js'));
+  assert.ok(!categoryPending.js.includes('content/importer/routes/my-courses-view.js'));
+  assert.match(read('content/importer/routes/my-courses-view.js'), /mqi-my-courses-refresh/);
 });
 
 test('interface isolada e acessível contém menu híbrido no painel', () => {

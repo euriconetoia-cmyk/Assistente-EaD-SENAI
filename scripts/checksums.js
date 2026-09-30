@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 
 const root = path.join(__dirname, '..');
 const output = path.join(root, 'CHECKSUMS.sha256');
-const ignored = new Set(['.git', 'node_modules', 'coverage', 'dist']);
+const ignored = new Set(['.git', '.superpowers', 'node_modules', 'coverage', 'dist']);
 const walk = (directory) => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   if (ignored.has(entry.name)) return [];
   const file = path.join(directory, entry.name);

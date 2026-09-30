@@ -27,12 +27,13 @@
     navigationExpanded: false,
     retentionDays: 90,
     storeMessageContent: true,
-    enableAutomaticCourseScan: true,
-    enableAutomaticCategoryScan: true,
+    enableAutomaticCourseScan: false,
+    enableAutomaticCategoryScan: false,
     forcePortuguese: true
   };
 
   const AUDIT_KEY = 'mat_audit_log_v1';
+  const RETENTION_PURGE_KEY = 'mat_retention_purge_at_v1';
   const AUDIT_SCHEMA_VERSION = 1;
 
   // Chrome can briefly omit storage APIs while an extension is reloaded or a page is navigating.
@@ -418,9 +419,19 @@
     return expired.length;
   };
 
+  const purgeExpiredDataIfDue = async (retentionDays, now = Date.now()) => {
+    const data = await get([RETENTION_PURGE_KEY]);
+    const lastRun = Number(data[RETENTION_PURGE_KEY] || 0);
+    if (now - lastRun < 86400000) return 0;
+    const removed = await purgeExpiredData(retentionDays);
+    await set({ [RETENTION_PURGE_KEY]: now });
+    return removed;
+  };
+
   MAT.storage = {
     DEFAULT_SETTINGS,
     AUDIT_KEY,
+    RETENTION_PURGE_KEY,
     normalizeSettings,
     loadSettings,
     saveSettings,
@@ -445,6 +456,7 @@
     loadMoodleMessageDraft,
     clearMoodleMessageDraft,
     getStorageUsage,
-    purgeExpiredData
+    purgeExpiredData,
+    purgeExpiredDataIfDue
   };
 })();

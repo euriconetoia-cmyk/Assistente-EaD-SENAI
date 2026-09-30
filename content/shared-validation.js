@@ -371,7 +371,10 @@
     const declaredMax = parseGrade(next.notaMaxima);
     const moodleMax = parseGrade(assignment.maxGrade ?? assignment.gradeMax ?? assignment.metrics?.maxGrade);
     const unsafeStatus = /conflito|insuficiente|nao localizada|não localizada/i.test(next.notaMaximaStatus || '');
-    const maxGradeConflict = unsafeStatus || (declaredMax.number !== null && moodleMax.number !== null && !gradesEquivalent(declaredMax.number, moodleMax.number));
+    const currentMaximumConfirmed = moodleMax.number !== null
+      && /confirmad|manual/i.test(assignment.maxGradeStatus || '');
+    const maxGradeConflict = (unsafeStatus && !currentMaximumConfirmed)
+      || (declaredMax.number !== null && moodleMax.number !== null && !gradesEquivalent(declaredMax.number, moodleMax.number));
 
     if (String(next.desempenho || '').trim() && !isSenaiPlay && !FEEDBACK_ONLY_SITUATIONS.has(situation) && !situation.includes('atividade_incorreta')) {
       if (maxGradeConflict || (moodleMax.number === null && declaredMax.number !== null && !/alta|confirmad/i.test(next.notaMaximaStatus || ''))) {

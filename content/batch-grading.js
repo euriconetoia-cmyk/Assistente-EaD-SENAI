@@ -854,7 +854,7 @@
         return null;
       }
 
-      updateAssignmentMaximum(assignment, parsed.number, context.gradeSource, context.gradeConfidence);
+      updateAssignmentMaximum(assignment, parsed.number, context.gradeSource, 'confirmada_moodle');
       STATE.gradeResolution[key] = {
         status: 'confirmed',
         maximum: parsed.number,
@@ -919,11 +919,19 @@
       const assignmentMaxGrade = S.parseGrade(group.assignment.maxGrade ?? group.assignment.gradeMax ?? group.assignment.metrics?.maxGrade ?? '');
       const confirmedMaxGrade = confirmedRecordMaxGrade(group, record);
       const maxGradeStatus = String(record.notaMaximaStatus || '').trim();
-      const maxGradeUnsafe = /conflito|insuficiente|nao localizada|não localizada/i.test(maxGradeStatus);
-      const maxGradeSource = String(record.notaMaximaFonte || (recordMaxGrade.valid ? 'CSV' : assignmentMaxGrade.valid ? (group.assignment.maxGradeSource || 'Moodle') : '')).trim();
+      const historicalMaxUnsafe = /conflito|insuficiente|nao localizada|não localizada/i.test(maxGradeStatus);
+      const currentMaximumConfirmed = assignmentMaxGrade.valid
+        && /confirmad|manual/i.test(group.assignment.maxGradeStatus || '');
+      const maxGradeUnsafe = historicalMaxUnsafe && !currentMaximumConfirmed;
+      const maxGradeSource = String(currentMaximumConfirmed
+        ? (group.assignment.maxGradeSource || 'Moodle')
+        : (record.notaMaximaFonte || (recordMaxGrade.valid ? 'CSV' : assignmentMaxGrade.valid ? (group.assignment.maxGradeSource || 'Moodle') : ''))).trim();
+      const historicalMaximumNotice = historicalMaxUnsafe && currentMaximumConfirmed
+        ? '<div class="mat-footer-note">Pacote original: nota máxima não localizada ou requer conferência. Escala confirmada nesta importação.</div>'
+        : '';
       const maxGrade = confirmedMaxGrade === null
         ? '<span class="mat-badge mat-badge-warning">Não confirmada</span>'
-        : `<strong>${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}</strong>${maxGradeUnsafe ? '<div><span class="mat-badge mat-badge-warning">Requer conferência</span></div>' : ''}${maxGradeSource ? `<div class="mat-footer-note">Fonte: ${U.escapeHtml(maxGradeSource)}</div>` : ''}`;
+        : `<strong>${U.escapeHtml(S.formatGradePtBr(confirmedMaxGrade))}</strong>${maxGradeUnsafe ? '<div><span class="mat-badge mat-badge-warning">Requer conferência</span></div>' : ''}${maxGradeSource ? `<div class="mat-footer-note">Fonte: ${U.escapeHtml(maxGradeSource)}</div>` : ''}${historicalMaximumNotice}`;
       if (isEditing) return `<tr class="mat-change-edit-row">
         <td data-label="Atividade"><strong>${U.escapeHtml(group.assignment.name)}</strong><div class="mat-footer-note">CMID ${U.escapeHtml(group.assignment.cmid)}</div></td>
         <td data-label="Aluno">${U.escapeHtml(record.nome || record.studentId || 'Não identificado')}</td>

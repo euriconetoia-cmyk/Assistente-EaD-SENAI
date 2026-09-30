@@ -6,6 +6,18 @@
 
   const fetchDocument = async (url, settings, label = 'Página') => {
     if (!U.isAllowedMoodleUrl(url)) throw new Error(`${label}: URL outside authorized Moodle hosts`);
+    if (MAT.requestBroker?.fetchDocument) {
+      const result = await MAT.requestBroker.fetchDocument({
+        url,
+        ttlMs: 15 * 60 * 1000,
+        priority: 'interactive',
+        scopeId: MAT.state.requestScopeId || 'default',
+        timeoutMs: settings.requestTimeoutMs,
+        label
+      });
+      if (!U.isAllowedMoodleUrl(result.url)) throw new Error(`${label}: redirected to an unauthorized URL`);
+      return { doc: result.document, finalUrl: result.url, status: result.status, durationMs: result.durationMs, size: result.size };
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), settings.requestTimeoutMs);
     const started = performance.now();
@@ -675,7 +687,7 @@
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   };
 
-  const collectSnapshot = async ({ adapter, course, settings, onProgress }) => {
+  const collectSnapshot = async ({ adapter, course, settings, onProgress, scope = 'active-uc', activityCmid, signal } = {}) => {
     const startedAt = Date.now();
     const sources = [];
     const warnings = [];
@@ -687,14 +699,19 @@
       extensionVersion: MAT.VERSION,
       selectors: {}
     };
+    const shouldCollectParticipants = scope === 'students' || scope === 'course';
+    const shouldCollectGrades = scope === 'grades' || scope === 'course';
+    const shouldCollectGrading = scope === 'course' || scope === 'single-activity';
 
     onProgress?.({ step: 'course', message: 'Lendo a estrutura do curso', percent: 5 });
     const courseDoc = await collectCoursePage(adapter, course, settings, sources, warnings);
     const sections = adapter.extractSections(courseDoc);
     diagnostics.selectors.sectionsFound = sections.length;
 
-    onProgress?.({ step: 'participants', message: 'Lendo participantes e último acesso', percent: 15 });
-    const participantResult = await collectParticipants(adapter, course, settings, sources, warnings);
+    onProgress?.({ step: 'participants', message: shouldCollectParticipants ? 'Lendo participantes e último acesso' : 'Participantes não solicitados neste escopo', percent: 15 });
+    const participantResult = shouldCollectParticipants
+      ? await collectParticipants(adapter, course, settings, sources, warnings)
+      : { rows: [], truncated: false, diagnostics: { skipped: true, scope } };
     diagnostics.participants = participantResult.diagnostics;
 
     onProgress?.({ step: 'activities', message: 'Identificando atividades avaliativas', percent: 30 });
@@ -707,9 +724,15 @@
       const sectionName = U.normalizeText(assignment.sectionName || '');
       return sectionName === activeUcName || sectionName.includes(activeUcName) || activeUcName.includes(sectionName);
     };
-    const discovered = [...allDiscovered]
+    let discovered = [...allDiscovered]
       .sort((a, b) => Number(isActiveUcAssignment(b)) - Number(isActiveUcAssignment(a)))
       .slice(0, settings.maxAssignments);
+    if (scope === 'active-uc' && (activeUcName || activeUcSectionId)) {
+      discovered = discovered.filter(isActiveUcAssignment);
+    }
+    if (scope === 'single-activity' && activityCmid) {
+      discovered = discovered.filter((assignment) => String(assignment.cmid || assignment.assignmentId || assignment.id || '') === String(activityCmid));
+    }
     diagnostics.assignmentsDiscovered = allDiscovered.length;
     diagnostics.assignmentsCollected = discovered.length;
     diagnostics.activeUcAssignmentsPrioritized = discovered.filter(isActiveUcAssignment).length;
@@ -732,7 +755,7 @@
     );
 
     let assignments = summaries.filter(Boolean);
-    if (settings.analysisMode === 'complete' && assignments.length) {
+    if (shouldCollectGrading && assignments.length) {
       assignments = await U.mapWithConcurrency(
         assignments,
         settings.requestConcurrency,
@@ -757,7 +780,7 @@
     }
 
     onProgress?.({ step: 'grades', message: 'Conferindo o livro de notas', percent: 83 });
-    const gradeResult = settings.analysisMode === 'complete'
+    const gradeResult = shouldCollectGrades
       ? await collectGrades(adapter, course, settings, sources, warnings)
       : { rows: [], diagnostics: { skipped: true } };
 
@@ -772,6 +795,7 @@
         collectedAt: new Date().toISOString(),
         durationMs: Date.now() - startedAt,
         mode: settings.analysisMode,
+        scope,
         environment: adapter.environment,
         host: location.hostname,
         sourcePage: location.href,

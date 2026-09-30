@@ -7,6 +7,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'contextual-importer.js'), 'utf8');
+const myCoursesView = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'routes', 'my-courses-view.js'), 'utf8');
+const coursePendingView = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer', 'routes', 'course-pending-view.js'), 'utf8');
 const batchSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'batch-grading.js'), 'utf8');
 const adaptersSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'adapters.js'), 'utf8');
 const uiSource = fs.readFileSync(path.join(__dirname, '..', 'content', 'ui.js'), 'utf8');
@@ -15,8 +17,8 @@ const styles = fs.readFileSync(path.join(__dirname, '..', 'content', 'importer',
 const appStyles = fs.readFileSync(path.join(__dirname, '..', 'content', 'styles.css'), 'utf8');
 
 test('resumo do curso mantém indicadores e importação, sem download duplicado', () => {
-  const importer = source.indexOf('mqi-course-pending-summary__import');
-  const refresh = source.indexOf('mqi-course-pending-summary__refresh');
+  const importer = coursePendingView.indexOf('mqi-course-pending-summary__import');
+  const refresh = coursePendingView.indexOf('mqi-course-pending-summary__refresh');
   assert.ok(importer >= 0 && refresh > importer);
   assert.doesNotMatch(source, /mqi-course-pending-summary__download|downloadCoursePendingFiles|atividades_pendentes_curso_/);
   assert.match(batchSource, /downloadAllForCorrection/);
@@ -86,6 +88,12 @@ test('conferência mostra nota máxima, origem e estado de confirmação', () =>
   assert.match(batchSource, /Fonte:/);
   assert.match(batchSource, /Não confirmada/);
   assert.match(batchSource, /Requer conferência/);
+});
+
+test('conferência distingue o alerta histórico da escala confirmada na importação atual', () => {
+  assert.match(batchSource, /Pacote original: nota máxima não localizada/);
+  assert.match(batchSource, /Escala confirmada nesta importação/);
+  assert.match(batchSource, /confirmad\|manual/);
 });
 
 test('quando a escala não é identificada o tutor pode informar a nota máxima manualmente', () => {
@@ -177,6 +185,12 @@ test('conferência usa a ficha individual quando a tabela rápida não reaparece
   assert.match(source, /input\[name="grade"\]:not\(\[type="hidden"\]\)/);
   assert.match(source, /!field\.disabled && String\(field\.name/);
   assert.match(source, /await buildBatchVerification\(verificationPlan/);
+  const verifierStart = source.indexOf('  async function verifyOnIndividualGrader(');
+  const verifierEnd = source.indexOf('  async function buildBatchVerification(', verifierStart);
+  const verifierSource = source.slice(verifierStart, verifierEnd);
+  assert.match(verifierSource, /requestBroker\?\.fetchDocument/);
+  assert.match(verifierSource, /force:\s*true/);
+  assert.doesNotMatch(verifierSource, /await fetch\(url\.href/);
 });
 
 test('lote descobre alunos em todas as páginas antes de preencher notas', () => {
@@ -186,6 +200,11 @@ test('lote descobre alunos em todas as páginas antes de preencher notas', () =>
   assert.match(source, /transactionState === 'descobrir'/);
   assert.match(source, /status: 'discovered'/);
   assert.match(source, /filter', '-1'/);
+  const discoveryStart = source.indexOf('  async function fetchBatchDiscoveryPage(');
+  const discoveryEnd = source.indexOf('  async function discoverBatchRecords(', discoveryStart);
+  const discoverySource = source.slice(discoveryStart, discoveryEnd);
+  assert.match(discoverySource, /requestBroker\?\.fetchDocument/);
+  assert.doesNotMatch(discoverySource, /await fetch\(url\.href/);
   assert.match(batchSource, /Localizando alunos em todas as páginas/);
   assert.match(batchSource, /paginas_consultadas/);
   assert.match(source, /profileLink\?\.closest\('td, \.cell'\)/);
@@ -196,8 +215,8 @@ test('página inicial monta inventário e relatório geral das turmas', () => {
   assert.match(source, /function isMyCoursesPage/);
   assert.match(source, /function buildMyCoursesInventory/);
   assert.match(source, /runWithConcurrency\(MY_COURSES_STATE\.courses, 2/);
-  assert.match(source, /Visão geral das turmas/);
-  assert.match(source, /id="mqi-my-courses-export"[^>]*>Exportar CSV/);
+  assert.match(myCoursesView, /Visão geral das turmas/);
+  assert.match(myCoursesView, /id="mqi-my-courses-export"[^>]*>Exportar CSV/);
   assert.match(source, /relatorio_geral_turmas_/);
   assert.match(source, /neutralizeSpreadsheetFormula/);
   assert.match(source, /perpage', '96'/);
@@ -268,14 +287,19 @@ test('menu lateral usa ícone hamburger e identificação compacta do curso', ()
   assert.match(appStyles, /\.mat-course-name[^}]+white-space: nowrap/);
 });
 
-test('curso é atualizado automaticamente ao ficar obsoleto e após alterações', () => {
+test('abertura do painel usa dados salvos e não inicia análise remota', () => {
   assert.match(mainSource, /COURSE_CACHE_MAX_AGE_MS = 15 \* 60 \* 1000/);
-  assert.match(mainSource, /AUTO_REFRESH_CHECK_MS = 60 \* 1000/);
-  assert.match(mainSource, /const refreshIfStale = async/);
-  assert.match(mainSource, /setInterval\(\(\) => refreshIfStale/);
-  assert.match(mainSource, /visibilitychange/);
+  assert.match(uiSource, /const openPanel = \(\{ refresh = false \} = \{\}\) =>/);
+  assert.doesNotMatch(uiSource, /window\.setTimeout\(\(\) => MAT\.main\?\.refreshAnalysis\(\), 120\)/);
+  assert.doesNotMatch(mainSource, /MAT\.ui\.openPanel\(\{ refresh: true \}\)/);
   assert.match(uiSource, /refreshAfterChange\?\.\('alteração da UC'\)/);
   assert.match(batchSource, /refreshAfterChange\?\.\('salvamento das correções'\)/);
+});
+
+test('instalação dos resumos não inicia varredura remota sem ação explícita', () => {
+  assert.doesNotMatch(source, /function installCoursePendingObserver\(\)[\s\S]{0,180}scheduleCoursePendingScan\(50\)/);
+  assert.doesNotMatch(source, /function installCategoryPendingObserver\(\)[\s\S]{0,180}scheduleCategoryPendingScan\(80\)/);
+  assert.doesNotMatch(source, /function installMyCoursesDashboard\(\)[\s\S]{0,140}scanMyCoursesDashboard\(\)/);
 });
 
 

@@ -152,6 +152,32 @@ test('escala ausente ou divergente bloqueia conversão, sem lançar nota presumi
   assert.match(S.parseBatchCsv('cmid;nome;desempenho_0_100\n301;Ana;101\n301;Bia;90').errors.join(' '), /0 e 100/i);
 });
 
+test('confirmação atual da atividade libera conversão sem apagar o alerta histórico do CSV', () => {
+  const record = {
+    desempenho: '90',
+    nota: '',
+    notaMaxima: '',
+    notaMaximaStatus: 'insuficiente',
+    notaMaximaFonte: 'pacote original',
+  };
+  const confirmed = S.applyAcademicGradePolicy(record, {
+    name: 'SAP 01',
+    maxGrade: 100,
+    maxGradeStatus: 'confirmada_moodle',
+  });
+  assert.equal(confirmed.errors.length, 0);
+  assert.equal(confirmed.record.nota, '90,00');
+  assert.equal(confirmed.record.notaMaximaStatus, 'insuficiente');
+
+  const divergent = S.applyAcademicGradePolicy({ ...record, notaMaxima: '50' }, {
+    name: 'SAP 01',
+    maxGrade: 100,
+    maxGradeStatus: 'confirmada_moodle',
+  });
+  assert.match(divergent.errors.join(' '), /conflito/i);
+  assert.equal(divergent.record.nota, '');
+});
+
 test('zero e atividade incorreta enviam somente feedback; SENAI Play validado usa máximo', () => {
   const zero = S.parseBatchCsv('cmid;nome;desempenho_0_100;feedback\n301;Ana;0;Revise o enunciado').records[0];
   assert.equal(S.applyAcademicGradePolicy(zero, { name: 'SAP 01', maxGrade: 50 }).record.nota, '');

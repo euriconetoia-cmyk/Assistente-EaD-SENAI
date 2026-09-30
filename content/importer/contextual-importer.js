@@ -22,7 +22,7 @@
   const MAX_IMPORT_CELLS = 50000;
 
   const COURSE_BADGE_CACHE_TTL = 15 * 60 * 1000;
-  const COURSE_BADGE_STATE = {
+  const COURSE_BADGE_STATE = globalThis.MAT?.importerState?.coursePending || {
     results: new Map(),
     inFlight: new Map(),
     scanTimer: null,
@@ -45,7 +45,7 @@
     scanTimer: null,
   };
 
-  const MY_COURSES_STATE = {
+  const MY_COURSES_STATE = globalThis.MAT?.importerState?.myCourses || {
     courses: [],
     results: new Map(),
     running: false,
@@ -1267,13 +1267,19 @@
 
   async function fetchBatchDiscoveryPage(page, perPage) {
     const url = normalizedBatchPageUrl(page, perPage);
-    const response = await fetch(url.href, { credentials: 'include', cache: 'no-store', redirect: 'follow' });
-    if (!response.ok) throw new Error(`Falha HTTP ${response.status} ao consultar a página ${page + 1}.`);
-    const finalUrl = new URL(response.url, window.location.href);
+    const result = await globalThis.MAT?.requestBroker?.fetchDocument?.({
+      url: url.href,
+      ttlMs: 0,
+      force: true,
+      priority: 'interactive',
+      scopeId: 'batch-discovery',
+      timeoutMs: 20000,
+      label: `Descoberta de alunos, página ${page + 1}`,
+    });
+    if (!result) throw new Error('Broker de leituras Moodle indisponível durante a descoberta dos alunos.');
+    const finalUrl = new URL(result.url, window.location.href);
     if (finalUrl.origin !== window.location.origin || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado durante a descoberta dos alunos.');
-    const html = await response.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return { doc, url: finalUrl.href };
+    return { doc: result.document, url: finalUrl.href };
   }
 
   async function discoverBatchRecords(records, { perPage = 100, maxPages = 100 } = {}) {
@@ -1729,13 +1735,19 @@
   async function verifyOnIndividualGrader(expected) {
     if (!expected.studentId) return null;
     const url = individualGraderUrl(expected.studentId);
-    const response = await fetch(url.href, { credentials: 'include', cache: 'no-store', redirect: 'follow' });
-    if (!response.ok) throw new Error(`O Moodle respondeu HTTP ${response.status} ao conferir ${expected.nome || expected.studentId}.`);
-    const finalUrl = new URL(response.url || url.href, window.location.href);
+    const result = await globalThis.MAT?.requestBroker?.fetchDocument?.({
+      url: url.href,
+      ttlMs: 0,
+      force: true,
+      priority: 'interactive',
+      scopeId: 'batch-verification',
+      timeoutMs: 20000,
+      label: `Conferência individual de ${expected.nome || expected.studentId}`,
+    });
+    if (!result) throw new Error('Broker de leituras Moodle indisponível durante a conferência individual.');
+    const finalUrl = new URL(result.url || url.href, window.location.href);
     if (finalUrl.origin !== window.location.origin || /\/login\//.test(finalUrl.pathname)) throw new Error('Sessão expirada ou redirecionamento não autorizado durante a conferência individual.');
-    const html = await response.text();
-    if (/name=["']username["']/i.test(html) && /name=["']password["']/i.test(html)) throw new Error('A sessão do Moodle expirou durante a conferência individual.');
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const doc = result.document;
     const match = readIndividualGrader(doc, expected);
     if (!match.gradeInput && !match.feedbackTextarea) return null;
     return buildVerificationItem(expected, match);
@@ -2274,11 +2286,12 @@
     if (badge.parentElement !== badgeHost) badgeHost.appendChild(badge);
 
     badge.className = `mqi-pending-badge mqi-pending-badge--${state}`;
-    badge.setAttribute('aria-hidden', state === 'empty' ? 'false' : 'true');
+    const presentation = globalThis.MAT?.importerViews?.pendingBadgePresentation?.({ state, count, name, message });
+    if (!presentation) return badge;
+    badge.textContent = presentation.text;
+    badge.title = presentation.title;
+    badge.setAttribute('aria-hidden', presentation.accessible ? 'false' : 'true');
     if (state === 'pending') {
-      const label = count > 99 ? '99+' : String(count);
-      badge.textContent = label;
-      badge.title = `${count} ${count === 1 ? 'envio precisa' : 'envios precisam'} de avaliação em ${name}`;
       assignment.card.classList.add('mqi-assignment-has-pending');
       assignment.card.dataset.mqiPendingCount = String(count);
     } else if (state === 'verify') {
@@ -2292,14 +2305,10 @@
       assignment.card.classList.remove('mqi-assignment-has-pending');
       delete assignment.card.dataset.mqiPendingCount;
     } else if (state === 'empty') {
-      badge.textContent = '✓';
-      badge.title = `${name}: consulta concluída, nenhuma correção pendente confirmada.`;
       badge.setAttribute('aria-label', badge.title);
       assignment.card.classList.remove('mqi-assignment-has-pending');
       delete assignment.card.dataset.mqiPendingCount;
     } else {
-      badge.textContent = '…';
-      badge.title = `Consultando correções pendentes de ${name}`;
       assignment.card.classList.remove('mqi-assignment-has-pending');
       delete assignment.card.dataset.mqiPendingCount;
     }
@@ -2327,8 +2336,11 @@
       || /^(?:envios?|entregas?|submissoes?)?\s*(?:que\s+)?(?:precisa(?:m)?|necessita(?:m)?|requer(?:em)?)\s+(?:de\s+)?avaliacao$/.test(label);
   }
 
-  function parsePendingEvaluationCount(html) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+  function parsePendingEvaluationCount(source) {
+    const doc = typeof source === 'string'
+      ? new DOMParser().parseFromString(source, 'text/html')
+      : source;
+    if (!doc?.querySelectorAll) return null;
     const rows = [...doc.querySelectorAll('.gradingsummarytable tr, .submissionstatustable tr, .grading-summary tr, [data-region="grading-summary"] tr, table.generaltable tr, dl > div')];
 
     for (const row of rows) {
@@ -2395,46 +2407,25 @@
     }
 
     const request = (async () => {
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 15000);
-      try {
-        const response = await fetch(assignment.link.href, {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-store',
-          redirect: 'follow',
-          signal: controller.signal,
-          headers: {
-            'Accept': 'text/html,application/xhtml+xml',
-          },
-        });
+      const pendingUrl = new URL(assignment.link.href, window.location.href);
+      pendingUrl.searchParams.set('action', 'grading');
+      pendingUrl.searchParams.set('quickgrading', '1');
+      pendingUrl.searchParams.set('status', 'requiregrading');
+      pendingUrl.searchParams.set('perpage', '500');
+      const { doc } = await fetchHtmlDocument(pendingUrl.href, `Pendências de ${assignment.name}`, {
+        force,
+        ttlMs: 10 * 60 * 1000,
+        scopeId: `pending:${assignment.assignmentId}`,
+      });
+      const count = parsePendingEvaluationCount(doc);
+      if (count === null) throw new Error('Campo “Precisa de avaliação” não encontrado');
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const finalUrl = new URL(response.url, window.location.href);
-        if (finalUrl.origin !== currentMoodleOrigin()) throw new Error('Redirecionamento para domínio não autorizado');
-
-        const html = await response.text();
-        if (/\/login\//.test(finalUrl.pathname) || (/name=["']username["']/i.test(html) && /name=["']password["']/i.test(html))) {
-          throw new Error('Sessão do Moodle expirada');
-        }
-
-        const count = parsePendingEvaluationCount(html);
-        if (count === null) throw new Error('Campo “Precisa de avaliação” não encontrado');
-
-        let requiresVerification = false;
-        if (count === 0) {
-          try { requiresVerification = !(await confirmNoPendingInGradingPages(assignment)); }
-          catch (error) {
-            requiresVerification = true;
-            console.warn(`Não foi possível confirmar individualmente a ausência de pendências em ${assignment.assignmentId}.`, error);
-          }
-        }
-        const result = { count, requiresVerification };
-        writeCourseBadgeCache(assignment.assignmentId, result);
-        return result;
-      } finally {
-        window.clearTimeout(timeout);
-      }
+      // A tela resumida não confirma ausência de pendências: evitar a segunda
+      // varredura automática e manter o estado seguro “Verificar”.
+      const requiresVerification = count === 0;
+      const result = { count, requiresVerification };
+      writeCourseBadgeCache(assignment.assignmentId, result);
+      return result;
     })();
 
     COURSE_BADGE_STATE.inFlight.set(assignment.assignmentId, request);
@@ -2477,11 +2468,7 @@
     summary = document.createElement('div');
     summary.id = 'mqi-course-pending-summary';
     summary.className = 'mqi-course-pending-summary is-loading';
-    summary.innerHTML = `
-      <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
-      <span class="mqi-course-pending-summary__text" role="status" aria-live="polite">Consultando atividades que precisam de avaliação…</span>
-        <span class="mqi-course-pending-summary__actions"><button type="button" class="mqi-course-pending-summary__import" title="Importar notas e feedbacks de um arquivo CSV" aria-label="Importar notas e feedbacks">Importar notas</button><button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button></span>
-    `;
+    summary.innerHTML = globalThis.MAT?.importerViews?.coursePendingSummary || '';
 
     placePendingSummaryAtTop(main, summary);
 
@@ -2612,7 +2599,6 @@
 
   function installCoursePendingObserver() {
     if (!isCourseViewPage()) return;
-    scheduleCoursePendingScan(50);
 
     const observer = new MutationObserver(mutations => {
       const addedAssignment = mutations.some(mutation => [...mutation.addedNodes].some(node => {
@@ -2962,7 +2948,23 @@
     return [...found.values()];
   }
 
-  async function fetchHtmlDocument(url, label) {
+  async function fetchHtmlDocument(url, label, { force = false, ttlMs = 5 * 60 * 1000, scopeId = 'importer' } = {}) {
+    const brokerResult = await globalThis.MAT?.requestBroker?.fetchDocument?.({
+      url,
+      ttlMs,
+      priority: 'interactive',
+      timeoutMs: 20000,
+      force,
+      scopeId,
+      label,
+    });
+    if (brokerResult) {
+      const finalUrl = new URL(brokerResult.url, window.location.href);
+      if (finalUrl.origin !== currentMoodleOrigin()) throw new Error(`${label}: redirecionamento não autorizado`);
+      const loginForm = brokerResult.document?.querySelector?.('input[name="username"], input[name="password"]');
+      if (/\/login\//.test(finalUrl.pathname) || loginForm) throw new Error('Sessão do Moodle expirada');
+      return { doc: brokerResult.document, finalUrl: finalUrl.href };
+    }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 20000);
     try {
@@ -3079,7 +3081,7 @@
     summary.className = 'mqi-course-pending-summary mqi-category-pending-summary is-loading';
     summary.innerHTML = `
       <span class="mqi-course-pending-summary__icon" aria-hidden="true">✓</span>
-      <span class="mqi-course-pending-summary__text">Consultando pendências dos cursos exibidos…</span>
+      <span class="mqi-course-pending-summary__text" role="status" aria-live="polite">Atualize as contagens quando precisar consultar os cursos exibidos.</span>
       <span class="mqi-course-pending-summary__actions">
         <button type="button" class="mqi-course-pending-summary__refresh" title="Atualizar contagens" aria-label="Atualizar contagens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
       </span>
@@ -3188,7 +3190,6 @@
 
   function installCategoryPendingObserver() {
     if (!isCategoryPage()) return;
-    scheduleCategoryPendingScan(80);
 
     const observer = new MutationObserver(mutations => {
       const addedCourse = mutations.some(mutation => [...mutation.addedNodes].some(node => {
@@ -3307,14 +3308,7 @@
     panel.id = 'mqi-my-courses-dashboard';
     panel.className = 'mqi-my-courses-dashboard is-loading';
     panel.setAttribute('aria-labelledby', 'mqi-my-courses-title');
-    panel.innerHTML = `
-      <div class="mqi-my-courses-head">
-        <div><h2 id="mqi-my-courses-title">Visão geral das turmas</h2><p id="mqi-my-courses-status" role="status" aria-live="polite">Identificando os cursos vinculados ao seu usuário…</p></div>
-        <div class="mqi-my-courses-actions"><button type="button" id="mqi-my-courses-refresh">Atualizar análise</button><button type="button" id="mqi-my-courses-dashboard-open" disabled>Abrir dashboard</button><button type="button" id="mqi-my-courses-calendar">Mostrar calendário</button><button type="button" id="mqi-my-courses-export" disabled>Exportar CSV</button></div>
-      </div>
-      <div class="mqi-my-courses-metrics" id="mqi-my-courses-metrics"></div>
-      <section class="mqi-my-courses-calendar" id="mqi-my-courses-calendar-panel" hidden><h3>Calendário de futuras turmas e UCs</h3><div id="mqi-my-courses-calendar-body"></div></section>
-      <div class="mqi-my-courses-table-wrap"><table class="mqi-my-courses-table"><thead><tr><th>Turma</th><th>UC ou curso</th><th>Vigência</th><th>Período</th><th>Pendências</th><th>Leitura</th></tr></thead><tbody id="mqi-my-courses-body"><tr><td colspan="6">Carregando…</td></tr></tbody></table></div>`;
+    panel.innerHTML = globalThis.MAT?.importerViews?.myCoursesPanel || '';
     placePendingSummaryAtTop(main, panel);
     panel.querySelector('#mqi-my-courses-refresh')?.addEventListener('click', () => scanMyCoursesDashboard({ force: true }));
     panel.querySelector('#mqi-my-courses-export')?.addEventListener('click', downloadMyCoursesReport);
@@ -3341,20 +3335,12 @@
     }).length;
 
     panel.classList.toggle('is-loading', MY_COURSES_STATE.running);
-    status.textContent = MY_COURSES_STATE.running
-      ? `Analisando ${completed.length} de ${courses.length} curso(s)…`
-      : `${courses.length} curso(s) identificado(s)${MY_COURSES_STATE.inventoryPartial ? ', com inventário possivelmente parcial' : ''}. Última atualização: ${MY_COURSES_STATE.completedAt ? new Date(MY_COURSES_STATE.completedAt).toLocaleString('pt-BR') : 'em andamento'}.`;
-    metrics.innerHTML = `<span><strong>${courses.length}</strong> cursos</span><span><strong>${currentCount}</strong> UCs atuais</span><span class="${totalPending > 0 ? 'is-danger' : ''}"><strong>${totalPending}</strong> pendências</span><span><strong>${coursesWithPending}</strong> cursos com ação</span><span><strong>${incomplete}</strong> leituras incompletas</span>`;
+    status.textContent = globalThis.MAT?.importerViews?.myCoursesStatus?.({ running: MY_COURSES_STATE.running, completed: completed.length, total: courses.length, partial: MY_COURSES_STATE.inventoryPartial, completedAt: MY_COURSES_STATE.completedAt }) || '';
+    metrics.innerHTML = globalThis.MAT?.importerViews?.renderMyCoursesMetrics?.({ total: courses.length, current: currentCount, pending: totalPending, coursesWithPending, incomplete }) || '';
     exportButton.disabled = MY_COURSES_STATE.running || !courses.length;
     dashboardButton.disabled = MY_COURSES_STATE.running || !courses.length;
 
-    body.innerHTML = courses.map(course => {
-      const result = MY_COURSES_STATE.results.get(course.courseId);
-      const pending = result ? result.totalPending : null;
-      const reading = !result ? 'Aguardando' : result.errors > 0 ? 'Parcial' : result.unverified > 0 ? 'Conferir' : 'Concluída';
-      const rowClass = pending > 0 ? 'has-pending' : reading !== 'Concluída' ? 'needs-review' : '';
-      return `<tr class="${rowClass}"><td data-label="Turma">${escapeHtml(course.groupName || 'Turma não identificada')}</td><td data-label="UC ou curso"><a href="${escapeHtml(course.link.href)}">${escapeHtml(course.name)}</a><div>Curso ${escapeHtml(course.courseId)}</div></td><td data-label="Vigência">${escapeHtml(myCourseVigencyLabel(course.vigency))}</td><td data-label="Período">${escapeHtml(formatInventoryDate(course.availability?.startsAt))} a ${escapeHtml(formatInventoryDate(course.availability?.endsAt))}</td><td data-label="Pendências"><strong>${pending === null ? 'Consultando' : pending}</strong></td><td data-label="Leitura">${escapeHtml(reading)}</td></tr>`;
-    }).join('') || '<tr><td colspan="6">Nenhum curso foi identificado nesta página.</td></tr>';
+    body.innerHTML = globalThis.MAT?.importerViews?.renderMyCoursesRows?.({ courses, results: MY_COURSES_STATE.results, escapeHtml, vigencyLabel: myCourseVigencyLabel, formatDate: formatInventoryDate }) || '';
     renderFutureCoursesCalendar();
   }
 
@@ -3364,7 +3350,7 @@
     const future = MY_COURSES_STATE.courses
       .filter(course => course.vigency === 'future' && Number.isFinite(course.availability?.startsAt))
       .sort((a, b) => a.availability.startsAt - b.availability.startsAt);
-    body.innerHTML = future.length ? future.map(course => `<article class="mqi-calendar-item"><time datetime="${new Date(course.availability.startsAt).toISOString()}"><strong>${escapeHtml(formatInventoryDate(course.availability.startsAt))}</strong>${Number.isFinite(course.availability?.endsAt) ? ` a ${escapeHtml(formatInventoryDate(course.availability.endsAt))}` : ''}</time><div><strong>${escapeHtml(course.name)}</strong><span>${escapeHtml(course.groupName || 'Turma não identificada')}</span></div><a href="${escapeHtml(course.link.href)}">Abrir</a></article>`).join('') : '<p>Nenhuma turma ou UC futura com data de início reconhecida.</p>';
+    body.innerHTML = globalThis.MAT?.importerViews?.renderFutureCourses?.({ courses: future, escapeHtml, formatDate: formatInventoryDate }) || '';
   }
 
   function toggleMyCoursesCalendar(event) {
@@ -3448,7 +3434,6 @@
   function installMyCoursesDashboard() {
     if (!isMyCoursesPage()) return;
     ensureMyCoursesDashboard();
-    scanMyCoursesDashboard();
   }
 
 
@@ -3782,29 +3767,30 @@
     return true; // mantém o canal aberto para a resposta assíncrona
   });
 
-  createUI();
-  installMyCoursesDashboard();
-  chrome.storage.local.get(['mat_global_settings'], (data) => {
-    if (chrome.runtime.lastError) return;
-    const settings = globalThis.MAT?.storage?.normalizeSettings(data?.mat_global_settings || {}) || data?.mat_global_settings || {};
-    if (settings.enableAutomaticCourseScan === true) installCoursePendingObserver();
-    if (settings.enableAutomaticCategoryScan === true) installCategoryPendingObserver();
-  });
-  installStudentDownloadRenaming();
+  function installStudentDownloadObserver() {
+    installStudentDownloadRenaming();
+    let downloadScanTimer = null;
+    const downloadObserver = new MutationObserver(mutations => {
+      window.clearTimeout(downloadScanTimer);
+      downloadScanTimer = window.setTimeout(() => {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach(node => {
+            if (!(node instanceof Element)) return;
+            if (node.matches?.('a[href*="assignsubmission_file"]')) prepareStudentDownloadLink(node);
+            installStudentDownloadRenaming(node);
+          });
+        }
+        installStudentDownloadRenaming();
+      }, 100);
+    });
+    downloadObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
 
-  let downloadScanTimer = null;
-  const downloadObserver = new MutationObserver(mutations => {
-    window.clearTimeout(downloadScanTimer);
-    downloadScanTimer = window.setTimeout(() => {
-      for (const mutation of mutations) {
-        mutation.addedNodes.forEach(node => {
-          if (!(node instanceof Element)) return;
-          if (node.matches?.('a[href*="assignsubmission_file"]')) prepareStudentDownloadLink(node);
-          installStudentDownloadRenaming(node);
-        });
-      }
-      installStudentDownloadRenaming();
-    }, 100);
-  });
-  downloadObserver.observe(document.documentElement, { childList: true, subtree: true });
+  globalThis.MAT = globalThis.MAT || {};
+  globalThis.MAT.importer = {
+    quickGrading: { mount: createUI, observeDownloads: installStudentDownloadObserver },
+    coursePending: { mountSummary: ensureCoursePendingSummary, observe: installCoursePendingObserver },
+    categoryPending: { mountSummary: ensureCategoryPendingSummary, observe: installCategoryPendingObserver },
+    myCourses: { mount: installMyCoursesDashboard }
+  };
 })();

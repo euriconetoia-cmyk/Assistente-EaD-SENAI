@@ -8,7 +8,6 @@
   const isSupportedMoodlePage = () => ['ead.fieg.com.br', 'ead.senai.br'].includes(location.hostname.toLowerCase());
   const canShowAssistant = () => isSupportedMoodlePage();
   const COURSE_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
-  const AUTO_REFRESH_CHECK_MS = 60 * 1000;
   const SNAPSHOT_SCHEMA_VERSION = 5;
 
   const isSnapshotFresh = (snapshot, now = Date.now()) => {
@@ -58,7 +57,7 @@
       MAT.state.storageError = error.message || 'Falha ao acessar o armazenamento local.';
     }
     MAT.state.settings = globalSettings;
-    try { await MAT.storage.purgeExpiredData(globalSettings.retentionDays); }
+    try { await MAT.storage.purgeExpiredDataIfDue(globalSettings.retentionDays); }
     catch (error) { MAT.state.storageError = error.message || 'Falha ao aplicar a retenção local.'; }
     MAT.ui.makeLauncher();
     MAT.dom.getElementById('mat-launcher').style.display = MAT.state.settings.showFloatingButton ? 'flex' : 'none';
@@ -112,7 +111,7 @@
     MAT.ui.renderAll();
     if (MAT.state.storageError) MAT.ui.toast(MAT.state.storageError, 'error');
 
-    if (MAT.state.settings.autoOpenPanel) MAT.ui.openPanel({ refresh: true });
+    if (MAT.state.settings.autoOpenPanel) MAT.ui.openPanel();
   };
 
   const refreshAnalysis = async ({ silent = false } = {}) => {
@@ -124,7 +123,11 @@
 
     const collectedCourse = { ...MAT.state.course };
     const collectedHost = location.hostname;
+    const requestScopeId = `course:${collectedCourse.id}`;
+    MAT.state.requestScopeId = requestScopeId;
+    const unsubscribeRequestStatus = MAT.requestBroker?.subscribe?.(requestScopeId, () => MAT.ui.renderRequestStatus?.(requestScopeId, 'curso atual'));
     MAT.ui.setBusy(true);
+    MAT.ui.renderRequestStatus?.(requestScopeId, 'curso atual');
     MAT.ui.showProgress({ message: 'Preparando a leitura do curso', percent: 1 });
     try {
       const snapshot = await MAT.collectors.collectSnapshot({
@@ -178,7 +181,9 @@
       }).catch(() => {});
       if (!silent) MAT.ui.toast(`Não foi possível concluir a análise: ${error.message || error}`);
     } finally {
+      unsubscribeRequestStatus?.();
       MAT.ui.setBusy(false);
+      MAT.ui.renderRequestStatus?.(requestScopeId, 'curso atual');
       setTimeout(() => MAT.ui.hideProgress(), 1200);
     }
   };
@@ -396,6 +401,7 @@
   let lastContextKey = `${location.pathname}${location.search}`;
   let lastMoodleAuthoring = MAT.utils.isMoodleAuthoringPage(document);
   const reinitializeIfContextChanged = async () => {
+    if (document.hidden) return;
     const contextKey = `${location.pathname}${location.search}`;
     const currentCourseId = MAT.utils.parseCourseId(document) || null;
     const knownCourseId = MAT.state.course?.id || null;
@@ -415,13 +421,12 @@
     if (message?.type === 'MAT_TOGGLE_PANEL' && canShowAssistant() && !MAT.state.isMoodleAuthoring) MAT.ui.togglePanel({ refresh: true });
   });
 
-  MAT.main = { initializeContext, refreshAnalysis, refreshAfterChange, refreshIfStale, refreshGrades, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, AUTO_REFRESH_CHECK_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
+  MAT.main = { initializeContext, refreshAnalysis, refreshAfterChange, refreshIfStale, refreshGrades, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
 
   initializeContext().then(() => tryFillMoodleMessageDraft()).catch((error) => console.error('[Assistente EaD] Falha na inicialização', error));
-  setInterval(reinitializeIfContextChanged, 1800);
-  setInterval(() => refreshIfStale().catch((error) => console.warn('[Assistente EaD] Falha na atualização automática', error)), AUTO_REFRESH_CHECK_MS);
+  window.addEventListener('popstate', reinitializeIfContextChanged);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshIfStale().catch((error) => console.warn('[Assistente EaD] Falha na atualização ao retomar a página', error));
+    if (!document.hidden) reinitializeIfContextChanged().catch((error) => console.warn('[Assistente EaD] Falha ao retomar a página', error));
   });
   startNativeOverlayWatcher();
 })();

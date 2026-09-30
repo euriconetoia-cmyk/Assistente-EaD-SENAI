@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Assistente EaD SENAI",
-  "version": "3.7.16",
+  "version": "3.7.17",
   "description": "Painel de tutoria Moodle para acompanhar alunos, atividades, notas, pendências e fechamento de UCs.",
   "minimum_chrome_version": "102",
   "permissions": [
@@ -32,6 +32,7 @@
       ],
       "js": [
         "content/namespace.js",
+        "content/request-broker.js",
         "content/shared-validation.js",
         "content/utils.js",
         "content/statement-resources.js",
@@ -54,20 +55,65 @@
     {
       "matches": [
         "https://ead.fieg.com.br/mod/assign/view.php*",
+        "https://ead.senai.br/mod/assign/view.php*"
+      ],
+      "css": [
+        "content/importer/contextual-importer.css"
+      ],
+      "js": [
+        "content/importer/contextual-importer.js",
+        "content/importer/routes/quick-grading.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://ead.fieg.com.br/course/view.php*",
+        "https://ead.senai.br/course/view.php*"
+      ],
+      "css": [
+        "content/importer/contextual-importer.css"
+      ],
+      "js": [
+        "content/importer/routes/course-pending-state.js",
+        "content/importer/routes/course-pending-view.js",
+        "content/importer/contextual-importer.js",
+        "content/importer/routes/settings.js",
+        "content/importer/routes/course-pending.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://ead.fieg.com.br/course/index.php*",
+        "https://ead.senai.br/course/index.php*"
+      ],
+      "css": [
+        "content/importer/contextual-importer.css"
+      ],
+      "js": [
+        "content/importer/contextual-importer.js",
+        "content/importer/routes/settings.js",
+        "content/importer/routes/category-pending.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
         "https://ead.fieg.com.br/my/*",
-        "https://ead.senai.br/mod/assign/view.php*",
-        "https://ead.senai.br/course/view.php*",
-        "https://ead.senai.br/course/index.php*",
         "https://ead.senai.br/my/*"
       ],
       "css": [
         "content/importer/contextual-importer.css"
       ],
       "js": [
-        "content/shared-validation.js",
-        "content/importer/contextual-importer.js"
+        "content/importer/routes/my-courses-state.js",
+        "content/importer/routes/my-courses-view.js",
+        "content/importer/contextual-importer.js",
+        "content/importer/routes/my-courses.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

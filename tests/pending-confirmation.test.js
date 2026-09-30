@@ -48,3 +48,14 @@ test('entrega sem correção, tabela ausente e paginação incompleta mantêm av
     { rows: [student(1, 'Avaliado', '45')], lastPage: 1 },
   ])(assignment), false);
 });
+
+test('consulta resumida não abre páginas extras para confirmar resultado zero', () => {
+  const fetchStart = source.indexOf('  async function fetchPendingEvaluationCount(');
+  const fetchEnd = source.indexOf('  function placePendingSummaryAtTop(', fetchStart);
+  const pendingSource = source.slice(fetchStart, fetchEnd);
+  assert.doesNotMatch(pendingSource, /confirmNoPendingInGradingPages\(/);
+  assert.match(pendingSource, /searchParams\.set\('status', 'requiregrading'\)/);
+  assert.match(pendingSource, /fetchHtmlDocument\(pendingUrl\.href/);
+  assert.doesNotMatch(pendingSource, /await fetch\(pendingUrl\.href/);
+  assert.match(pendingSource, /ttlMs:\s*10 \* 60 \* 1000/);
+});

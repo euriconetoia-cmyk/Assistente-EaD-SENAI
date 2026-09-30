@@ -28,10 +28,14 @@ test('configurações inseguras são normalizadas para limites conservadores', (
   assert.equal(settings.theme, 'system');
   assert.equal(settings.showFloatingButton, true);
   assert.equal(settings.autoOpenPanel, false);
-  assert.equal(settings.enableAutomaticCourseScan, true);
-  assert.equal(settings.enableAutomaticCategoryScan, true);
+  assert.equal(settings.enableAutomaticCourseScan, false);
+  assert.equal(settings.enableAutomaticCategoryScan, false);
   assert.equal(settings.storeMessageContent, true);
   assert.equal(settings.forcePortuguese, true);
+});
+
+test('limpeza de retenção é limitada a uma execução diária', () => {
+  assert.equal(typeof MAT.storage.purgeExpiredDataIfDue, 'function');
 });
 
 test('preferências já salvas prevalecem sobre os novos padrões', async () => {

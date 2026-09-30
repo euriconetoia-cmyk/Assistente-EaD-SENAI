@@ -177,6 +177,7 @@
           <div class="mat-progress-label" role="status" aria-live="polite" aria-atomic="true"><span id="mat-progress-message">Preparando</span><strong id="mat-progress-percent">0%</strong></div>
           <div class="mat-progress"><span id="mat-progress-bar"></span></div>
         </div>
+        <div class="mat-request-status" id="mat-request-status" hidden aria-live="polite"></div>
       </header>
       <div class="mat-workspace">
       <nav class="mat-side-nav" id="mat-primary-nav" aria-label="Seções do assistente">
@@ -315,12 +316,7 @@
     renderAll();
     document.getElementById('mat-refresh')?.focus();
 
-    const snapshotIsFresh = MAT.main?.isSnapshotFresh?.(MAT.state.snapshot);
-    if (refresh && MAT.state.course?.id && !MAT.state.isCollecting && !MAT.state.isCollectingGrades && !snapshotIsFresh) {
-      window.setTimeout(() => MAT.main?.refreshAnalysis(), 120);
-    } else if (refresh && snapshotIsFresh) {
-      toast('Dados salvos deste curso carregados. Use Atualizar analise para consultar novamente.');
-    }
+    if (refresh && MAT.state.snapshot) toast('Dados salvos deste curso carregados. Use Atualizar análise para consultar novamente.');
   };
 
   const closePanel = () => {
@@ -411,6 +407,29 @@
   };
 
   const hideProgress = () => document.getElementById('mat-progress-wrap')?.classList.remove('mat-visible');
+
+  function renderRequestStatus(scopeId, scopeLabel = 'curso atual') {
+    const element = document.getElementById('mat-request-status');
+    if (!element || !scopeId || !MAT.requestBroker) return;
+    const status = MAT.requestBroker.getStatus(scopeId);
+    const total = status.queued + status.running + status.completed + status.failed + status.cancelled;
+    if (!total) { element.hidden = true; return; }
+    const state = status.running ? 'Atualizando' : status.cancelled ? 'Atualização cancelada' : status.failed ? 'Atualização parcial' : 'Atualizado';
+    element.hidden = false;
+    element.textContent = `${state}: ${scopeLabel}. ${status.completed} de ${total} item(ns) concluído(s).`;
+    if (status.queued > 0) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'mat-request-status-cancel';
+      cancel.textContent = 'Cancelar';
+      cancel.setAttribute('aria-label', `Cancelar atualização de ${scopeLabel}`);
+      cancel.addEventListener('click', () => {
+        MAT.requestBroker.cancelScope(scopeId);
+        renderRequestStatus(scopeId, scopeLabel);
+      });
+      element.appendChild(cancel);
+    }
+  }
 
   const setBusy = (busy) => {
     MAT.state.isCollecting = busy;
@@ -1481,5 +1500,5 @@
     toast('Demonstração carregada. Atualize para voltar aos dados reais.');
   };
 
-  MAT.ui = { makeLauncher, makePanel, openPanel, closePanel, togglePanel, setLauncherPassive, syncPageLayout, removePanel, renderAll, renderView, updateHeader, updateLauncher, showProgress, hideProgress, setBusy, toast, setTab };
+  MAT.ui = { makeLauncher, makePanel, openPanel, closePanel, togglePanel, setLauncherPassive, syncPageLayout, removePanel, renderAll, renderView, updateHeader, updateLauncher, showProgress, hideProgress, renderRequestStatus, setBusy, toast, setTab };
 })();

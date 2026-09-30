@@ -1,5 +1,11 @@
 # Alterações
 
+## 3.7.17
+
+- Separa a ausência histórica de nota máxima no pacote da confirmação feita no momento da importação.
+- Converte `desempenho_0_100` somente após confirmação atual da escala no Moodle ou confirmação manual explícita do tutor.
+- Mantém bloqueio para escalas divergentes e informa na prévia quando a escala foi confirmada durante a importação.
+
 ## 3.7.15, homologação
 
 ### Revisão visual e de usabilidade da mesma versão

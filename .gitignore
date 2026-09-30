@@ -1,6 +1,7 @@
 node_modules/
 coverage/
 dist/
+.worktrees/
 *.log
 *.zip
 .DS_Store
