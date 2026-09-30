@@ -114,7 +114,9 @@
     if (MAT.state.settings.autoOpenPanel) MAT.ui.openPanel();
   };
 
-  const refreshAnalysis = async ({ silent = false } = {}) => {
+  const resolveAnalysisScope = (settings) => settings?.analysisMode === 'complete' ? 'course' : 'active-uc';
+
+  const refreshAnalysis = async ({ silent = false, scope } = {}) => {
     if (MAT.state.isMoodleAuthoring || MAT.state.isCollecting || MAT.state.isCollectingGrades) return;
     if (!MAT.state.course?.id) {
       MAT.ui.toast('Abra a página de um curso para iniciar a análise.');
@@ -123,7 +125,8 @@
 
     const collectedCourse = { ...MAT.state.course };
     const collectedHost = location.hostname;
-    const requestScopeId = `course:${collectedCourse.id}`;
+    const analysisScope = scope || resolveAnalysisScope(MAT.state.settings);
+    const requestScopeId = `course:${collectedCourse.id}:${analysisScope}`;
     MAT.state.requestScopeId = requestScopeId;
     const unsubscribeRequestStatus = MAT.requestBroker?.subscribe?.(requestScopeId, () => MAT.ui.renderRequestStatus?.(requestScopeId, 'curso atual'));
     MAT.ui.setBusy(true);
@@ -134,6 +137,7 @@
         adapter: MAT.state.adapter,
         course: collectedCourse,
         settings: MAT.state.settings,
+        scope: analysisScope,
         onProgress: MAT.ui.showProgress
       });
       if (location.hostname !== collectedHost || MAT.state.course?.id !== collectedCourse.id) {
@@ -168,7 +172,10 @@
         : snapshot.summary.activitiesUnverified > 0
           ? `${snapshot.summary.activitiesUnverified} atividade(s) ainda precisam de conferência`
           : 'ausência de correções pendentes confirmada';
-      if (!silent) MAT.ui.toast(`Análise concluída: ${snapshot.summary.assignments} atividade(s), ${snapshot.summary.delivered} entrega(s), ${snapshot.summary.corrected} corrigida(s) e ${gradingMessage}.`);
+      if (!silent) {
+        const scopeLabel = analysisScope === 'course' ? 'leitura completa do curso' : 'leitura rápida da UC';
+        MAT.ui.toast(`Análise concluída (${scopeLabel}): ${snapshot.summary.assignments} atividade(s), ${snapshot.summary.delivered} entrega(s), ${snapshot.summary.corrected} corrigida(s) e ${gradingMessage}.`);
+      }
     } catch (error) {
       console.error('[Assistente EaD] Falha na análise', error);
       await MAT.storage.addAuditEvent?.({
@@ -190,7 +197,7 @@
 
   const refreshAfterChange = async (reason = 'alteração') => {
     if (!MAT.state.course?.id || MAT.state.isMoodleAuthoring || MAT.state.isCollecting || MAT.state.isCollectingGrades) return false;
-    await refreshAnalysis({ silent: true });
+    await refreshAnalysis({ silent: true, scope: 'active-uc' });
     MAT.ui?.toast?.(`Dados do curso atualizados após ${reason}.`);
     return true;
   };
@@ -201,7 +208,7 @@
       MAT.ui?.updateHeader?.();
       return false;
     }
-    await refreshAnalysis({ silent: true });
+    await refreshAnalysis({ silent: true, scope: 'active-uc' });
     return true;
   };
 
@@ -421,7 +428,7 @@
     if (message?.type === 'MAT_TOGGLE_PANEL' && canShowAssistant() && !MAT.state.isMoodleAuthoring) MAT.ui.togglePanel({ refresh: true });
   });
 
-  MAT.main = { initializeContext, refreshAnalysis, refreshAfterChange, refreshIfStale, refreshGrades, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
+  MAT.main = { initializeContext, refreshAnalysis, refreshAfterChange, refreshIfStale, refreshGrades, resolveAnalysisScope, isSnapshotFresh, COURSE_CACHE_MAX_AGE_MS, SNAPSHOT_SCHEMA_VERSION, normalizeCachedStudentNames };
 
   initializeContext().then(() => tryFillMoodleMessageDraft()).catch((error) => console.error('[Assistente EaD] Falha na inicialização', error));
   window.addEventListener('popstate', reinitializeIfContextChanged);
